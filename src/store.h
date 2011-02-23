@@ -221,6 +221,7 @@ class FileStore : public FileStoreBase {
 
   bool isBufferFile;
   bool addNewlines;
+  bool encodeBase64Flag;
 
   // State
   boost::shared_ptr<FileInterface> writeFile;
@@ -260,6 +261,7 @@ class ThriftFileStore : public FileStoreBase {
   unsigned long flushFrequencyMs;
   unsigned long msgBufferSize;
   unsigned long useSimpleFile;
+  bool addNewlines;
 
  private:
   // disallow copy, assignment, and empty construction

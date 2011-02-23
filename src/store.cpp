@@ -28,6 +28,7 @@
 #include "common.h"
 #include "scribe_server.h"
 #include "network_dynamic_config.h"
+#include "modp_b64.h"
 
 using namespace std;
 using namespace boost;
@@ -593,6 +594,7 @@ FileStore::FileStore(StoreQueue* storeq,
   : FileStoreBase(storeq, category, "file", multi_category),
     isBufferFile(is_buffer_file),
     addNewlines(false),
+    encodeBase64Flag(false),
     lostBytes_(0) {
 }
 
@@ -629,6 +631,9 @@ void FileStore::configure(pStoreConf configuration, pStoreConf parent) {
   unsigned long inttemp = 0;
   configuration->getUnsigned("add_newlines", inttemp);
   addNewlines = inttemp ? true : false;
+  inttemp = 0;
+  configuration->getUnsigned("encodeBase64Flag", inttemp);
+  encodeBase64Flag = inttemp ? true : false;
 }
 
 bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
@@ -761,6 +766,7 @@ shared_ptr<Store> FileStore::copy(const std::string &category) {
   shared_ptr<Store> copied = shared_ptr<Store>(store);
 
   store->addNewlines = addNewlines;
+  store->encodeBase64Flag = encodeBase64Flag;
   store->copyCommon(this);
   return copied;
 }
@@ -786,6 +792,7 @@ bool FileStore::writeMessages(boost::shared_ptr<logentry_vector_t> messages,
   // This costs an extra copy of the data, but dramatically improves latency with
   // network based files. (nfs, etc)
   string        write_buffer;
+  string        temp_message;
   bool          success = true;
   unsigned long current_size_buffered = 0; // size of data in write_buffer
   unsigned long num_buffered = 0;
@@ -804,11 +811,17 @@ bool FileStore::writeMessages(boost::shared_ptr<logentry_vector_t> messages,
     for (logentry_vector_t::iterator iter = messages->begin();
          iter != messages->end();
          ++iter) {
+      temp_message = (*iter)->message;
+      if(encodeBase64Flag) {
+          //char sz[temp_message.length()];
+	  //sz = new char[temp_message.length() + 1];
 
+          temp_message=modp::b64_encode(temp_message);
+      }
       // have to be careful with the length here. getFrame wants the length without
       // the frame, then bytesToPad wants the length of the frame and the message.
       unsigned long length = 0;
-      unsigned long message_length = (*iter)->message.length();
+      unsigned long message_length = temp_message.length();
       string frame, category_frame;
 
       if (addNewlines) {
@@ -846,8 +859,8 @@ bool FileStore::writeMessages(boost::shared_ptr<logentry_vector_t> messages,
       }
 
       write_buffer += frame;
-      write_buffer += (*iter)->message;
-
+      write_buffer += temp_message;
+      	
       if (addNewlines) {
         write_buffer += "\n";
       }
@@ -1042,6 +1055,7 @@ ThriftFileStore::ThriftFileStore(StoreQueue* storeq,
   : FileStoreBase(storeq, category, "thriftfile", multi_category),
     flushFrequencyMs(0),
     msgBufferSize(0),
+    addNewlines(false),	
     useSimpleFile(0) {
 }
 
@@ -1054,6 +1068,7 @@ shared_ptr<Store> ThriftFileStore::copy(const std::string &category) {
 
   store->flushFrequencyMs = flushFrequencyMs;
   store->msgBufferSize = msgBufferSize;
+  store->addNewlines = addNewlines;	
   store->copyCommon(this);
   return copied;
 }
@@ -1075,7 +1090,14 @@ bool ThriftFileStore::handleMessages(boost::shared_ptr<logentry_vector_t> messag
     uint32_t length = (*iter)->message.size();
 
     try {
-      thriftFileTransport->write(reinterpret_cast<const uint8_t*>((*iter)->message.data()), length);
+         //thriftFileTransport->write(reinterpret_cast<const uint8_t*>((*iter)->message.data()), length);
+      if(addNewlines) {
+         std::string s = (*iter)->message.data();
+         s += "\n";
+         thriftFileTransport->write(reinterpret_cast<const uint8_t*>(s.c_str()), s.size());
+      } else {
+         thriftFileTransport->write(reinterpret_cast<const uint8_t*>((*iter)->message.data()), length);
+      }
       currentSize += length;
       ++eventsWritten;
       ++messages_handled;
@@ -1091,6 +1113,7 @@ bool ThriftFileStore::handleMessages(boost::shared_ptr<logentry_vector_t> messag
       return false;
     }
   }
+
   // We can't wait until periodicCheck because we could be getting
   // a lot of data all at once in a failover situation
   if (currentSize > maxSize && maxSize != 0) {
@@ -1113,6 +1136,9 @@ void ThriftFileStore::configure(pStoreConf configuration, pStoreConf parent) {
   configuration->getUnsigned("flush_frequency_ms", flushFrequencyMs);
   configuration->getUnsigned("msg_buffer_size", msgBufferSize);
   configuration->getUnsigned("use_simple_file", useSimpleFile);
+  unsigned long inttemp = 0;
+  configuration->getUnsigned("add_newlines", inttemp);
+  addNewlines = inttemp ? true : false;
 }
 
 void ThriftFileStore::close() {
