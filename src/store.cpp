@@ -189,6 +189,7 @@ FileStoreBase::FileStoreBase(StoreQueue* storeq,
     maxSize(DEFAULT_FILESTORE_MAX_SIZE),
     maxWriteSize(DEFAULT_FILESTORE_MAX_WRITE_SIZE),
     rollPeriod(ROLL_NEVER),
+    minuteFileName(false),
     rollPeriodLength(0),
     rollHour(DEFAULT_FILESTORE_ROLL_HOUR),
     rollMinute(DEFAULT_FILESTORE_ROLL_MINUTE),
@@ -285,6 +286,11 @@ void FileStoreBase::configure(pStoreConf configuration, pStoreConf parent) {
       writeMeta = true;
     }
   }
+  if (configuration->getString("min_file_name", tmp)) {
+    if (0 == tmp.compare("yes")) {
+      minuteFileName = true;
+    }
+  }
   if (configuration->getString("write_category", tmp)) {
     if (0 == tmp.compare("yes")) {
       writeCategory = true;
@@ -333,6 +339,7 @@ void FileStoreBase::copyCommon(const FileStoreBase *base) {
   maxSize = base->maxSize;
   maxWriteSize = base->maxWriteSize;
   rollPeriod = base->rollPeriod;
+  minuteFileName = base->minuteFileName;
   rollPeriodLength = base->rollPeriodLength;
   rollHour = base->rollHour;
   rollMinute = base->rollMinute;
@@ -445,9 +452,17 @@ string FileStoreBase::makeBaseFilename(struct tm* creation_time) {
 
   filename << baseFileName;
   if (rollPeriod != ROLL_NEVER) {
-    filename << '-' << creation_time->tm_year + 1900  << '-'
+    if(minuteFileName){
+	filename << '-' << creation_time->tm_year + 1900  << '-'
+             << setw(2) << setfill('0') << creation_time->tm_mon + 1 << '-'
+             << setw(2) << setfill('0')  << creation_time->tm_mday << '-'
+	     << setw(2) << setfill('0')  << creation_time->tm_hour << '-'
+             << setw(2) << setfill('0')  << creation_time->tm_min;
+    }else{
+    	filename << '-' << creation_time->tm_year + 1900  << '-'
              << setw(2) << setfill('0') << creation_time->tm_mon + 1 << '-'
              << setw(2) << setfill('0')  << creation_time->tm_mday;
+    }
 
   }
   return filename.str();

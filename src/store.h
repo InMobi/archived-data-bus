@@ -162,6 +162,7 @@ class FileStoreBase : public Store {
   unsigned long rollMinute;
   std::string fsType;
   unsigned long chunkSize;
+  bool minuteFileName;
   bool writeMeta;
   bool writeCategory;
   bool createSymlink;
