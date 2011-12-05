@@ -66,7 +66,7 @@ public class ScribeDataMover {
                scheduledFutureList.add((ScheduledFuture<CategoryDataMovementTask>) scheduledThreadPoolExecutor.scheduleWithFixedDelay(new CategoryDataMovementTask(category, constants), 1, 60, TimeUnit.SECONDS));
             }
             for (ScheduledFuture<CategoryDataMovementTask> scheduledFuture : scheduledFutureList) {
-                scheduledFuture.
+                //scheduledFuture.
             }
         }
         else {

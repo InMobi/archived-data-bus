@@ -31,11 +31,34 @@ public class HdfsOperations {
 
     Logger logger = Logger.getLogger(HdfsOperations.class);
 
+    public long getSize(String fileName) throws HDFSException {
+        if (fileName == null)
+            throw new HDFSException("fileName cannot be null");
+        FileSystem hdfs = null;
+        try {
+            hdfs = FileSystem.get(configuration);
+        }
+        catch (IOException e){
+            e.printStackTrace();
+            logger.debug(e);
+            throw new HDFSException(e.getMessage());
+        }
+        Path filePath = new Path(fileName);
+        FileStatus fileStatus;
+        try {
+            fileStatus = hdfs.getFileStatus(filePath);
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+            logger.debug(ioe);
+            throw new HDFSException(ioe.getMessage());
+        }
+        return fileStatus.getLen();
+    }
 
     public String readFirstLineOfFile(String fileName) throws HDFSException {
-           if (fileName == null)
+        if (fileName == null)
             throw new HDFSException("fileName cannot be null");
-           FileSystem hdfs = null;
+        FileSystem hdfs = null;
         try {
             hdfs = FileSystem.get(configuration);
         }
@@ -57,7 +80,7 @@ public class HdfsOperations {
 
         }
         catch (IOException ioe) {
-          ioe.printStackTrace();
+            ioe.printStackTrace();
             logger.debug(ioe);
             throw new HDFSException(ioe.getMessage());
         }

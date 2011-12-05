@@ -163,11 +163,30 @@ public class CategoryDataMovementTask implements  Runnable{
             if (dataFilesInCollector != null) {
                 for (String dataFileInCollector : dataFilesInCollector) {
                     String dataFileFullHdfsPath = getScribeLogsHdfsPathTillDataFile(collectorFullPath, dataFileInCollector);
+                    long fileSize = 0 ;
+                    try {
+                     fileSize = hdfsOperations.getSize(dataFileFullHdfsPath) ;
+                    }
+                    catch (HDFSException e){
+                        logger.warn(e);
+                        logger.warn("Unable to get file Size for [" + dataFileFullHdfsPath + "] assuming default 0");
+                    }
                     if (!isScribeStatsFile(dataFileInCollector) &&  !isSymLinkFile(dataFileInCollector) &&
-                            !isCurrentFile(categoryName, dataFileInCollector, collectorFullPath))
+                            !isCurrentFile(categoryName, dataFileInCollector, collectorFullPath) && fileSize > 0)
                     {
                         //Add the file to filesToBeMovedAcrossCollectors
                         filesToBeMovedAcrossCollectors.put(dataFileFullHdfsPath, getDestinationFileNameForCategory(destinationPathForCategory, collectorName, dataFileInCollector));
+                    }
+                    if (fileSize == 0) {
+                        //remove the file from the source
+                        logger.warn("Source filesize for [" + dataFileFullHdfsPath + "] is 0, deleteing it.");
+                        try {
+                            hdfsOperations.delete(dataFileFullHdfsPath);
+                        } catch (HDFSException e) {
+                            e.printStackTrace();
+                            logger.warn(e.getMessage());
+                            logger.warn("Unable to delete file [" + dataFileFullHdfsPath + "]");
+                        }
                     }
                 }
 
