@@ -65,6 +65,7 @@ public class CategoryDataMovementTask implements  Runnable{
     private boolean isCurrentFile(String categoryName, String relativefileNameToCollector) {
         String scribeCurrentFileSymlinkName = categoryName.trim() + constants.getScribeCurrentFileSuffix();
         //TODO:: add code to check for symlink and current file not to be same
+
         return true;
     }
 
@@ -170,6 +171,7 @@ public class CategoryDataMovementTask implements  Runnable{
             String destinationFileName = (String) pairs.getValue();
             try {
                 hdfsOperations.rename(sourceFileName, destinationFileName);
+                logger.warn("Moved [" + sourceFileName + "] to [" + destinationFileName +"]");
             } catch (HDFSException e) {
                 e.printStackTrace();
                 logger.warn(e);
