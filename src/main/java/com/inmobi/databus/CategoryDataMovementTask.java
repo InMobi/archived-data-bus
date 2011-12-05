@@ -64,7 +64,7 @@ public class CategoryDataMovementTask implements  Runnable{
 
     private boolean isCurrentFile(String categoryName, String relativefileNameToCollector) {
         String scribeCurrentFileSymlinkName = categoryName.trim() + constants.getScribeCurrentFileSuffix();
-        //add code to check for symlink and current file not to be same
+        //TODO:: add code to check for symlink and current file not to be same
         return true;
     }
 
@@ -76,6 +76,10 @@ public class CategoryDataMovementTask implements  Runnable{
 
     private String getDestinationFileNameForCategory(String destinationPathForCategory, String collectorName, String dataFileName)  {
         return        destinationPathForCategory + "/" + collectorName + "-" + dataFileName;
+    }
+
+    private String getDoneFilePathForCategory(String destinationPathForCategory) {
+        return destinationPathForCategory + "/" + constants.getDoneFileName();
     }
 
     @Override
@@ -174,7 +178,26 @@ public class CategoryDataMovementTask implements  Runnable{
         }
         // Reached here means destinationPathForCategory is complete.
         // Create a DONE file to mark completion
+        int retryCount = 0;
+        while (retryCount < 3 )    {
+            String doneFileFullPathForCategory = getDoneFilePathForCategory(destinationPathForCategory);
+            try {
+                hdfsOperations.createFile(doneFileFullPathForCategory);
+                logger.warn("Successfully created DONE file at [" + doneFileFullPathForCategory + "]");
+                break;
+            } catch (HDFSException e) {
+                e.printStackTrace();
+                logger.warn(e);
+                logger.warn("Error in creating Done File [" + doneFileFullPathForCategory + "] going to retry");
 
+            }
+            if (retryCount == 3) {
+                logger.warn("Error :: exhausted retry count of 3, cannot create DONE file at ["+ doneFileFullPathForCategory + "]" );
+                logger.warn("Error :: DONE file creation will be tried by HOUSE KEEPING THREAD");
+
+            }
+            retryCount++;
+        }
 
     }
 }

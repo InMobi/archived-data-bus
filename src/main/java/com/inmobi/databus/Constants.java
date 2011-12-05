@@ -17,6 +17,16 @@ public class Constants {
     String scribeHouseKeepingThresholdInMinutes = "com.inmobi.databus.scribe.housekeeping.threshold.minutes";
     String scribeStatsFileName = "scribe_stats";
     String scribeCurrentFileSuffix = "_current";
+    String doneFileName = "com.inmobi.databus.scribe.data.donefilename";
+
+    private void setDoneFileName(String doneFileName) {
+        this.doneFileName = doneFileName;
+    }
+
+    public String getDoneFileName() {
+        return doneFileName;
+    }
+
 
     public String getScribeCurrentFileSuffix() {
         return scribeCurrentFileSuffix;
@@ -36,6 +46,7 @@ public class Constants {
         setHdfsNameNode(properties.getProperty(hdfsNameNode));
         setScribeDataParentDir(properties.getProperty(scribeDataParentDir));
         setScribeHouseKeepingThresholdInMinutes(properties.getProperty(scribeHouseKeepingThresholdInMinutes));
+        setDoneFileName(properties.getProperty(doneFileName));
     }
 
     public String getHdfsNameNode() {

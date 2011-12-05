@@ -14,6 +14,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.log4j.Logger;
 
 
@@ -34,6 +35,32 @@ public class HdfsOperations {
     Logger logger = Logger.getLogger(HdfsOperations.class);
 
 
+    public void createFile(String fileName) throws HDFSException {
+        if (fileName == null)
+            throw new HDFSException("fileName cannot be null");
+        FileSystem hdfs = null;
+        try {
+            hdfs = FileSystem.get(configuration);
+        }
+        catch (IOException e){
+            e.printStackTrace();
+            logger.debug(e);
+            throw new HDFSException(e.getMessage());
+        }
+        Path filePath = new Path(fileName);
+        try {
+            FSDataOutputStream out = null;
+            if (hdfs.exists(filePath))
+                throw new HDFSException("File [" + fileName + "] already exists");
+            out = hdfs.create(filePath);
+            out.close();
+        }
+        catch (IOException ioe) {
+            ioe.printStackTrace();
+            logger.debug(ioe);
+            throw new HDFSException(ioe.getMessage());
+        }
+    }
 
     public List<String> getFilesInDirectory(String dirName) throws HDFSException {
         List<String> fileList = new ArrayList<String>();
