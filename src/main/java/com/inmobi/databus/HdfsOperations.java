@@ -1,5 +1,6 @@
 package com.inmobi.databus;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -20,6 +21,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.inmobi.databus.Constants.*;
+
 public class HdfsOperations {
 
     public Configuration getConfiguration() {
@@ -29,6 +32,8 @@ public class HdfsOperations {
     Configuration configuration = new Configuration();
 
     Logger logger = Logger.getLogger(HdfsOperations.class);
+
+
 
     public List<String> getFilesInDirectory(String dirName) throws HDFSException {
         List<String> fileList = new ArrayList<String>();
@@ -263,6 +268,7 @@ public class HdfsOperations {
         Path destPath = new Path(destName);
         try {
             hdfs.rename(srcPath, destPath);
+
         }
         catch (IOException ioe) {
             ioe.printStackTrace();
@@ -275,6 +281,7 @@ public class HdfsOperations {
         // This is more like a test class for the above HDFS operations
 
         HdfsOperations hdfsOps = new HdfsOperations();
+
         //1. create a new directory
         try {
             Configuration configuration = hdfsOps.getConfiguration();
