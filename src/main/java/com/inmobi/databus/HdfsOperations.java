@@ -1,7 +1,6 @@
 package com.inmobi.databus;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 
 /**
  * Created by IntelliJ IDEA.
@@ -11,10 +10,8 @@ import java.io.IOException;
  * To change this template use File | Settings | File Templates.
  */
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.*;
+
 import org.apache.log4j.Logger;
 
 
@@ -34,6 +31,39 @@ public class HdfsOperations {
 
     Logger logger = Logger.getLogger(HdfsOperations.class);
 
+
+    public String readFirstLineOfFile(String fileName) throws HDFSException {
+           if (fileName == null)
+            throw new HDFSException("fileName cannot be null");
+           FileSystem hdfs = null;
+        try {
+            hdfs = FileSystem.get(configuration);
+        }
+        catch (IOException e){
+            e.printStackTrace();
+            logger.debug(e);
+            throw new HDFSException(e.getMessage());
+        }
+        Path filePath = new Path(fileName);
+
+        try {
+            if (!hdfs.exists(filePath))
+                throw new HDFSException("filename [" + fileName + "] not found");
+            BufferedReader bfr;
+            bfr = new BufferedReader(new InputStreamReader(hdfs.open(filePath)));
+            String firstLine = bfr.readLine();
+            bfr.close();
+            return firstLine;
+
+        }
+        catch (IOException ioe) {
+          ioe.printStackTrace();
+            logger.debug(ioe);
+            throw new HDFSException(ioe.getMessage());
+        }
+
+
+    }
 
     public void createFile(String fileName) throws HDFSException {
         if (fileName == null)

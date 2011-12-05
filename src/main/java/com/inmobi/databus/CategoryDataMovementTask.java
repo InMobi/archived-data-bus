@@ -6,7 +6,6 @@ import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 
 import java.util.*;
 
-import java.text.StringCharacterIterator;
 
 /**
  * Created by IntelliJ IDEA.
@@ -36,13 +35,13 @@ public class CategoryDataMovementTask implements  Runnable{
     }
 
     private String getScribeLogsHdfsPathTillCategory(String categoryName) {
-        String categoryPath =  constants.getLogsParentDir() + "/" + categoryName.trim();
+        String categoryPath =  constants.getLogsParentDir() + "/" + categoryName.trim() + "/";
         return categoryPath;
 
     }
 
     private String getScribeLogsHdfsPathTillCollector(String categoryName, String collectorName) {
-        String collectorPath =  constants.getLogsParentDir() + "/" + categoryName.trim() + "/" + collectorName.trim();
+        String collectorPath =  constants.getLogsParentDir() + "/" + categoryName.trim() + "/" + collectorName.trim() + "/";
         return collectorPath;
     }
 
@@ -62,11 +61,32 @@ public class CategoryDataMovementTask implements  Runnable{
         return constants.getScribeStatsFileName().equalsIgnoreCase(relativeFilenameToCollector.trim());
     }
 
-    private boolean isCurrentFile(String categoryName, String relativefileNameToCollector) {
-        String scribeCurrentFileSymlinkName = categoryName.trim() + constants.getScribeCurrentFileSuffix();
-        //TODO:: add code to check for symlink and current file not to be same
+    private boolean isSymLinkFile(String relativefileNameToCollector) {
+        logger.debug("isSymLinkFile :: Comparing [" + relativefileNameToCollector + "] with " + constants.getScribeCurrentFileSuffix());
+        if (relativefileNameToCollector.contains(constants.getScribeCurrentFileSuffix())) {
+            return true;
+        }
+        return false;
+    }
 
-        return true;
+    private boolean isCurrentFile(String categoryName, String relativefileNameToCollector, String collectorPath) {
+        String scribeCurrentFileSymlinkName = categoryName.trim() + constants.getScribeCurrentFileSuffix();
+        // Scribe is simulating symlink so we need to do the following
+        String symLinkFile = collectorPath.trim() + "/" + categoryName.trim() + constants.getScribeCurrentFileSuffix();
+        String actualCurrentFileName;
+        try {
+            actualCurrentFileName = hdfsOperations.readFirstLineOfFile(symLinkFile);
+        } catch (HDFSException e) {
+            logger.warn(e);
+            logger.warn("Unable to read symlink File [" + symLinkFile + "]to find current File");
+            return false;
+        }
+        if (actualCurrentFileName.trim().equalsIgnoreCase(relativefileNameToCollector)) {
+            return true;
+
+        }
+
+        return false;
     }
 
     private String getCurrentDateTimeAsPathWithCategory(String category) {
@@ -115,6 +135,7 @@ public class CategoryDataMovementTask implements  Runnable{
         //2.1 build all collectors full path for HDFS
         //             collectorsFullPath is map of collectorName, collectorFullPath
         Map<String, String> collectorsFullPath = new HashMap<String, String>();
+
         for(String collectorName : collectorsForCategory) {
             collectorsFullPath.put(collectorName, getScribeLogsHdfsPathTillCollector(categoryName, collectorName));
         }
@@ -142,7 +163,8 @@ public class CategoryDataMovementTask implements  Runnable{
             if (dataFilesInCollector != null) {
                 for (String dataFileInCollector : dataFilesInCollector) {
                     String dataFileFullHdfsPath = getScribeLogsHdfsPathTillDataFile(collectorFullPath, dataFileInCollector);
-                    if (!isScribeStatsFile(dataFileInCollector) &&   !isCurrentFile(categoryName, dataFileInCollector))
+                    if (!isScribeStatsFile(dataFileInCollector) &&  !isSymLinkFile(dataFileInCollector) &&
+                            !isCurrentFile(categoryName, dataFileInCollector, collectorFullPath))
                     {
                         //Add the file to filesToBeMovedAcrossCollectors
                         filesToBeMovedAcrossCollectors.put(dataFileFullHdfsPath, getDestinationFileNameForCategory(destinationPathForCategory, collectorName, dataFileInCollector));
