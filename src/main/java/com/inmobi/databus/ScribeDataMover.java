@@ -23,9 +23,10 @@ public class ScribeDataMover {
 
     List<String> getCategories() {
         String scribeLogsDir = constants.getLogsParentDir();
-       List<String> categoryList = null;
+        List<String> categoryList = null;
         try {
-        categoryList = hdfsOperations.getFilesInDirectory(scribeLogsDir);
+            categoryList = hdfsOperations.getFilesInDirectory(scribeLogsDir);
+            logger.debug("getCategories from [" + scribeLogsDir + "]");
         }
         catch (HDFSException hdfsException) {
             logger.warn("Failed to get categories List for scribeLogsDir" + scribeLogsDir);
@@ -38,6 +39,7 @@ public class ScribeDataMover {
         Configuration configuration = hdfsOperations.getConfiguration();
         String dfsName = constants.getHdfsNameNode();
         configuration.set("fs.default.name", dfsName);
+        logger.debug("loadHdfsConfiguration setting fs.default.name to [" + dfsName + "]");
 
 
     }
@@ -45,9 +47,11 @@ public class ScribeDataMover {
         if(propertyFile == null) {
             //load from classpath
             constants = new Constants(null);
+            logger.debug("Loading properties from classpath scribe.properties");
         }
         else  {
             constants = new Constants(propertyFile);
+            logger.debug("loading properties from [" + propertyFile + "]");
         }
     }
 
@@ -56,14 +60,14 @@ public class ScribeDataMover {
         loadHdfsConfiguration();
         List<String> categoryList = getCategories();
         if (categoryList != null && !categoryList.isEmpty())   {
-       //loadHdfsConfiguration();   hdfs configuration should be loaded by individual threads.
-        ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(categoryList.size());
-           //1. Schedule a task for each category to execute every minute which moves files across all collectors
+            //loadHdfsConfiguration();   hdfs configuration should be loaded by individual threads.
+            ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(categoryList.size());
+            //1. Schedule a task for each category to execute every minute which moves files across all collectors
             List<ScheduledFuture<CategoryDataMovementTask>>  scheduledFutureList = new ArrayList<ScheduledFuture<CategoryDataMovementTask>>();
             for (String category : categoryList) {
                 logger.warn("Scheduling a task for catgeory [" + category + "] for data movement every minute from ScribeLogsParentDir [" +  constants.getLogsParentDir()  + "]"
-     );
-               scheduledFutureList.add((ScheduledFuture<CategoryDataMovementTask>) scheduledThreadPoolExecutor.scheduleWithFixedDelay(new CategoryDataMovementTask(category, constants), 1, 60, TimeUnit.SECONDS));
+                );
+                scheduledFutureList.add((ScheduledFuture<CategoryDataMovementTask>) scheduledThreadPoolExecutor.scheduleWithFixedDelay(new CategoryDataMovementTask(category, constants), 1, 60, TimeUnit.SECONDS));
             }
             for (ScheduledFuture<CategoryDataMovementTask> scheduledFuture : scheduledFutureList) {
                 //scheduledFuture.

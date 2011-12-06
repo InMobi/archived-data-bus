@@ -75,6 +75,7 @@ public class HdfsOperations {
             BufferedReader bfr;
             bfr = new BufferedReader(new InputStreamReader(hdfs.open(filePath)));
             String firstLine = bfr.readLine();
+            logger.debug("readFirstLineOfFile line [" + firstLine + "]");
             bfr.close();
             return firstLine;
 
@@ -106,6 +107,7 @@ public class HdfsOperations {
             if (hdfs.exists(filePath))
                 throw new HDFSException("File [" + fileName + "] already exists");
             out = hdfs.create(filePath);
+            logger.debug("createFile [" + fileName + "] done");
             out.close();
         }
         catch (IOException ioe) {
@@ -140,8 +142,10 @@ public class HdfsOperations {
             throw new HDFSException(ioe.getMessage());
         }
         for(FileStatus fileStatus : fileStatuses) {
-            if (fileStatus != null)
+            if (fileStatus != null){
                 fileList.add(fileStatus.getPath().getName());
+                logger.debug("getFilesInDirectory dir :: [" + dirName + "] fileName [" + fileStatus.getPath().getName() + "]" );
+            }
 
         }
         return fileList;
@@ -162,6 +166,7 @@ public class HdfsOperations {
 
         try {
             hdfs.mkdirs(path);
+            logger.debug("createDirectory [" + dirName + "] done");
 
         }
         catch (IOException ioe) {
@@ -188,6 +193,7 @@ public class HdfsOperations {
         boolean isDir;
         try {
             isDir = hdfs.getFileStatus(path).isDir();
+            logger.debug("isDir :: on dir [" + dirName + "] value [" + isDir + "]");
         }
         catch (IOException ioe) {
             ioe.printStackTrace();
@@ -212,6 +218,7 @@ public class HdfsOperations {
         boolean isFile;
         try {
             isFile = hdfs.isFile(path);
+            logger.debug("isFile check on [" + fileName + "] value [" + isFile + "]");
         }
         catch (IOException ioe) {
             ioe.printStackTrace();
@@ -239,6 +246,7 @@ public class HdfsOperations {
         boolean isExists;
         try {
             isExists = hdfs.exists(path);
+            logger.debug("isExists check on [" + fileName + "] value [" + isExists + "]");
         }
         catch (IOException ioe) {
             ioe.printStackTrace();
@@ -272,6 +280,7 @@ public class HdfsOperations {
             logger.debug(ioe);
             throw new HDFSException(ioe.getMessage());
         }
+        logger.debug("getLastModificationTimeStamp on [" + fileName + "] value [" + fileStatus.getModificationTime() + "]");
         return fileStatus.getModificationTime();
 
     }
@@ -294,6 +303,7 @@ public class HdfsOperations {
         try {
             // we are doing a  recursive delete here
             hdfs.delete(deletePath, true);
+            logger.debug("deleteRecursively on path [" + path + "] done");
         }
         catch (IOException ioe) {
             ioe.printStackTrace();
@@ -322,6 +332,7 @@ public class HdfsOperations {
         try {
             // we are doing a non recursive delete here
             hdfs.delete(deletePath, false);
+            logger.debug("delete non recursive on path [" + path + "] done");
         }
         catch (IOException ioe) {
             ioe.printStackTrace();
@@ -348,6 +359,7 @@ public class HdfsOperations {
         Path destPath = new Path(destName);
         try {
             hdfs.rename(srcPath, destPath);
+            logger.debug("rename [" + srcName + "] to [" + destName + "]");
 
         }
         catch (IOException ioe) {

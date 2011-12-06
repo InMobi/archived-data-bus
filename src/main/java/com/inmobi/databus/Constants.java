@@ -1,6 +1,8 @@
 package com.inmobi.databus;
 
 
+import org.apache.log4j.Logger;
+
 import java.util.Properties;
 
 /**
@@ -11,6 +13,7 @@ import java.util.Properties;
  * To change this template use File | Settings | File Templates.
  */
 public class Constants {
+    Logger logger = Logger.getLogger(CalendarHelper.class);
     String logsParentDir   = "com.inmobi.databus.scribe.logs.parentdir";
     String hdfsNameNode   = "com.inmobi.databus.hdfs.namenode";
     String scribeDataParentDir = "com.inmobi.databus.scribe.data.parentdir";
@@ -24,16 +27,18 @@ public class Constants {
     }
 
     public String getDoneFileName() {
-        return doneFileName;
+        return doneFileName.trim();
     }
 
 
     public String getScribeCurrentFileSuffix() {
-        return scribeCurrentFileSuffix;
+        logger.debug("getScribeCurrentFileSuffix [" + scribeCurrentFileSuffix + "]");
+        return scribeCurrentFileSuffix.trim();
     }
 
     public String getScribeStatsFileName() {
-        return scribeStatsFileName;
+        logger.debug("getScribeStatsFileName [" + scribeStatsFileName + "]" );
+        return scribeStatsFileName.trim();
     }
 
     PropertiesReader propertiesReader;
@@ -50,7 +55,8 @@ public class Constants {
     }
 
     public String getHdfsNameNode() {
-        return hdfsNameNode;
+        logger.debug("getHdfsNameNode [" + hdfsNameNode + "]");
+        return hdfsNameNode.trim();
     }
 
     void setHdfsNameNode(String hdfsNameNode) {
@@ -58,7 +64,8 @@ public class Constants {
     }
 
     public String getScribeDataParentDir() {
-        return scribeDataParentDir;
+        logger.debug("getScribeDataParentDir [" + scribeDataParentDir + "]");
+        return scribeDataParentDir.trim();
     }
 
     void setScribeDataParentDir(String scribeDataParentDir) {
@@ -66,7 +73,8 @@ public class Constants {
     }
 
     public String getScribeHouseKeepingThresholdInMinutes() {
-        return scribeHouseKeepingThresholdInMinutes;
+        logger.debug("getScribeHouseKeepingThresholdInMinutes [" + scribeHouseKeepingThresholdInMinutes + "]");
+        return scribeHouseKeepingThresholdInMinutes.trim();
     }
 
     void setScribeHouseKeepingThresholdInMinutes(String scribeHouseKeepingThresholdInMinutes) {
@@ -74,7 +82,8 @@ public class Constants {
     }
 
     public String getLogsParentDir() {
-        return logsParentDir;
+        logger.debug(" getLogsParentDir [" + logsParentDir + "]");
+        return logsParentDir.trim();
     }
 
     void setLogsParentDir(String logsParentDir) {

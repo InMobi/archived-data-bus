@@ -1,5 +1,7 @@
 package com.inmobi.databus;
 
+import org.apache.log4j.Logger;
+
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
@@ -11,6 +13,7 @@ import java.util.GregorianCalendar;
  * To change this template use File | Settings | File Templates.
  */
 public class CalendarHelper {
+    static Logger logger = Logger.getLogger(CalendarHelper.class);
 
     String year;
     String month;
@@ -27,6 +30,8 @@ public class CalendarHelper {
         String hour = Integer.toString(calendar.get(Calendar.HOUR_OF_DAY));
         String minute = Integer.toString(calendar.get(Calendar.MINUTE));
         String pathInYYMMDDHRMNFormat = year + "/" + month + "/" +  day + "/" + hour + "/" + minute + "/";
+
+        logger.debug("getCurrentDayTimeAsPath :: Path [" + pathInYYMMDDHRMNFormat + "]");
         return pathInYYMMDDHRMNFormat;
 
     }

@@ -31,41 +31,49 @@ public class CategoryDataMovementTask implements  Runnable{
         Configuration configuration = hdfsOperations.getConfiguration();
         String dfsName = constants.getHdfsNameNode();
         configuration.set("fs.default.name", dfsName);
+        logger.debug("getHdfsOperationObject setting fs.default.name to [" + dfsName + "]");
         return  hdfsOperations;
     }
 
     private String getScribeLogsHdfsPathTillCategory(String categoryName) {
         String categoryPath =  constants.getLogsParentDir() + "/" + categoryName.trim() + "/";
+        logger.debug(" getScribeLogsHdfsPathTillCategory :: categoryPath [" + categoryPath + "]");
         return categoryPath;
 
     }
 
     private String getScribeLogsHdfsPathTillCollector(String categoryName, String collectorName) {
         String collectorPath =  constants.getLogsParentDir() + "/" + categoryName.trim() + "/" + collectorName.trim() + "/";
+        logger.debug("getScribeLogsHdfsPathTillCollector :: collectorPath [" + collectorPath + "]");
         return collectorPath;
     }
 
     private String getScribeLogsHdfsPathTillDataFile(String categoryName, String collectorName, String dataFile) {
         String dataFilePath =  constants.getLogsParentDir() + "/" + categoryName.trim() + "/" + collectorName.trim() + "/" + dataFile.trim();
+        logger.debug("getScribeLogsHdfsPathTillDataFile :: dataFilePath [" + dataFilePath + "]");
         return dataFilePath;
     }
 
     private String getScribeLogsHdfsPathTillDataFile(String collectorFullPath, String dataFile) {
         String dataFilePath =  collectorFullPath.trim() + "/" + dataFile.trim();
+        logger.debug("getScribeLogsHdfsPathTillDataFile :: dataFilePath [" + dataFilePath + "]");
         return dataFilePath;
     }
 
     private boolean isScribeStatsFile(String relativeFilenameToCollector) {
         if (relativeFilenameToCollector == null)
             return false;
+        logger.debug("isScribeStatsFile :: checking for [" + relativeFilenameToCollector + "] comparing with [" + constants.getScribeStatsFileName() + "]");
         return constants.getScribeStatsFileName().equalsIgnoreCase(relativeFilenameToCollector.trim());
     }
 
     private boolean isSymLinkFile(String relativefileNameToCollector) {
-        logger.debug("isSymLinkFile :: Comparing [" + relativefileNameToCollector + "] with " + constants.getScribeCurrentFileSuffix());
+        logger.debug("isSymLinkFile :: Checking whether [" + relativefileNameToCollector + "] contains " + constants.getScribeCurrentFileSuffix());
         if (relativefileNameToCollector.contains(constants.getScribeCurrentFileSuffix())) {
+            logger.debug("isSymLinkFile :: Check status [true]");
             return true;
         }
+        logger.debug("isSymLinkFile :: Check status [false]");
         return false;
     }
 
@@ -73,40 +81,50 @@ public class CategoryDataMovementTask implements  Runnable{
         String scribeCurrentFileSymlinkName = categoryName.trim() + constants.getScribeCurrentFileSuffix();
         // Scribe is simulating symlink so we need to do the following
         String symLinkFile = collectorPath.trim() + "/" + categoryName.trim() + constants.getScribeCurrentFileSuffix();
+        logger.debug("isCurrentFile :: symLinkFile [" + symLinkFile + "]");
         String actualCurrentFileName;
         try {
             actualCurrentFileName = hdfsOperations.readFirstLineOfFile(symLinkFile);
+            logger.debug("isCurrentFile :: actualCurrentFileName [" + actualCurrentFileName + "]");
         } catch (HDFSException e) {
             logger.warn(e);
             logger.warn("Unable to read symlink File [" + symLinkFile + "]to find current File");
             return false;
         }
         if (actualCurrentFileName.trim().equalsIgnoreCase(relativefileNameToCollector)) {
+            logger.debug("isCurrentFile :: [" + relativefileNameToCollector + "] is the current file being written, returning[true]");
             return true;
 
         }
 
+        logger.debug("isCurrentFile :: [" + relativefileNameToCollector + "] is the current file being written, returning[false]");
         return false;
     }
 
     private String getCurrentDateTimeAsPathWithCategory(String category) {
         String path = constants.getScribeDataParentDir() + "/" + category + "/" + CalendarHelper.getCurrentDayTimeAsPath();
+        logger.debug("getCurrentDateTimeAsPathWithCategory :: category [" + category + "] path [" + path + "]");
         return path;
     }
 
 
     private String getDestinationFileNameForCategory(String destinationPathForCategory, String collectorName, String dataFileName)  {
-        return        destinationPathForCategory + "/" + collectorName + "-" + dataFileName;
+        String path = destinationPathForCategory + "/" + collectorName + "-" + dataFileName;
+        logger.debug("getDestinationFileNameForCategory :: [" + path + "]");
+        return       path;
     }
 
     private String getDoneFilePathForCategory(String destinationPathForCategory) {
-        return destinationPathForCategory + "/" + constants.getDoneFileName();
+        String path = destinationPathForCategory + "/" + constants.getDoneFileName();
+        logger.debug("getDoneFilePathForCategory :: path [" + path + "]");
+        return  path;
     }
 
     @Override
     public void run() {
         hdfsOperations = getHdfsOperationObject();
         //1. Find all collectors within this category
+         logger.warn("Working on category [" + categoryPath + "]");
         String categoryPath = getScribeLogsHdfsPathTillCategory(categoryName);
         List<String> collectorsForCategory;
         try {
@@ -118,9 +136,10 @@ public class CategoryDataMovementTask implements  Runnable{
             //do nothing
             return;
         }
-        logger.warn("Working on category [" + categoryPath + "]");
+
 
         String destinationPathForCategory  = getCurrentDateTimeAsPathWithCategory(categoryName);
+        logger.warn("Final Path for category [" + categoryName + "] is [" + destinationPathForCategory + "]");
         //Create a directory for  destinationPathForCategory
         try {
             hdfsOperations.createDirectory(destinationPathForCategory);
@@ -139,13 +158,14 @@ public class CategoryDataMovementTask implements  Runnable{
         for(String collectorName : collectorsForCategory) {
             collectorsFullPath.put(collectorName, getScribeLogsHdfsPathTillCollector(categoryName, collectorName));
         }
-        Map<String, String> filesToBeMovedAcrossCollectors = new HashMap<String, String>();
-        Iterator collectorsFullPathIterator = collectorsFullPath.entrySet().iterator();
 
+        Map<String, String> filesToBeMovedAcrossCollectors = new HashMap<String, String>();
+
+        Iterator collectorsFullPathIterator = collectorsFullPath.entrySet().iterator();
         while (collectorsFullPathIterator.hasNext()) {
             Map.Entry pairs = (Map.Entry)collectorsFullPathIterator.next();
-            String collectorFullPath = (String) pairs.getValue();
             String collectorName = (String) pairs.getKey();
+            String collectorFullPath = (String) pairs.getValue();
 
             List<String> dataFilesInCollector = null;
             logger.warn("Working on collector [" + collectorFullPath + "]");
@@ -154,7 +174,9 @@ public class CategoryDataMovementTask implements  Runnable{
             } catch (HDFSException e) {
                 e.printStackTrace();
                 logger.warn(e);
-                logger.warn("Unable to/Error find any files inside Collector [" + collectorFullPath + "]" + "..doing nothing for this collector");
+                logger.warn("Unable to/Error find any files inside Collector [" + collectorFullPath + "]" + "..doing nothing for this collector moving to next collector files");
+                //Do nothing for this collector, move to next collector
+                continue;
             }
             // 3. Found files inside the collector
             // 3.1 check whehter it's the current file being written && not scribe_stats
@@ -165,7 +187,7 @@ public class CategoryDataMovementTask implements  Runnable{
                     String dataFileFullHdfsPath = getScribeLogsHdfsPathTillDataFile(collectorFullPath, dataFileInCollector);
                     long fileSize = 0 ;
                     try {
-                     fileSize = hdfsOperations.getSize(dataFileFullHdfsPath) ;
+                        fileSize = hdfsOperations.getSize(dataFileFullHdfsPath) ;
                     }
                     catch (HDFSException e){
                         logger.warn(e);
@@ -179,7 +201,7 @@ public class CategoryDataMovementTask implements  Runnable{
                     }
                     if (fileSize == 0) {
                         //remove the file from the source
-                        logger.warn("Source filesize for [" + dataFileFullHdfsPath + "] is 0, deleteing it.");
+                        logger.warn("Source filesize for [" + dataFileFullHdfsPath + "] is 0, deleteing it from source");
                         try {
                             hdfsOperations.delete(dataFileFullHdfsPath);
                         } catch (HDFSException e) {
@@ -212,7 +234,7 @@ public class CategoryDataMovementTask implements  Runnable{
             String destinationFileName = (String) pairs.getValue();
             try {
                 hdfsOperations.rename(sourceFileName, destinationFileName);
-                logger.warn("Moved [" + sourceFileName + "] to [" + destinationFileName +"]");
+                logger.debug("Moved [" + sourceFileName + "] to [" + destinationFileName +"]");
             } catch (HDFSException e) {
                 e.printStackTrace();
                 logger.warn(e);
