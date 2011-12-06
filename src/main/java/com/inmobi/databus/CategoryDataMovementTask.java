@@ -92,12 +92,12 @@ public class CategoryDataMovementTask implements  Runnable{
             return false;
         }
         if (actualCurrentFileName.trim().equalsIgnoreCase(relativefileNameToCollector)) {
-            logger.debug("isCurrentFile :: [" + relativefileNameToCollector + "] is the current file being written, returning[true]");
+            logger.debug("isCurrentFile :: [" + relativefileNameToCollector + "] is the current file being written, returning [true]");
             return true;
 
         }
 
-        logger.debug("isCurrentFile :: [" + relativefileNameToCollector + "] is the current file being written, returning[false]");
+        logger.debug("isCurrentFile :: [" + relativefileNameToCollector + "] is the current file being written, returning [false]");
         return false;
     }
 
@@ -124,8 +124,9 @@ public class CategoryDataMovementTask implements  Runnable{
     public void run() {
         hdfsOperations = getHdfsOperationObject();
         //1. Find all collectors within this category
-         logger.warn("Working on category [" + categoryPath + "]");
+
         String categoryPath = getScribeLogsHdfsPathTillCategory(categoryName);
+        logger.warn("Working on category [" + categoryPath + "]");
         List<String> collectorsForCategory;
         try {
             collectorsForCategory = hdfsOperations.getFilesInDirectory(categoryPath);
@@ -234,7 +235,7 @@ public class CategoryDataMovementTask implements  Runnable{
             String destinationFileName = (String) pairs.getValue();
             try {
                 hdfsOperations.rename(sourceFileName, destinationFileName);
-                logger.debug("Moved [" + sourceFileName + "] to [" + destinationFileName +"]");
+                logger.debug("Moved [" + sourceFileName + "] to [" + destinationFileName + "]");
             } catch (HDFSException e) {
                 e.printStackTrace();
                 logger.warn(e);
@@ -244,25 +245,40 @@ public class CategoryDataMovementTask implements  Runnable{
         // Reached here means destinationPathForCategory is complete.
         // Create a DONE file to mark completion
         int retryCount = 0;
-        while (retryCount < 3 )    {
-            String doneFileFullPathForCategory = getDoneFilePathForCategory(destinationPathForCategory);
+        if (!filesToBeMovedAcrossCollectors.isEmpty()) {
+            //if no files were created don't create an empty DONE file
+            while (retryCount < 3 )    {
+                String doneFileFullPathForCategory = getDoneFilePathForCategory(destinationPathForCategory);
+                try {
+                    hdfsOperations.createFile(doneFileFullPathForCategory);
+                    logger.warn("Successfully created DONE file at [" + doneFileFullPathForCategory + "]");
+                    break;
+                } catch (HDFSException e) {
+                    e.printStackTrace();
+                    logger.warn(e);
+                    logger.warn("Error in creating Done File [" + doneFileFullPathForCategory + "] going to retry");
+
+                }
+                if (retryCount == 3) {
+                    logger.warn("Error :: exhausted retry count of 3, cannot create DONE file at ["+ doneFileFullPathForCategory + "]" );
+                    logger.warn("Error :: DONE file creation will be tried by HOUSE KEEPING THREAD");
+
+                }
+                retryCount++;
+            }
+        }
+        else  {
             try {
-                hdfsOperations.createFile(doneFileFullPathForCategory);
-                logger.warn("Successfully created DONE file at [" + doneFileFullPathForCategory + "]");
-                break;
+                hdfsOperations.deleteRecursively(destinationPathForCategory);
+                logger.warn("No files were moved in this iteration for category [" + categoryPath + "], delete the destination directory [" + destinationPathForCategory + "]");
             } catch (HDFSException e) {
                 e.printStackTrace();
                 logger.warn(e);
-                logger.warn("Error in creating Done File [" + doneFileFullPathForCategory + "] going to retry");
-
+                logger.warn("No files were moved in this iteration. Failed deleting directory [" + destinationPathForCategory + "]");
             }
-            if (retryCount == 3) {
-                logger.warn("Error :: exhausted retry count of 3, cannot create DONE file at ["+ doneFileFullPathForCategory + "]" );
-                logger.warn("Error :: DONE file creation will be tried by HOUSE KEEPING THREAD");
 
-            }
-            retryCount++;
         }
+
 
     }
 }
