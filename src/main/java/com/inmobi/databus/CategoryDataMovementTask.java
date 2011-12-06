@@ -141,15 +141,7 @@ public class CategoryDataMovementTask implements  Runnable{
 
         String destinationPathForCategory  = getCurrentDateTimeAsPathWithCategory(categoryName);
         logger.warn("Final Path for category [" + categoryName + "] is [" + destinationPathForCategory + "]");
-        //Create a directory for  destinationPathForCategory
-        try {
-            hdfsOperations.createDirectory(destinationPathForCategory);
-        } catch (HDFSException e) {
-            e.printStackTrace();
-            logger.warn(e);
-            logger.warn("Error:: Cannot create destination Path [" + destinationPathForCategory + "] for category " + categoryName + "..skipping current iteration." );
-            return;
-        }
+
 
         //2. Find all files inside all collectors
         //2.1 build all collectors full path for HDFS
@@ -200,7 +192,9 @@ public class CategoryDataMovementTask implements  Runnable{
                         //Add the file to filesToBeMovedAcrossCollectors
                         filesToBeMovedAcrossCollectors.put(dataFileFullHdfsPath, getDestinationFileNameForCategory(destinationPathForCategory, collectorName, dataFileInCollector));
                     }
-                    if (fileSize == 0) {
+                    if (fileSize == 0 && !isCurrentFile(categoryName, dataFileInCollector, collectorFullPath)) {
+                        //P.S. : isCurrentFile check is mandatory above as HDFS updates the file size to be > 0
+                        //only on flush/sync and without it the current file of HDFS will get removed and scribe will cry :(
                         //remove the file from the source
                         logger.warn("Source filesize for [" + dataFileFullHdfsPath + "] is 0, deleteing it from source");
                         try {
@@ -217,7 +211,7 @@ public class CategoryDataMovementTask implements  Runnable{
             else {
                 logger.warn("Can't find any files inside collector [" + collectorFullPath + "]");
             }
-        }
+        } // while loop to check for all collectors
 
         //4.    filesToBeMovedAcrossCollectors contains src/dest filename as key/value pairs across collectors for this category
         //4.1 Move the files
@@ -228,6 +222,17 @@ public class CategoryDataMovementTask implements  Runnable{
         // We can have a house keeping thread which will check if a particular directory hasn't had any activity in the 'X' minutes
         // then create a DONE file within it. Now that house keeping thread is also stateless and can go down however it would catch
         // a scenario like this sometime.
+        //Create a directory for  destinationPathForCategory if there are files to be moved
+        if (!filesToBeMovedAcrossCollectors.isEmpty()) {
+            try {
+                hdfsOperations.createDirectory(destinationPathForCategory);
+            } catch (HDFSException e) {
+                e.printStackTrace();
+                logger.warn(e);
+                logger.warn("Error:: Cannot create destination Path [" + destinationPathForCategory + "] for category " + categoryName + "..skipping current iteration." );
+                return;
+            }
+        }
         Iterator filesToBeMovedAcrossCollectorsIterator = filesToBeMovedAcrossCollectors.entrySet().iterator();
         while(filesToBeMovedAcrossCollectorsIterator.hasNext()) {
             Map.Entry pairs = (Map.Entry)filesToBeMovedAcrossCollectorsIterator.next();
@@ -269,7 +274,10 @@ public class CategoryDataMovementTask implements  Runnable{
         }
         else  {
             try {
-                hdfsOperations.deleteRecursively(destinationPathForCategory);
+                if (hdfsOperations.isExists(destinationPathForCategory))  {
+                 // empty directory has not files were moved. This should not exist in the first place.
+                    hdfsOperations.deleteRecursively(destinationPathForCategory);
+                }
                 logger.warn("No files were moved in this iteration for category [" + categoryPath + "], delete the destination directory [" + destinationPathForCategory + "]");
             } catch (HDFSException e) {
                 e.printStackTrace();
