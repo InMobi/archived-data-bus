@@ -1,10 +1,9 @@
-package com.inmobi.databus;
+package com.inmobi.databus.datamovement;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.log4j.Logger;
 
 import java.util.*;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;

@@ -1,4 +1,4 @@
-package com.inmobi.databus;
+package com.inmobi.databus.datamovement;
 
 import java.io.*;
 
@@ -18,8 +18,6 @@ import org.apache.log4j.Logger;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.inmobi.databus.Constants.*;
 
 public class HdfsOperations {
 

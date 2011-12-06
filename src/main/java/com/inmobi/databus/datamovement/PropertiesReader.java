@@ -1,4 +1,4 @@
-package com.inmobi.databus;
+package com.inmobi.databus.datamovement;
 
 import org.apache.log4j.Logger;
 
@@ -7,7 +7,6 @@ import java.io.IOException;
 import  java.util.Properties;
 import java.util.*;
 import java.io.*;
-import java.util.PropertyResourceBundle;
 
 /**
  * Created by IntelliJ IDEA.

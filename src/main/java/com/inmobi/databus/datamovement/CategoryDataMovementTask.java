@@ -1,8 +1,7 @@
-package com.inmobi.databus;
+package com.inmobi.databus.datamovement;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.log4j.Logger;
-import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 
 import java.util.*;
 
