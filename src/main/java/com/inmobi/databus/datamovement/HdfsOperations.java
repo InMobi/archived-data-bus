@@ -12,6 +12,7 @@ import java.io.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 
+import org.apache.jasper.tagplugins.jstl.core.Out;
 import org.apache.log4j.Logger;
 
 
@@ -51,6 +52,47 @@ public class HdfsOperations {
             throw new HDFSException(ioe.getMessage());
         }
         return fileStatus.getLen();
+    }
+
+    public void writeAppendLine(String data, String fileName, boolean newLine) throws HDFSException {
+        if (fileName == null)
+            throw new HDFSException("fileName cannot be null");
+        FileSystem hdfs = null;
+        try {
+            hdfs = FileSystem.get(configuration);
+        }
+        catch (IOException e){
+            e.printStackTrace();
+            logger.debug(e);
+            throw new HDFSException(e.getMessage());
+        }
+        Path filePath = new Path(fileName);
+
+        try {
+            if (!hdfs.exists(filePath)) {
+                // file not there create one and write to it
+                FSDataOutputStream out = hdfs.create(filePath);
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+                writer.write(data);
+                if(newLine)
+                    writer.newLine();
+                writer.close();
+            }
+            else {
+                // file is already there open in append mode and write to it
+                BufferedWriter writer;
+                writer = new BufferedWriter(new OutputStreamWriter(hdfs.append(filePath)));
+                if(newLine)
+                    writer.newLine();
+                writer.close();
+            }
+
+        }
+        catch (IOException ioe) {
+            ioe.printStackTrace();
+            logger.debug(ioe);
+            throw new HDFSException(ioe.getMessage());
+        }
     }
 
     public String readFirstLineOfFile(String fileName) throws HDFSException {

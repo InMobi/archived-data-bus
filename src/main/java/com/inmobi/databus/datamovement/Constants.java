@@ -21,6 +21,24 @@ public class Constants {
     String scribeStatsFileName = "scribe_stats";
     String scribeCurrentFileSuffix = "_current";
     String doneFileName = "com.inmobi.databus.scribe.data.donefilename";
+    String scribeIntermediateDataDir = "com.inmobi.databus.intermediateDataDir";
+    String scribeTmpDir = "com.inmobi.databus.tmpdir";
+
+    public String getScribeTmpDir() {
+        return scribeTmpDir;
+    }
+
+    private void setScribeTmpDir(String scribeTmpDir) {
+        this.scribeTmpDir = scribeTmpDir;
+    }
+
+    public String getScribeIntermediateDataDir() {
+        return scribeIntermediateDataDir;
+    }
+
+    private void setScribeIntermediateDataDir(String scribeIntermediateDataDir) {
+        this.scribeIntermediateDataDir = scribeIntermediateDataDir;
+    }
 
     private void setDoneFileName(String doneFileName) {
         this.doneFileName = doneFileName;
@@ -52,6 +70,8 @@ public class Constants {
         setScribeDataParentDir(properties.getProperty(scribeDataParentDir));
         setScribeHouseKeepingThresholdInMinutes(properties.getProperty(scribeHouseKeepingThresholdInMinutes));
         setDoneFileName(properties.getProperty(doneFileName));
+        setScribeIntermediateDataDir(scribeIntermediateDataDir);
+        setScribeTmpDir(scribeTmpDir);
     }
 
     public String getHdfsNameNode() {

@@ -15,11 +15,6 @@ import java.util.GregorianCalendar;
 public class CalendarHelper {
     static Logger logger = Logger.getLogger(CalendarHelper.class);
 
-    String year;
-    String month;
-    String day;
-    String hour;
-    String minute;
 
     public static String getCurrentDayTimeAsPath() {
         Calendar calendar;
@@ -35,4 +30,20 @@ public class CalendarHelper {
         return pathInYYMMDDHRMNFormat;
 
     }
+
+    public static String getCurrentDayTimeAsString() {
+        Calendar calendar;
+        calendar = new GregorianCalendar();
+        String year = Integer.toString(calendar.get(Calendar.YEAR));
+        String month = Integer.toString(calendar.get(Calendar.MONTH) + 1);
+        String day = Integer.toString(calendar.get(Calendar.DAY_OF_MONTH));
+        String hour = Integer.toString(calendar.get(Calendar.HOUR_OF_DAY));
+        String minute = Integer.toString(calendar.get(Calendar.MINUTE));
+        String fileNameInnYYMMDDHRMNFormat = year + "-" + month + "-" +  day + "-" + hour + "-" + minute;
+
+        logger.debug("getCurrentDayTimeAsString ::  [" + fileNameInnYYMMDDHRMNFormat + "]");
+        return fileNameInnYYMMDDHRMNFormat;
+
+    }
+
 }
