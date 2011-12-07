@@ -16,6 +16,7 @@ import java.util.*;
 public class CategoryDataMovementTask implements  Runnable{
     Logger logger = Logger.getLogger(CategoryDataMovementTask.class);
 
+    String checkPointFileForThisRun;
     List<String> categoryList;
     Constants constants;
     HdfsOperations hdfsOperations;
@@ -127,8 +128,12 @@ public class CategoryDataMovementTask implements  Runnable{
 
 
     private String getCheckPointFilePath() {
+        if (checkPointFileForThisRun == null) {
         String path = constants.getScribeTmpDir() + "/" +  CalendarHelper.getCurrentDayTimeAsString();
         return path;
+        }
+        else
+            return  checkPointFileForThisRun;
     }
 
     private String getDoneFilePathForCategory(String intermediateDestinationPathForCategory) {
@@ -256,6 +261,88 @@ public class CategoryDataMovementTask implements  Runnable{
         }
     }
 
+    private boolean isDoneFileThere(String path) {
+        path = path + "/" + constants.getDoneFileName();
+        try {
+            if (hdfsOperations.isExists(path))
+                return true;
+        }
+        catch (HDFSException hdfsException) {
+            logger.warn(hdfsException);
+            return false;
+        }
+        return false;
+    }
+
+    private void enterCleanUpMode() {
+        //1. in cleanup mode check the following in order for each category
+        //2. in scribeIntermediateDirectory if there are directories having datafiles but no DONE files
+        //   2.1 create a DONE file and move it to scribeDataDir
+        //   2.2 if there are directories with data files and DONE files then also move it to scribeDataDir
+        //3. In both 2.1 and 2.2 add them to the checkpoint file first so that they can be picked up
+        //   by the distcp job in workflow
+        String intermediateDestinationPath = constants.getScribeIntermediateDataDir();
+        logger.warn("Entering cleaup mode..");
+        logger.warn("Checking for directories with data files in [" + intermediateDestinationPath + "]");
+        List<String> categoryList = null;
+        try {
+            categoryList = hdfsOperations.getFilesInDirectory(intermediateDestinationPath);
+        }
+        catch (HDFSException hdfsException) {
+            logger.warn("Error in getting category list from [" + intermediateDestinationPath + "]");
+            logger.warn("exiting cleanup mode...will retry in next run");
+            return;
+        }
+        if (categoryList != null && categoryList.size() > 0) {
+            for (String category : categoryList) {
+                logger.warn("CleanupMode :: Working on category [" + category + "]");
+                String path = constants.getScribeIntermediateDataDir() + "/" + category;
+                String prevPath = path;
+                try {
+                    while(hdfsOperations.isDir(path)){
+                        List<String> filePath = null;
+                        try {
+                            filePath = hdfsOperations.getFilesInDirectory(path);
+                        } catch (HDFSException e) {
+                            logger.warn(e);
+                            logger.warn("Error in getting files from [" + filePath + "]..skipping to next category");
+                            break;
+                        }
+                        if (filePath == null || filePath.size() <=0)
+                            break;
+                        prevPath = path;
+                        path = path + "/" + filePath.get(0);
+                    }
+                    // switch the path back at directory level
+                    prevPath = path;
+                    //now check whether path contains a DONE file or
+                    List<String>filesInIntermediateDir = hdfsOperations.getFilesInDirectory(path);
+                    if (filesInIntermediateDir != null && filesInIntermediateDir.size() > 0) {
+                        //create a DONE file, add it to checkpoint file and move it to
+                         if (isDoneFileThere(path)) {
+                           // no DONE file creation required
+                         }
+                        else {
+                             createDoneFile(path);
+                         }
+                        String checkPointFileForThisRun = getCheckPointFilePath();
+                        String finalDestinationPathForCategory  = getCurrentDateTimeAsPathWithCategory(category);
+                        hdfsOperations.writeAppendLine(finalDestinationPathForCategory, checkPointFileForThisRun, true);
+                        hdfsOperations.rename(path, finalDestinationPathForCategory);
+                        logger.warn("Renaming [" + path + "] to [" + finalDestinationPathForCategory + "]");
+                    }
+
+
+                }
+                catch (HDFSException e) {
+                    logger.warn("Error in getting files from [" + path + "]..skipping to next category");
+                    logger.warn(e);
+                }
+            }// for each category
+        } // if category not null
+
+    }
+
     @Override
     public void run() {
         hdfsOperations = getHdfsOperationObject();
@@ -304,7 +391,7 @@ public class CategoryDataMovementTask implements  Runnable{
                         String dataFileFullHdfsPath = getScribeLogsHdfsPathTillDataFile(collectorFullPath, dataFileInCollector);
 
                         if (!isScribeStatsFile(dataFileInCollector) &&  !isSymLinkFile(dataFileInCollector) &&
-                            !isCurrentFile(categoryName, dataFileInCollector, collectorFullPath) && isFileSizeNonZero(dataFileFullHdfsPath))
+                                !isCurrentFile(categoryName, dataFileInCollector, collectorFullPath) && isFileSizeNonZero(dataFileFullHdfsPath))
                         {
                             //Add the file to filesToBeMovedAcrossCollectors
                             filesToBeMovedAcrossCollectors.put(dataFileFullHdfsPath, getDestinationFileNameForCategory(intermediateDestinationPathForCategory, collectorName, dataFileInCollector));
@@ -379,7 +466,7 @@ public class CategoryDataMovementTask implements  Runnable{
             //Create   finalDestinationPathForCategory
             try {
                 if (!hdfsOperations.isExists(finalDestinationPathForCategory))
-                     hdfsOperations.createDirectory(finalDestinationPathForCategory);
+                    hdfsOperations.createDirectory(finalDestinationPathForCategory);
             } catch (HDFSException e) {
                 e.printStackTrace();
                 logger.warn(e);
