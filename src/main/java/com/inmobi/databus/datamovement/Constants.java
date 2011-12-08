@@ -14,6 +14,7 @@ import java.util.Properties;
  */
 public class Constants {
     Logger logger = Logger.getLogger(CalendarHelper.class);
+
     String logsParentDir   = "com.inmobi.databus.scribe.logs.parentdir";
     String hdfsNameNode   = "com.inmobi.databus.hdfs.namenode";
     String scribeDataParentDir = "com.inmobi.databus.scribe.data.parentdir";
@@ -24,7 +25,21 @@ public class Constants {
     String scribeIntermediateDataDir = "com.inmobi.databus.intermediateDataDir";
     String scribeTmpDir = "com.inmobi.databus.tmpdir";
 
+
+    public void printAllProperties() {
+        logger.debug(" getDoneFileName :: " + getDoneFileName());
+        logger.debug(" getHdfsNameNode :: " +  getHdfsNameNode());
+        logger.debug(" getLogsParentDir:: " + getLogsParentDir());
+        logger.debug(" getScribeCurrentFileSuffix :: " + getScribeCurrentFileSuffix());
+        logger.debug(" getScribeHouseKeepingThresholdInMinutes :: " + getScribeHouseKeepingThresholdInMinutes());
+        logger.debug(" getScribeIntermediateDataDir :: " + getScribeIntermediateDataDir());
+        logger.debug(" getScribeDataParentDir :: " + getScribeDataParentDir());
+        logger.debug(" getScribeStatsFileName :: " + getScribeStatsFileName());
+        logger.debug(" getScribeTmpDir :: " + getScribeTmpDir());
+
+    }
     public String getScribeTmpDir() {
+        logger.debug("scribeTmpDir [" + scribeTmpDir + "]");
         return scribeTmpDir;
     }
 
@@ -33,6 +48,7 @@ public class Constants {
     }
 
     public String getScribeIntermediateDataDir() {
+        logger.debug("scribeIntermediateDataDir [" + scribeIntermediateDataDir + "]");
         return scribeIntermediateDataDir;
     }
 
@@ -45,6 +61,7 @@ public class Constants {
     }
 
     public String getDoneFileName() {
+        logger.debug("doneFileName [" + doneFileName + "]");
         return doneFileName.trim();
     }
 
@@ -70,8 +87,8 @@ public class Constants {
         setScribeDataParentDir(properties.getProperty(scribeDataParentDir));
         setScribeHouseKeepingThresholdInMinutes(properties.getProperty(scribeHouseKeepingThresholdInMinutes));
         setDoneFileName(properties.getProperty(doneFileName));
-        setScribeIntermediateDataDir(scribeIntermediateDataDir);
-        setScribeTmpDir(scribeTmpDir);
+        setScribeIntermediateDataDir(properties.getProperty(scribeIntermediateDataDir));
+        setScribeTmpDir(properties.getProperty(scribeTmpDir));
     }
 
     public String getHdfsNameNode() {
@@ -111,6 +128,11 @@ public class Constants {
     }
 
 
+    public  static  void main(String[] args) {
+        Constants constants = new Constants(null);
+        constants.printAllProperties();
+        System.out.println(constants.getScribeIntermediateDataDir());
+    }
 
 
 }

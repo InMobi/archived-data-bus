@@ -357,6 +357,7 @@ public class CategoryDataMovementTask implements  Runnable{
         else {
             logger.warn("exiting cleanup mode :: nothing to be done in this run at [" +  intermediateDestinationPath + "]");
         }
+        logger.warn("Exiting cleanup mode for this run");
 
     }
 
