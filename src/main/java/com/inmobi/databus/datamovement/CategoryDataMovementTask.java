@@ -6,6 +6,11 @@ import org.apache.log4j.Logger;
 import java.util.*;
 
 
+
+//TODO
+// 1. the directory structure timestamp across intermediate dir and final dir should come from the file access time
+// 2. right now there is an issue wherein hour level intermediate directories aren't getting cleaned up. Fix that.
+
 /**
  * Created by IntelliJ IDEA.
  * User: inderbir.singh
