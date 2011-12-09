@@ -60,17 +60,14 @@ public class ScribeDataMover {
         List<String> categoryList = getCategories();
         if (categoryList != null && !categoryList.isEmpty())   {
             //loadHdfsConfiguration();   hdfs configuration should be loaded by individual threads.
-            ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(1);
+            //ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(1);
             //1. Schedule a task for each category to execute every minute which moves files across all collectors
-            List<ScheduledFuture<CategoryDataMovementTask>>  scheduledFutureList = new ArrayList<ScheduledFuture<CategoryDataMovementTask>>();
-           // for (String category : categoryList) {
-                logger.warn("Scheduling a task for all categories   for data movement every minute from ScribeLogsParentDir [" +  constants.getLogsParentDir()  + "]"
-                );
-                scheduledFutureList.add((ScheduledFuture<CategoryDataMovementTask>) scheduledThreadPoolExecutor.scheduleWithFixedDelay(new CategoryDataMovementTask(categoryList, constants), 1, 60, TimeUnit.SECONDS));
-            //}
-            for (ScheduledFuture<CategoryDataMovementTask> scheduledFuture : scheduledFutureList) {
-                //scheduledFuture.
-            }
+            //List<ScheduledFuture<CategoryDataMovementTask>>  scheduledFutureList = new ArrayList<ScheduledFuture<CategoryDataMovementTask>>();
+            // for (String category : categoryList) {
+            logger.warn("Scheduling a task for all categories   for data movement every minute from ScribeLogsParentDir [" +  constants.getLogsParentDir()  + "]"
+            );
+            CategoryDataMovementTask task =   new CategoryDataMovementTask(categoryList, constants);
+            task.run();
         }
         else {
             logger.warn("No catgeories found in " +  constants.getLogsParentDir() + " Not doing anything..");
