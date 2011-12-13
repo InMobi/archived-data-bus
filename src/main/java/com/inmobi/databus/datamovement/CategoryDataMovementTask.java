@@ -6,6 +6,11 @@ import org.apache.log4j.Logger;
 import java.util.*;
 
 
+
+//TODO
+// 1. the directory structure timestamp across intermediate dir and final dir should come from the file access time
+// 2. right now there is an issue wherein hour level intermediate directories aren't getting cleaned up. Fix that.
+
 /**
  * Created by IntelliJ IDEA.
  * User: inderbir.singh
@@ -129,8 +134,8 @@ public class CategoryDataMovementTask implements  Runnable{
 
     private String getCheckPointFilePath() {
         if (checkPointFileForThisRun == null) {
-        String path = constants.getScribeTmpDir() + "/" +  CalendarHelper.getCurrentDayTimeAsString();
-        return path;
+            String path = constants.getScribeTmpDir() + "/" +  CalendarHelper.getCurrentDayTimeAsString();
+            return path;
         }
         else
             return  checkPointFileForThisRun;
@@ -255,7 +260,7 @@ public class CategoryDataMovementTask implements  Runnable{
             }
             catch (HDFSException hdfsException) {
                 logger.warn(hdfsException);
-                logger.warn("Error in creation of temp directory [" + constants.getScribeTmpDir() + "]...Fatal exiting");
+                logger.warn("Error in creation of temp directory [" + constants.getScribeTmpDir() + "]...Fatal exiting ");
                 System.exit(-1);
             }
         }
@@ -283,7 +288,7 @@ public class CategoryDataMovementTask implements  Runnable{
         //   by the distcp job in workflow
         String intermediateDestinationPath = constants.getScribeIntermediateDataDir();
         logger.warn("Entering cleaup mode..");
-        logger.warn("Checking for directories with data files in [" + intermediateDestinationPath + "]");
+        logger.warn("Checking for categories with data files in [" + intermediateDestinationPath + "]");
         List<String> categoryList = null;
         try {
             categoryList = hdfsOperations.getFilesInDirectory(intermediateDestinationPath);
@@ -305,49 +310,69 @@ public class CategoryDataMovementTask implements  Runnable{
                             filePath = hdfsOperations.getFilesInDirectory(path);
                         } catch (HDFSException e) {
                             logger.warn(e);
-                            logger.warn("Error in getting files from [" + filePath + "]..skipping to next category");
+                            logger.warn("Error in getting files from [" + filePath + "]... Exiting cleanup MODE and this RUN");
+                            logger.warn("Cannot move forward without doing cleanup in this RUN");
+                            logger.warn("It's safer to let the data get back logged at [" + constants.getLogsParentDir() + "]");
+                            System.exit(-1);
+                        }
+                        if (filePath == null || filePath.size() <=0)  {
+                            path = null; prevPath = null;
                             break;
                         }
-                        if (filePath == null || filePath.size() <=0)
-                            break;
                         prevPath = path;
                         path = path + "/" + filePath.get(0);
                     }
-                    // switch the path back at directory level
-                    prevPath = path;
-                    //now check whether path contains a DONE file or
-                    List<String>filesInIntermediateDir = hdfsOperations.getFilesInDirectory(path);
-                    if (filesInIntermediateDir != null && filesInIntermediateDir.size() > 0) {
-                        //create a DONE file, add it to checkpoint file and move it to
-                         if (isDoneFileThere(path)) {
-                           // no DONE file creation required
-                         }
+                    if (prevPath != null) {
+                        // switch the path back at directory level
+                        path = prevPath;
+                        //now check whether path contains a DONE file or
+                        List<String>filesInIntermediateDir = hdfsOperations.getFilesInDirectory(path);
+                        if (filesInIntermediateDir != null && filesInIntermediateDir.size() > 0) {
+                            //create a DONE file, add it to checkpoint file and move it to
+                            if (isDoneFileThere(path)) {
+                                // no DONE file creation required
+                            }
+                            else {
+                                createDoneFile(path);
+                            }
+                            String checkPointFileForThisRun = getCheckPointFilePath();
+                            String finalDestinationPathForCategory  = getCurrentDateTimeAsPathWithCategory(category);
+                            hdfsOperations.writeAppendLine(finalDestinationPathForCategory, checkPointFileForThisRun, true);
+                            logger.warn("Add [" + finalDestinationPathForCategory + "] to checkpoint file [" + checkPointFileForThisRun + "]");
+                            hdfsOperations.rename(path, finalDestinationPathForCategory);
+                            logger.warn("Renaming [" + path + "] to [" + finalDestinationPathForCategory + "]");
+                        }
                         else {
-                             createDoneFile(path);
-                         }
-                        String checkPointFileForThisRun = getCheckPointFilePath();
-                        String finalDestinationPathForCategory  = getCurrentDateTimeAsPathWithCategory(category);
-                        hdfsOperations.writeAppendLine(finalDestinationPathForCategory, checkPointFileForThisRun, true);
-                        hdfsOperations.rename(path, finalDestinationPathForCategory);
-                        logger.warn("Renaming [" + path + "] to [" + finalDestinationPathForCategory + "]");
+                            // there are no files in the intermediate path so
+                            // let's clean it up
+                            hdfsOperations.deleteRecursively(path);
+                            logger.warn("No files found in intermediate path [" + path + "] cleaning it up");
+                        }
+
                     }
-
-
                 }
                 catch (HDFSException e) {
-                    logger.warn("Error in getting files from [" + path + "]..skipping to next category");
+                    logger.warn("Error in getting files from [" + path + "]..Exiting cleanup MODE and this RUN");
+                    logger.warn("Cannot move forward without doing cleanup in this RUN");
                     logger.warn(e);
                 }
+
             }// for each category
-        } // if category not null
+        } // if categoryList not null
+        else {
+            logger.warn("exiting cleanup mode :: nothing to be done in this run at [" +  intermediateDestinationPath + "]");
+        }
+        logger.warn("Exiting cleanup mode for this run");
 
     }
+
 
     @Override
     public void run() {
         hdfsOperations = getHdfsOperationObject();
-        initialize();
         String checkPointFileForThisRun = getCheckPointFilePath();
+        initialize();
+        enterCleanUpMode();
 
         for (String categoryName : categoryList) {
 
@@ -471,6 +496,8 @@ public class CategoryDataMovementTask implements  Runnable{
                 e.printStackTrace();
                 logger.warn(e);
                 logger.warn("Error:: Cannot create finalDestinationPathForCategory destination Path [" + finalDestinationPathForCategory + "] for category " + categoryName + " from [" + intermediateDestinationPathForCategory + "]");
+                logger.warn("Skipping move from [" + intermediateDestinationPathForCategory + "] to [" + finalDestinationPathForCategory + "] for category [" + categoryName + "]");
+                logger.warn("Will be taken care in the next interation cleanupMODE");
                 //If this failed in moving data to final destination
                 //It will retry doing that in the next run of this program at start
                 continue;
