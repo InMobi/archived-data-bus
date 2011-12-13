@@ -1,0 +1,17 @@
+<Databus>
+  <Datastream category="rrlogs">
+    <Destinations>
+      <hdfs></hdfs>
+      <hdfs></hdfs>
+    <Destinations>
+    <Retention hours=""/>
+  </Datastream>
+
+  <Datastream category="beacon">
+    <Destinations>
+      <hdfs></hdfs>
+      <hdfs></hdfs>
+    <Destinations>
+    <Retention hours=""/>
+  </Datastream>
+</Databus>
