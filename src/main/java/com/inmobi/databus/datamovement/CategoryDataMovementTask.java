@@ -26,9 +26,11 @@ public class CategoryDataMovementTask implements  Runnable{
     Constants constants;
     HdfsOperations hdfsOperations;
 
-    public CategoryDataMovementTask(List<String> categoryList, Constants constants) {
+
+    public CategoryDataMovementTask(List<String> categoryList, Constants constants, String checkPointFileForThisRun) {
         this.categoryList = categoryList;
         this.constants = constants;
+        this.checkPointFileForThisRun = checkPointFileForThisRun;
     }
 
     HdfsOperations getHdfsOperationObject() {
@@ -114,7 +116,7 @@ public class CategoryDataMovementTask implements  Runnable{
 
 
     private String getCurrentDateTimeAsPathWithCategory(String category) {
-        String path = constants.getScribeDataParentDir() + "/" + category + "/" + CalendarHelper.getCurrentDayTimeAsPath();
+        String path = constants.getHdfsNameNode() + "/" + constants.getScribeDataParentDir() + "/" + category + "/" + CalendarHelper.getCurrentDayTimeAsPath();
         logger.debug("getCurrentDateTimeAsPathWithCategory :: category [" + category + "] path [" + path + "]");
         return path;
     }
@@ -133,11 +135,6 @@ public class CategoryDataMovementTask implements  Runnable{
 
 
     private String getCheckPointFilePath() {
-        if (checkPointFileForThisRun == null) {
-            String path = constants.getScribeTmpDir() + "/" +  CalendarHelper.getCurrentDayTimeAsString();
-            return path;
-        }
-        else
             return  checkPointFileForThisRun;
     }
 
@@ -462,7 +459,7 @@ public class CategoryDataMovementTask implements  Runnable{
                 String intermediateDestinationFileName = (String) pairs.getValue();
                 try {
                     hdfsOperations.rename(sourceFileName, intermediateDestinationFileName);
-                    logger.debug("Moved [" + sourceFileName + "] to [" + intermediateDestinationFileName + "]");
+                    logger.warn("Moved [" + sourceFileName + "] to [" + intermediateDestinationFileName + "]");
                 } catch (HDFSException e) {
                     e.printStackTrace();
                     logger.warn(e);
