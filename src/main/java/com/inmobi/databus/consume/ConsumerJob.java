@@ -138,7 +138,7 @@ public class ConsumerJob implements Tool {
 
     private void doneFiles(FileSystem fs, Path path, List<Path> result,
                            int level) throws IOException {
-            Path p = path;
+        Path p = path;
         while (level < 5) {
             p = p.makeQualified(fs);
             if (fs.exists(p)) {
@@ -177,9 +177,12 @@ public class ConsumerJob implements Tool {
                 String currentFileName = in.readLine();
                 in.close();
                 excludes.add(currentFileName);
-            } else if ("scribe_stats".equalsIgnoreCase(fileName) ||
-                    !excludes.contains(fileName)){
-                String destDir = getDestDir(fs, fileStatus.getPath());
+            }
+            else if("scribe_stats".equalsIgnoreCase(fileName.trim())) {
+                excludes.add(fileName);
+            }
+            else if (!excludes.contains(fileName)){
+                String destDir = getDestDir(fs, fileStatus.getPath().makeQualified(fs));
                 results.put(fileStatus, destDir);
             }
         }
