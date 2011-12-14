@@ -19,7 +19,6 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text>{
     private static final Log LOG = LogFactory.getLog(CopyMapper.class);
 
     private GzipCodec codec = new GzipCodec();
-    static final Path TEMPDIR = new Path(ConsumerJob.STAGING, "_temp");
 
     @Override
     public void map(Text key, Text value, Context context)
@@ -29,39 +28,32 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text>{
         String collector = src.getParent().getName();
         String category = src.getParent().getParent().getName();
 
-        FileSystem fs = FileSystem.get(context.getConfiguration());
-        Path target = getTempPath(src, category, collector);
-        FSDataOutputStream out = fs.create(target);
-
-        //OutputStream compressedOut = codec.createOutputStream(out);
-        FSDataInputStream in = fs.open(src);
-        byte[] bytes = new byte[256];
-        while (in.read(bytes) != -1) {
-           // compressedOut.write(bytes);
-             out.write(bytes);
-
-        }
-        in.close();
-        //compressedOut.close();
-        out.close();
-        //move to final destination
-        //String dest = getDestDir(fs, src, category);
-        fs.mkdirs(new Path(dest).makeQualified(fs));
-
-        Path destPath = new Path(dest + File.separator +
-                collector + "_" + src.getName() + ".gz");
-        LOG.info("Renaming file " + target + " to " + destPath);
-        fs.rename(target, destPath);
-
-        //delete the src
-        //LOG.info("Deleting src " + src);
-        //fs.delete(src, false);
+    FileSystem fs = FileSystem.get(context.getConfiguration());
+    Path target = getTempPath(context, src, category, collector);
+    FSDataOutputStream out = fs.create(target);
+    OutputStream compressedOut = codec.createOutputStream(out);
+    FSDataInputStream in = fs.open(src);
+    byte[] bytes = new byte[256];
+    while (in.read(bytes) != -1) {
+      compressedOut.write(bytes);
     }
-
-    private Path getTempPath(Path src, String category, String collector) {
-        Path tempPath = new Path(TEMPDIR,
-                category + "_" + collector + "_" +src.getName() + ".gz");
-        return tempPath;
-    }
+    in.close();
+    compressedOut.close();
+    
+    //move to final destination
+    fs.mkdirs(new Path(dest).makeQualified(fs));
+    Path destPath = new Path(dest + File.separator +
+        collector + "_" + src.getName() + ".gz");
+    LOG.info("Renaming file " + target + " to " + destPath);
+    fs.rename(target, destPath);
+  }
+  
+  private Path getTempPath(Context context, 
+      Path src, String category, String collector) {
+    Path tempPath = 
+      new Path(ConsumerJob.getTaskAttemptTmpDir(context.getTaskAttemptID()), 
+        category + "_" + collector + "_" +src.getName() + ".gz");
+    return tempPath;
+  }
 
 }

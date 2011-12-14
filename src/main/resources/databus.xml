@@ -1,16 +1,16 @@
 <Databus>
   <Datastream category="rrlogs">
     <Destinations>
-      <hdfs></hdfs>
-      <hdfs></hdfs>
+      <Destination name="ua2_main"></Destination>
+      <Destination name="uj"></Destination>
     <Destinations>
     <Retention hours=""/>
   </Datastream>
 
   <Datastream category="beacon">
     <Destinations>
-      <hdfs></hdfs>
-      <hdfs></hdfs>
+      <Destination name="uj"></Destination>
+      <Destination name="er"></Destination>
     <Destinations>
     <Retention hours=""/>
   </Datastream>
