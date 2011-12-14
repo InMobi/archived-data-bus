@@ -31,48 +31,58 @@ import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
-import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.ToolRunner;
 
-import com.inmobi.databus.DatabusConfig;
+public class ConsumerJob {
 
-public class ConsumerJob implements Tool {
 
-  private Configuration conf;
-  public static final String TMP = "/databus/system/tmp";
-  public static final String TRASH = "/databus/system/trash";
-  public static final String DISTCP_INPUT = "/databus/system/distcp";
-  public static final String PUBLISH_DIR = "/databus/data/";
+  public static final String DATABUS_ROOT_DIR = "/databus/";
+  public static final String DATABUS_SYSTEM_DIR = DATABUS_ROOT_DIR + "system/";
+  public static final String TMP = DATABUS_SYSTEM_DIR + "tmp";
+  public static final String TRASH = DATABUS_SYSTEM_DIR + "trash";
+  public static final String DISTCP_INPUT = DATABUS_SYSTEM_DIR + "distcp";
+  public static final String DATA_DIR = DATABUS_ROOT_DIR + "data/";
+  public static final String PUBLISH_DIR = DATABUS_ROOT_DIR + "streams/";
 
   private static final Log LOG = LogFactory.getLog(ConsumerJob.class);
-  private DatabusConfig databusConf = new DatabusConfig();
+  
+  private final Configuration conf;
+  private final Path tmpPath;
 
-  @Override
-  public Configuration getConf() {
-    return conf;
+  ConsumerJob(String wfId) {
+    this.conf = new Configuration();
+    this.tmpPath = new Path(TMP, wfId);
   }
 
-  @Override
-  public void setConf(Configuration conf) {
-    this.conf = conf;
-  }
-
-  @Override
-  public int run(String[] arg) throws Exception {
-    //LOG.info("JobId " + getConf().get(name))
-    Path tmp = new Path(TMP);
-    FileSystem fs = FileSystem.get(getConf());
-    /*boolean stagingDirExists = FileSystem.get(getConf()).exists(stagingP);
-    if (stagingDirExists) {
-      System.out.println("Other wf in progress..exiting!");
-      return 0;
-    }*/
-    
-    Path inputPath = new Path(tmp, "input");
-    
-    String consumeDir = arg[0];
+  public void run() throws Exception {
     Map<FileStatus, String> fileListing = new HashMap<FileStatus, String>();
-    createListing(fs, fs.getFileStatus(new Path(consumeDir)),
+    List<Path> donePaths = getPathsToCreateDone(fileListing.values());
+    Path inputPath = new Path(tmpPath, "input");
+    createMRInput(inputPath, fileListing);
+    
+    Job job = createJob(inputPath);
+    job.waitForCompletion(true);
+    if (job.isSuccessful()) {
+      
+      createDoneFiles(donePaths);
+
+      createDistcpInput(fileListing.values(), donePaths, job.getJobID());
+      
+      //TODO:delete the source paths
+      //This must be the last thing done in this execution
+      //trashSrcs(fs, fileListing.keySet());
+    }
+
+    //TODO: delete the tmp folders recursively
+    FileSystem fs = FileSystem.get(conf);
+    fs.delete(getJobTmpDir(job.getJobID()));
+    fs.delete(tmpPath);
+  }
+
+  private void createMRInput(Path inputPath,
+      Map<FileStatus, String> fileListing) throws IOException {
+    FileSystem fs = FileSystem.get(conf);
+
+    createListing(fs, fs.getFileStatus(new Path(DATA_DIR)),
         fileListing, new HashSet<String>());
     
     FSDataOutputStream out = fs.create(inputPath);
@@ -85,41 +95,68 @@ public class ConsumerJob implements Tool {
       out.writeBytes("\n");
     }
     out.close();
-    
-    List<Path> donePaths = getPathsToCreateDone(fileListing.values());
-    
-    Job job = createJob(inputPath);
-    job.waitForCompletion(true);
-    if (job.isSuccessful()) {
-      
-      postProcess(fileListing.values(), donePaths, job.getJobID());
-      
-      //TODO:delete the source paths
-      //This must be the last thing done in this execution
-      //trashSrcs(fs, fileListing.keySet());
-      
-      
-      //ParallelDistCp distCp = new ParallelDistCp(databusConf, getConf());
-      //distCp.start();
-    }
-
-    //TODO: delete the job tmp dir recursively
-    fs.delete(getJobTmpDir(job.getJobID()));
-    return 0;
   }
 
-  private void postProcess(Collection<String> destDirs, List<Path> donePaths, 
-      JobID jobId) 
+  private void createDoneFiles(List<Path> donePaths) throws IOException {
+    FileSystem fs = FileSystem.get(conf);
+    for (Path doneFile : donePaths) {
+      LOG.info("Creating done file " + doneFile);
+      fs.create(doneFile).close();
+    }
+  }
+
+  private void createDistcpInput(Collection<String> destDirs, 
+      List<Path> donePaths, JobID jobId) 
       throws IOException {
-    FileSystem fs = FileSystem.get(getConf());
+    FileSystem fs = FileSystem.get(conf);
+    Path inputTmpDir = getDistcpInputTmpDir(jobId);
+    
+    //create distcp input paths
+    Path distpinput = new Path(inputTmpDir, "input");
+    FSDataOutputStream out = fs.create(distpinput);
+    for (String s : destDirs) {
+      out.writeBytes(s);
+      out.writeBytes("\n");
+    }
+    out.close();
+
+    //create done input paths
+    Path doneInput = new Path(inputTmpDir, "done");
+    out = fs.create(doneInput);
+    for (Path s : donePaths) {
+      out.writeBytes(s.toString());
+      out.writeBytes("\n");
+    }
+    out.close();
+    
+    //move the final distcp input
+    Path finalDistcpInput = new Path(DISTCP_INPUT);
+    fs.mkdirs(finalDistcpInput);
+    fs.rename(inputTmpDir, finalDistcpInput);
+  }
+
+  private Path getDistcpInputTmpDir(JobID jobId) {
+    Calendar calendar = new GregorianCalendar();
+    //TODO: use wf start time instead of current time??
+    calendar.setTime(new Date(System.currentTimeMillis()));
+    String dir = "" + calendar.get(Calendar.YEAR) + "_"
+        + (calendar.get(Calendar.MONTH) + 1) + "_"
+        + calendar.get(Calendar.DAY_OF_MONTH) + "_"
+        + calendar.get(Calendar.HOUR_OF_DAY) + "_"
+        + calendar.get(Calendar.MINUTE);
+    return new Path(tmpPath, dir);
+  }
+
+  /*private void createDistcpInput(Collection<String> destDirs, 
+      List<Path> donePaths, JobID jobId) 
+      throws IOException {
+    FileSystem fs = FileSystem.get(conf);
     
     //create done files and done file input for distcp job
     Map<String, FSDataOutputStream> distcpInputMapping = 
         new HashMap<String, FSDataOutputStream>();
     
     for (Path doneFile : donePaths) {
-      LOG.info("Creating done file " + doneFile);
-      fs.create(doneFile).close();
       String category = getCategory(doneFile);
       LOG.info("Creating distcp done destCategory " + category);
       Set<String> dests = databusConf.getDestinationStreamMap().get(category);
@@ -166,6 +203,13 @@ public class ConsumerJob implements Tool {
     //TODO:delete the staging dir
   }
 
+  private String getCategory(Path path) {
+    String[]  pathSplit = path.toUri().getPath().split("/");
+    return pathSplit[3];
+  }
+  
+  */
+
   private void trashSrcs(FileSystem fs, Collection<FileStatus> srcs) 
     throws IOException {
     Path trash = new Path(TRASH);
@@ -177,15 +221,12 @@ public class ConsumerJob implements Tool {
     }
   }
 
-  private String getCategory(Path path) {
-    String[]  pathSplit = path.toUri().getPath().split("/");
-    return pathSplit[3];
-  }
+
 
   private List<Path> getPathsToCreateDone(Collection<String> destDirs)
       throws IOException {
     List<Path> result = new ArrayList<Path>();
-    FileSystem fs = FileSystem.get(getConf());
+    FileSystem fs = FileSystem.get(conf);
     for (String dir : destDirs) {
       Path p = new Path(dir);
       LOG.info("Going to create a done file in directory ["
@@ -265,7 +306,7 @@ public class ConsumerJob implements Tool {
 
   protected Job createJob(Path inputPath) throws IOException {
     String jobName = "consumer";
-    Job job = new Job(getConf());
+    Job job = new Job(conf);
     job.setJobName(jobName);
     KeyValueTextInputFormat.setInputPaths(job, inputPath);
     job.setInputFormatClass(KeyValueTextInputFormat.class);
@@ -301,7 +342,7 @@ public class ConsumerJob implements Tool {
   }
 
   public static void main(String[] args) throws Exception {
-    ConsumerJob job = new ConsumerJob();
-    ToolRunner.run(job, args);
+    ConsumerJob job = new ConsumerJob(args[0]);
+    job.run();
   }
 }
