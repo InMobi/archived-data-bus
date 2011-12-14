@@ -7,7 +7,7 @@ import java.util.Set;
 
 public class DatabusConfig {
 
-  private String CONFIG = "databus.xml";
+  private static final String CONFIG = "databus.xml";
 
   public DatabusConfig() {
     
@@ -18,7 +18,7 @@ public class DatabusConfig {
     map.put("category1", new HashSet<String>());
     map.get("category1").add("ua2");
     map.get("category1").add("uj");
-    
+
     map.put("category2", new HashSet<String>());
     map.get("category2").add("er");
     map.get("category2").add("uj");

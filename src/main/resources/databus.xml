@@ -1,4 +1,7 @@
 <Databus>
+  <RootDir>/databus</RootDir>
+  <Input>/databus/data</Input>
+  <PublishDir>/databus/streams/</Publish>
   <Datastream category="rrlogs">
     <Destinations>
       <Destination name="ua2_main"></Destination>
