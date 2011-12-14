@@ -28,19 +28,24 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobID;
+import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
+import com.inmobi.databus.DatabusConfig;
+
 public class ConsumerJob implements Tool {
 
   private Configuration conf;
-  static final String STAGING = "/databus/system/staging";
-  static final String DISTCP_INPUT = "/databus/system/distcp";
-  static final String PUBLISH_DIR = "/databus/data/";
+  public static final String TMP = "/databus/system/tmp";
+  public static final String TRASH = "/databus/system/trash";
+  public static final String DISTCP_INPUT = "/databus/system/distcp";
+  public static final String PUBLISH_DIR = "/databus/data/";
 
   private static final Log LOG = LogFactory.getLog(ConsumerJob.class);
+  private DatabusConfig databusConf = new DatabusConfig();
 
   @Override
   public Configuration getConf() {
@@ -54,15 +59,16 @@ public class ConsumerJob implements Tool {
 
   @Override
   public int run(String[] arg) throws Exception {
-    Path stagingP = new Path(STAGING);
+    //LOG.info("JobId " + getConf().get(name))
+    Path tmp = new Path(TMP);
     FileSystem fs = FileSystem.get(getConf());
-    boolean stagingDirExists = FileSystem.get(getConf()).exists(stagingP);
+    /*boolean stagingDirExists = FileSystem.get(getConf()).exists(stagingP);
     if (stagingDirExists) {
       System.out.println("Other wf in progress..exiting!");
       return 0;
-    }
+    }*/
     
-    Path inputPath = new Path(stagingP, "input");
+    Path inputPath = new Path(tmp, "input");
     
     String consumeDir = arg[0];
     Map<FileStatus, String> fileListing = new HashMap<FileStatus, String>();
@@ -85,8 +91,20 @@ public class ConsumerJob implements Tool {
     Job job = createJob(inputPath);
     job.waitForCompletion(true);
     if (job.isSuccessful()) {
+      
       postProcess(fileListing.values(), donePaths, job.getJobID());
+      
+      //TODO:delete the source paths
+      //This must be the last thing done in this execution
+      //trashSrcs(fs, fileListing.keySet());
+      
+      
+      //ParallelDistCp distCp = new ParallelDistCp(databusConf, getConf());
+      //distCp.start();
     }
+
+    //TODO: delete the job tmp dir recursively
+    fs.delete(getJobTmpDir(job.getJobID()));
     return 0;
   }
 
@@ -96,31 +114,72 @@ public class ConsumerJob implements Tool {
     FileSystem fs = FileSystem.get(getConf());
     
     //create done files and done file input for distcp job
-    Path distcpDoneInputFile = new Path(DISTCP_INPUT, jobId.toString() + 
-        "_done");
-    FSDataOutputStream outDone = fs.create(distcpDoneInputFile);
+    Map<String, FSDataOutputStream> distcpInputMapping = 
+        new HashMap<String, FSDataOutputStream>();
+    
     for (Path doneFile : donePaths) {
       LOG.info("Creating done file " + doneFile);
       fs.create(doneFile).close();
-      outDone.writeBytes(doneFile.toString());
-      outDone.writeBytes("\n");
+      String category = getCategory(doneFile);
+      LOG.info("Creating distcp done destCategory " + category);
+      Set<String> dests = databusConf.getDestinationStreamMap().get(category);
+      for (String dest : dests) {
+        FSDataOutputStream out = distcpInputMapping.get(dest);
+        if (out == null) {
+          out = fs.create(new Path(DISTCP_INPUT + File.separator + 
+              dest + File.separator + jobId.toString() + "_done"));
+          distcpInputMapping.put(dest, out);
+        }
+        out.writeBytes(doneFile.toString());
+        out.writeBytes("\n");
+      }
     }
-    outDone.close();
+    //close all streams
+    for (FSDataOutputStream out : distcpInputMapping.values()) {
+      out.close();
+    }
+    
 
     //create the input for distcp jobs
-    
-    Path distcpInputFile = new Path(DISTCP_INPUT, jobId.toString());
-    FSDataOutputStream out = fs.create(distcpInputFile);
-    for (String path : destDirs) {
-      out.writeBytes(path);
-      out.writeBytes("\n");
+    distcpInputMapping.clear();
+    for (String destDir : destDirs) {
+      Path destDirPath = new Path(destDir);
+      String category = getCategory(destDirPath);
+      LOG.info("Creating distcp destCategory " + category);
+      Set<String> dests = databusConf.getDestinationStreamMap().get(category);
+      for (String dest : dests) {
+        FSDataOutputStream out = distcpInputMapping.get(dest);
+        if (out == null) {
+          out = fs.create(new Path(DISTCP_INPUT + File.separator + 
+              dest + File.separator + jobId.toString()));
+          distcpInputMapping.put(dest, out);
+        }
+        out.writeBytes(destDir);
+        out.writeBytes("\n");
+      }
     }
-    out.close();
-    
-    
-    
+    //close all streams
+    for (FSDataOutputStream out : distcpInputMapping.values()) {
+      out.close();
+    }
+
     //TODO:delete the staging dir
-    
+  }
+
+  private void trashSrcs(FileSystem fs, Collection<FileStatus> srcs) 
+    throws IOException {
+    Path trash = new Path(TRASH);
+    fs.mkdirs(trash);
+    for (FileStatus src : srcs) {
+      LOG.info("Deleting src " + src);
+      Path target = new Path(TRASH + File.separator + src.toString());
+      fs.rename(src.getPath(), target);
+    }
+  }
+
+  private String getCategory(Path path) {
+    String[]  pathSplit = path.toUri().getPath().split("/");
+    return pathSplit[3];
   }
 
   private List<Path> getPathsToCreateDone(Collection<String> destDirs) 
@@ -187,7 +246,7 @@ public class ConsumerJob implements Tool {
     String dest = PUBLISH_DIR + File.separator + 
         category + File.separator + 
         calendar.get(Calendar.YEAR) + File.separator +
-        calendar.get(Calendar.MONTH) + File.separator +
+        (calendar.get(Calendar.MONTH) + 1) + File.separator +
         calendar.get(Calendar.DAY_OF_MONTH) + File.separator +
         calendar.get(Calendar.HOUR_OF_DAY) + File.separator +
         calendar.get(Calendar.MINUTE);
@@ -209,6 +268,14 @@ public class ConsumerJob implements Tool {
     job.getConfiguration().set("mapred.map.tasks.speculative.execution", "false");
 
     return job;
+  }
+
+  public static Path getTaskAttemptTmpDir(TaskAttemptID attemptId) {
+    return new Path(getJobTmpDir(attemptId.getJobID()), attemptId.toString());
+  }
+
+  public static Path getJobTmpDir(JobID jobId) {
+    return new Path(TMP + File.separator + jobId.toString());
   }
 
   class ModificationTimeComparator implements Comparator<FileStatus> {
