@@ -182,34 +182,45 @@ public class ConsumerJob implements Tool {
     return pathSplit[3];
   }
 
-  private List<Path> getPathsToCreateDone(Collection<String> destDirs) 
-     throws IOException {
+  private List<Path> getPathsToCreateDone(Collection<String> destDirs)
+      throws IOException {
     List<Path> result = new ArrayList<Path>();
     FileSystem fs = FileSystem.get(getConf());
     for (String dir : destDirs) {
       Path p = new Path(dir);
-      result.add(new Path(p, ".done"));
+      LOG.info("Going to create a done file in directory ["
+          + p.makeQualified(fs).getName());
+      result.add(new Path(p, ".done").makeQualified(fs));
       doneFiles(fs, p, result, 1);
     }
     return result;
   }
 
-  private void doneFiles(FileSystem fs, Path path, List<Path> result, 
-      int level) throws IOException {
-    Path p = path.makeQualified(fs);
-    if (fs.exists(p)) {
-      return;
-    }
-    LOG.info("listing " + p.getParent());
-    FileStatus[] listing = fs.listStatus(p.getParent());
-    if (listing != null && listing.length > 0) {
-      List<FileStatus> list = Arrays.asList(listing);
-      Collections.sort(list, new ModificationTimeComparator());
-      FileStatus lastPath = list.get(list.size() - 1);
-      Path donePath = new Path(lastPath.getPath(), ".done");
-      result.add(donePath);
-    } else if (level < 3){
-      doneFiles(fs, p.getParent(), result, level++);
+  private void doneFiles(FileSystem fs, Path path, List<Path> result, int level)
+      throws IOException {
+    Path p = path;
+    while (level < 5) {
+      p = p.makeQualified(fs);
+      if (fs.exists(p)) {
+        return;
+      }
+      LOG.info("Checking all level of parents for path [" + p.getName()
+          + " to create DONE file");
+      LOG.info("listing " + p.getParent());
+      FileStatus[] listing = fs.listStatus(p.getParent());
+      if (listing != null && listing.length > 0 && level < 3) {
+        List<FileStatus> list = Arrays.asList(listing);
+        Collections.sort(list, new ModificationTimeComparator());
+        FileStatus lastPath = list.get(list.size() - 1);
+        Path donePath = new Path(lastPath.getPath(), ".done");
+        donePath = donePath.makeQualified(fs);
+        LOG.info("adding path to create DONE file [" + donePath + "]");
+        result.add(donePath);
+      } else {
+        // doneFiles(fs, p.getParent(), result, level++);
+        p = p.getParent();
+        level++;
+      }
     }
   }
 
@@ -227,29 +238,28 @@ public class ConsumerJob implements Tool {
         String currentFileName = in.readLine();
         in.close();
         excludes.add(currentFileName);
-      } else if ("scribe_stats".equalsIgnoreCase(fileName) ||
-          !excludes.contains(fileName)){
-        String destDir = getDestDir(fs, fileStatus.getPath());
+      } else if ("scribe_stats".equalsIgnoreCase(fileName.trim())) {
+        excludes.add(fileName);
+      } else if (!excludes.contains(fileName)) {
+        String destDir = getDestDir(fs, fileStatus.getPath().makeQualified(fs));
         results.put(fileStatus, destDir);
       }
     }
   }
 
-  private String getDestDir(FileSystem fs, Path src) 
-      throws IOException {
+  private String getDestDir(FileSystem fs, Path src) throws IOException {
     String category = src.getParent().getParent().getName();
     FileStatus status = fs.getFileStatus(src);
     long time = status.getModificationTime();
     Date date = new Date(time);
     Calendar calendar = new GregorianCalendar();
     calendar.setTime(date);
-    String dest = PUBLISH_DIR + File.separator + 
-        category + File.separator + 
-        calendar.get(Calendar.YEAR) + File.separator +
-        (calendar.get(Calendar.MONTH) + 1) + File.separator +
-        calendar.get(Calendar.DAY_OF_MONTH) + File.separator +
-        calendar.get(Calendar.HOUR_OF_DAY) + File.separator +
-        calendar.get(Calendar.MINUTE);
+    String dest = PUBLISH_DIR + File.separator + category + File.separator
+        + calendar.get(Calendar.YEAR) + File.separator
+        + (calendar.get(Calendar.MONTH) + 1) + File.separator
+        + calendar.get(Calendar.DAY_OF_MONTH) + File.separator
+        + calendar.get(Calendar.HOUR_OF_DAY) + File.separator
+        + calendar.get(Calendar.MINUTE);
     return dest;
   }
 
@@ -259,16 +269,19 @@ public class ConsumerJob implements Tool {
     job.setJobName(jobName);
     KeyValueTextInputFormat.setInputPaths(job, inputPath);
     job.setInputFormatClass(KeyValueTextInputFormat.class);
-    
+
     job.setJarByClass(CopyMapper.class);
     job.setMapperClass(CopyMapper.class);
     job.setNumReduceTasks(0);
 
     job.setOutputFormatClass(NullOutputFormat.class);
-    job.getConfiguration().set("mapred.map.tasks.speculative.execution", "false");
+    job.getConfiguration().set("mapred.map.tasks.speculative.execution",
+        "false");
 
     return job;
   }
+
+  
 
   public static Path getTaskAttemptTmpDir(TaskAttemptID attemptId) {
     return new Path(getJobTmpDir(attemptId.getJobID()), attemptId.toString());
@@ -284,7 +297,7 @@ public class ConsumerJob implements Tool {
     public int compare(FileStatus o1, FileStatus o2) {
       return (int) (o1.getModificationTime() - o2.getModificationTime());
     }
-    
+
   }
 
   public static void main(String[] args) throws Exception {

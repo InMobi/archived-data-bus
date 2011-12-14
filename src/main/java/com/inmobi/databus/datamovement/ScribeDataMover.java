@@ -54,7 +54,7 @@ public class ScribeDataMover {
         }
     }
 
-    void moveScribeData(String propertyFile) {
+    void moveScribeData(String propertyFile, String checkPointFileName) {
         loadConstants(propertyFile);
         loadHdfsConfiguration();
         List<String> categoryList = getCategories();
@@ -66,7 +66,7 @@ public class ScribeDataMover {
             // for (String category : categoryList) {
             logger.warn("Scheduling a task for all categories   for data movement every minute from ScribeLogsParentDir [" +  constants.getLogsParentDir()  + "]"
             );
-            CategoryDataMovementTask task =   new CategoryDataMovementTask(categoryList, constants);
+            CategoryDataMovementTask task =   new CategoryDataMovementTask(categoryList, constants, checkPointFileName);
             task.run();
         }
         else {
@@ -81,11 +81,14 @@ public class ScribeDataMover {
     public static void main(String[] args) {
         ScribeDataMover scribeDataMover = new ScribeDataMover();
         //1. Load all scribe related config
+        /*
         if (args.length <=1 || ( args.length > 1  && args[1] == null)) {
             scribeDataMover.moveScribeData(null);
         }
         else
             scribeDataMover.moveScribeData(args[1]);
-
+    }
+    */
+        scribeDataMover.moveScribeData(null, args[1]);
     }
 }

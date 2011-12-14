@@ -16,17 +16,17 @@ import org.apache.hadoop.mapreduce.Mapper;
 
 public class CopyMapper extends Mapper<Text, Text, Text, Text>{
 
-  private static final Log LOG = LogFactory.getLog(CopyMapper.class);
+    private static final Log LOG = LogFactory.getLog(CopyMapper.class);
 
-  private GzipCodec codec = new GzipCodec();
+    private GzipCodec codec = new GzipCodec();
 
-  @Override
-  public void map(Text key, Text value, Context context) 
-      throws IOException, InterruptedException {
-    Path src = new Path(key.toString());
-    String dest = value.toString();
-    String collector = src.getParent().getName();
-    String category = src.getParent().getParent().getName();
+    @Override
+    public void map(Text key, Text value, Context context)
+            throws IOException, InterruptedException {
+        Path src = new Path(key.toString());
+        String dest = value.toString();
+        String collector = src.getParent().getName();
+        String category = src.getParent().getParent().getName();
 
     FileSystem fs = FileSystem.get(context.getConfiguration());
     Path target = getTempPath(context, src, category, collector);

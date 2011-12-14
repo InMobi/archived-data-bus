@@ -8,7 +8,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.tools.DistCp;
 
 import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.consume.ConsumerJob;
@@ -58,7 +57,7 @@ public class ParallelDistCp {
             "-preserveSrcPath",
             
             };
-        DistCp.main(args);
+        //DistCp.main(args);
         
         //TODO:copy all done files to destination cluster
 
