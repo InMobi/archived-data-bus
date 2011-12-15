@@ -6,10 +6,7 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by IntelliJ IDEA.
@@ -69,8 +66,11 @@ public class DatabusConfigParser {
     }
 
     Document dom;
-    List<DatabusConfig.Stream> streamList = new ArrayList<DatabusConfig.Stream>();
-    List<Cluster> clusterList = new ArrayList<Cluster>();
+    Map<String, DatabusConfig.Stream> streamMap = new HashMap<String, DatabusConfig.Stream>();
+    Map<String, Cluster> clusterMap = new HashMap<String,Cluster>();
+    String rootDir;
+    String inputDir;
+    String publishDir;
 
 
     private void parseXmlFile() throws Exception{
@@ -78,13 +78,14 @@ public class DatabusConfigParser {
         DocumentBuilder db = dbf.newDocumentBuilder();
         String fileName = Thread.currentThread().getContextClassLoader().getResource("databus.xml").getFile();
         dom = db.parse("employees.xml");
+        parseDocument();
     }
 
     private void parseDocument(){
         Element docEle = dom.getDocumentElement();
-        String rootDir = docEle.getElementsByTagName("RootDir").item(0).getNodeValue();
-        String inputDir = docEle.getElementsByTagName("inputDir").item(0).getNodeValue();
-        String publishDir = docEle.getElementsByTagName("publishDir").item(0).getNodeValue();
+        rootDir = docEle.getElementsByTagName("RootDir").item(0).getNodeValue();
+        inputDir = docEle.getElementsByTagName("inputDir").item(0).getNodeValue();
+        publishDir = docEle.getElementsByTagName("publishDir").item(0).getNodeValue();
         //read the streams now
         readAllStreams(docEle);
         //read all clusterinfo
@@ -97,7 +98,8 @@ public class DatabusConfigParser {
         if (tmpClusterList !=null && tmpClusterList.getLength() > 0 ) {
             for (int i=0; i < tmpClusterList.getLength(); i++) {
                 Element el = (Element) tmpClusterList.item(i);
-                clusterList.add(getCLuster(el));
+                Cluster cluster = getCLuster(el);
+                clusterMap.put(cluster.getName(), cluster);
             }
         }
 
@@ -130,7 +132,7 @@ public class DatabusConfigParser {
                 // for each stream
                 Element el = (Element) tmpstreamList.item(i);
                 DatabusConfig.Stream stream = getStream(el);
-                streamList.add(stream);
+                streamMap.put(stream.name, stream);
             }
         }
 
