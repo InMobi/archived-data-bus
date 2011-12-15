@@ -13,7 +13,7 @@ import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.consume.ConsumerJob;
 
 public class ParallelDistCp {
-
+/*
   private static final Log LOG = LogFactory.getLog(ParallelDistCp.class);
   private DatabusConfig databusConf;
   private FileSystem fs;
@@ -75,5 +75,5 @@ public class ParallelDistCp {
       }
     }
     
-  }
+  }*/
 }

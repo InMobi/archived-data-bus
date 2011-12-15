@@ -14,6 +14,8 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapreduce.Mapper;
 
+import com.inmobi.databus.DatabusConfig;
+
 public class CopyMapper extends Mapper<Text, Text, Text, Text>{
 
     private static final Log LOG = LogFactory.getLog(CopyMapper.class);
@@ -46,12 +48,15 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text>{
         collector + "_" + src.getName() + ".gz");
     LOG.info("Renaming file " + target + " to " + destPath);
     fs.rename(target, destPath);
+    
+    //TODO:delete the src path (this is like commit)
+    //fs.delete(src);
   }
   
   private Path getTempPath(Context context, 
       Path src, String category, String collector) {
     Path tempPath = 
-      new Path(ConsumerJob.getTaskAttemptTmpDir(context.getTaskAttemptID()), 
+      new Path(DatabusConfig.getTaskAttemptTmpDir(context.getTaskAttemptID()), 
         category + "_" + collector + "_" +src.getName() + ".gz");
     return tempPath;
   }

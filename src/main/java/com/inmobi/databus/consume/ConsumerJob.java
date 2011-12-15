@@ -33,7 +33,7 @@ import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 
 public class ConsumerJob {
-
+/*
 
   public static final String DATABUS_ROOT_DIR = "/databus/";
   public static final String DATABUS_SYSTEM_DIR = DATABUS_ROOT_DIR + "system/";
@@ -147,68 +147,7 @@ public class ConsumerJob {
     return new Path(tmpPath, dir);
   }
 
-  /*private void createDistcpInput(Collection<String> destDirs, 
-      List<Path> donePaths, JobID jobId) 
-      throws IOException {
-    FileSystem fs = FileSystem.get(conf);
-    
-    //create done files and done file input for distcp job
-    Map<String, FSDataOutputStream> distcpInputMapping = 
-        new HashMap<String, FSDataOutputStream>();
-    
-    for (Path doneFile : donePaths) {
-      String category = getCategory(doneFile);
-      LOG.info("Creating distcp done destCategory " + category);
-      Set<String> dests = databusConf.getDestinationStreamMap().get(category);
-      for (String dest : dests) {
-        FSDataOutputStream out = distcpInputMapping.get(dest);
-        if (out == null) {
-          out = fs.create(new Path(DISTCP_INPUT + File.separator + 
-              dest + File.separator + jobId.toString() + "_done"));
-          distcpInputMapping.put(dest, out);
-        }
-        out.writeBytes(doneFile.toString());
-        out.writeBytes("\n");
-      }
-    }
-    //close all streams
-    for (FSDataOutputStream out : distcpInputMapping.values()) {
-      out.close();
-    }
-    
 
-    //create the input for distcp jobs
-    distcpInputMapping.clear();
-    for (String destDir : destDirs) {
-      Path destDirPath = new Path(destDir);
-      String category = getCategory(destDirPath);
-      LOG.info("Creating distcp destCategory " + category);
-      Set<String> dests = databusConf.getDestinationStreamMap().get(category);
-      for (String dest : dests) {
-        FSDataOutputStream out = distcpInputMapping.get(dest);
-        if (out == null) {
-          out = fs.create(new Path(DISTCP_INPUT + File.separator + 
-              dest + File.separator + jobId.toString()));
-          distcpInputMapping.put(dest, out);
-        }
-        out.writeBytes(destDir);
-        out.writeBytes("\n");
-      }
-    }
-    //close all streams
-    for (FSDataOutputStream out : distcpInputMapping.values()) {
-      out.close();
-    }
-
-    //TODO:delete the staging dir
-  }
-
-  private String getCategory(Path path) {
-    String[]  pathSplit = path.toUri().getPath().split("/");
-    return pathSplit[3];
-  }
-  
-  */
 
   private void trashSrcs(FileSystem fs, Collection<FileStatus> srcs) 
     throws IOException {
@@ -322,8 +261,6 @@ public class ConsumerJob {
     return job;
   }
 
-  
-
   public static Path getTaskAttemptTmpDir(TaskAttemptID attemptId) {
     return new Path(getJobTmpDir(attemptId.getJobID()), attemptId.toString());
   }
@@ -344,5 +281,5 @@ public class ConsumerJob {
   public static void main(String[] args) throws Exception {
     ConsumerJob job = new ConsumerJob(args[0]);
     job.run();
-  }
+  }*/
 }
