@@ -1,5 +1,6 @@
 package com.inmobi.databus;
 
+import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -16,6 +17,8 @@ import java.util.*;
  * To change this template use File | Settings | File Templates.
  */
 public class DatabusConfigParser {
+    static Logger logger = Logger.getLogger(DatabusConfigParser.class);
+
 
     class Cluster {
         public Cluster(String name, String hdfsURL, List<ConsumeStream> consumeStreams) {
@@ -73,24 +76,35 @@ public class DatabusConfigParser {
     String publishDir;
 
 
-    private void parseXmlFile() throws Exception{
+    public void parseXmlFile() throws Exception{
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
-        String fileName = Thread.currentThread().getContextClassLoader().getResource("databus.xml").getFile();
-        dom = db.parse("employees.xml");
-        parseDocument();
+        dom = db.parse(ClassLoader.getSystemResourceAsStream("databus.xml"));
+        if (dom != null)
+            parseDocument();
+        else
+            throw new Exception("databus.xml file not found");
     }
 
     private void parseDocument(){
         Element docEle = dom.getDocumentElement();
-        rootDir = docEle.getElementsByTagName("RootDir").item(0).getNodeValue();
-        inputDir = docEle.getElementsByTagName("inputDir").item(0).getNodeValue();
-        publishDir = docEle.getElementsByTagName("publishDir").item(0).getNodeValue();
+        //read configs
+        readConfigPaths(docEle);
         //read the streams now
         readAllStreams(docEle);
         //read all clusterinfo
         readAllClusters(docEle);
 
+    }
+
+    private void readConfigPaths(Element docEle) {
+        NodeList configList = docEle.getElementsByTagName("Config");
+        if(configList != null && configList.getLength() > 0) {
+            rootDir = getTextValue((Element) configList.item(0), "RootDir");
+            inputDir = getTextValue((Element) configList.item(0), "InputDir");
+            publishDir = getTextValue((Element) configList.item(0), "PublishDir");
+            logger.debug("rootDir = " + rootDir + " inputDir " + inputDir + " publishDir " + publishDir);
+        }
     }
 
     private void readAllClusters(Element docEle) {
@@ -108,15 +122,15 @@ public class DatabusConfigParser {
     private Cluster getCLuster(Element el) {
         String clusterName = el.getAttribute("name");
         String hdfsURL = el.getAttribute("hdfsUrl");
+        logger.debug("clusterName " + clusterName + " hdfsURL " + hdfsURL);
         List<ConsumeStream> consumeStreams = new ArrayList<ConsumeStream>();
-
         NodeList consumeStreamList = el.getElementsByTagName("ConsumeStream");
         for (int i=0; i < consumeStreamList.getLength(); i++) {
             Element replicatedConsumeStream = (Element) consumeStreamList.item(i);
             // for each source
             String streamName =  getTextValue(replicatedConsumeStream, "name");
             int retentionHours = getIntValue(replicatedConsumeStream, "retentionHours");
-
+            logger.debug("Reading Cluster :: Stream Name " + streamName + " retentionHours" + retentionHours);
             ConsumeStream consumeStream = new ConsumeStream(streamName, retentionHours);
             consumeStreams.add(consumeStream);
         }
@@ -147,6 +161,7 @@ public class DatabusConfigParser {
             Element source = (Element) sourceList.item(i);
             // for each source
             String clusterName =  getTextValue(source, "name");
+            logger.debug(" streamname " + streamName + " clusterName " + clusterName);
             sourceClusters.add(clusterName);
         }
         return new DatabusConfig.Stream(streamName, sourceClusters);
@@ -169,6 +184,19 @@ public class DatabusConfigParser {
     private Integer getIntValue(Element ele, String tagName) {
         //in production application you would catch the exception
         return Integer.parseInt(getTextValue(ele, tagName));
+    }
+
+
+    public static void  main(String[] args) {
+        DatabusConfigParser databusConfigParser = new DatabusConfigParser();
+        try {
+            databusConfigParser.parseXmlFile();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            logger.debug(e);
+            logger.debug(e.getMessage());
+        }
     }
 
 }

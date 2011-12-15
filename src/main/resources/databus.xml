@@ -1,7 +1,7 @@
 <Databus>
   <Config>
     <RootDir>/databus</RootDir>
-    <Input>/databus/data</Input>
+    <InputDir>/databus/data</InputDir>
     <PublishDir>/databus/streams/</PublishDir>
   </Config>
 
@@ -20,15 +20,15 @@
       </Sources>
     </Stream>
 
-    <Stream streamname="beacon">
+    <Stream streamname="rr">
       <Sources>
 
         <Source>
-          <name>er</name>
+          <name>ua1</name>
         </Source>
 
         <Source>
-          <name>uj</name>
+          <name>ua2</name>
         </Source>
 
       </Sources>
@@ -36,7 +36,7 @@
   </Streams>
   
   <Clusters>
-    <Cluster name="ua2" hdfsUrl="">
+    <Cluster name="ua2" hdfsUrl="hdfs://ua1">
       <ConsumeStreams>
 
         <ConsumeStream>
@@ -52,17 +52,17 @@
       </ConsumeStreams>
     </Cluster>
 
-    <Cluster name="ua2" hdfsUrl="">
+    <Cluster name="ua2" hdfsUrl="hdfs://ua2">
       <ConsumeStreams>
 
         <ConsumeStream>
-          <name>beacon</name>
+          <name>beacon1</name>
           <retentionHours>24</retentionHours>
         </ConsumeStream>
 
         <ConsumeStream>
-          <name>beacon</name>
-          <retentionHours>24</retentionHours>
+          <name>beacon2</name>
+          <retentionHours>48</retentionHours>
        </ConsumeStream>
 
       </ConsumeStreams>
