@@ -1,24 +1,71 @@
 <Databus>
-  <RootDir>/databus</RootDir>
-  <Input>/databus/data</Input>
-  <PublishDir>/databus/streams/</Publish>
+  <Config>
+    <RootDir>/databus</RootDir>
+    <Input>/databus/data</Input>
+    <PublishDir>/databus/streams/</PublishDir>
+  </Config>
+
   <Streams>
-  <Stream name="beacon">
-    <Sources>
-      <Source name="er"></Destination>
-      <Source name="uj"></Destination>
-    <Sources>
-    <Retention hours=""/>
-  </Stream>
+    <Stream streamname="beacon">
+      <Sources>
+
+        <Source>
+          <name>er</name>
+        </Source>
+
+        <Source>
+          <name>uj</name>
+        </Source>
+
+      </Sources>
+    </Stream>
+
+    <Stream streamname="beacon">
+      <Sources>
+
+        <Source>
+          <name>er</name>
+        </Source>
+
+        <Source>
+          <name>uj</name>
+        </Source>
+
+      </Sources>
+    </Stream>
   </Streams>
   
   <Clusters>
     <Cluster name="ua2" hdfsUrl="">
       <ConsumeStreams>
-        <ConsumeStream name="beacon" retentionHours="24"/>
+
+        <ConsumeStream>
+          <name>beacon</name>
+          <retentionHours>24</retentionHours>
+        </ConsumeStream>
+
+        <ConsumeStream>
+          <name>rrlogs</name>
+          <retentionHours>24</retentionHours>
+        </ConsumeStream>
+
+      </ConsumeStreams>
+    </Cluster>
+
+    <Cluster name="ua2" hdfsUrl="">
+      <ConsumeStreams>
+
+        <ConsumeStream>
+          <name>beacon</name>
+          <retentionHours>24</retentionHours>
+        </ConsumeStream>
+
+        <ConsumeStream>
+          <name>beacon</name>
+          <retentionHours>24</retentionHours>
+       </ConsumeStream>
+
       </ConsumeStreams>
     </Cluster>
   </Clusters>
-
-
 </Databus>

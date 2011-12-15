@@ -1,19 +1,13 @@
 package com.inmobi.databus;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 
 public class DatabusConfig {
 
@@ -40,7 +34,7 @@ public class DatabusConfig {
   public DatabusConfig(String destCluster, String wfId) {
     // load configuration
 
-    Cluster uj1 = new Cluster("uj1", "hdfs://localhost:54310", new HashSet<ReplicatedStream>());
+    Cluster uj1 = new Cluster("uj1", "hdfs://localhost:8020", new HashSet<ReplicatedStream>());
     clusters.put(uj1.name, uj1);
     
     Stream beacon = new Stream("beacon", new HashSet<String>());
