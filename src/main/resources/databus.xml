@@ -2,19 +2,23 @@
   <RootDir>/databus</RootDir>
   <Input>/databus/data</Input>
   <PublishDir>/databus/streams/</Publish>
-  <Datastream category="rrlogs">
-    <Destinations>
-      <Destination name="ua2_main"></Destination>
-      <Destination name="uj"></Destination>
-    <Destinations>
+  <Streams>
+  <Stream name="beacon">
+    <Sources>
+      <Source name="er"></Destination>
+      <Source name="uj"></Destination>
+    <Sources>
     <Retention hours=""/>
-  </Datastream>
+  </Stream>
+  </Streams>
+  
+  <Clusters>
+    <Cluster name="ua2" hdfsUrl="">
+      <ConsumeStreams>
+        <ConsumeStream name="beacon" retentionHours="24"/>
+      </ConsumeStreams>
+    </Cluster>
+  </Clusters>
 
-  <Datastream category="beacon">
-    <Destinations>
-      <Destination name="uj"></Destination>
-      <Destination name="er"></Destination>
-    <Destinations>
-    <Retention hours=""/>
-  </Datastream>
+
 </Databus>

@@ -8,11 +8,11 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.tools.DistCp;
-import org.apache.hadoop.tools.DistCpOptions;
 
 import com.inmobi.databus.AbstractCopier;
 import com.inmobi.databus.DatabusConfig;
@@ -42,7 +42,6 @@ public class RemoteCopier extends AbstractCopier {
 
   @Override
   public void run() {
-    DistCp distcp = null;
     try {
       srcFs = FileSystem.get(new URI(getSrcCluster().hdfsUrl), 
           getConfig().getHadoopConf());
@@ -50,38 +49,31 @@ public class RemoteCopier extends AbstractCopier {
           new URI(getConfig().getDestinationCluster().hdfsUrl), 
           getConfig().getHadoopConf());
       
+      Path input = getInputPath();
       Path tmpOut = new Path(getConfig().getTmpPath(), "distcp");
       destFs.mkdirs(tmpOut);
-      DistCpOptions options = new DistCpOptions(getSrcPaths(), tmpOut);
-      distcp = new DistCp(getConfig().getHadoopConf(), 
-          options);
+      String[] args = {input.makeQualified(destFs).toString(), 
+          tmpOut.toString()};
+      DistCp.main(args);
       
-      
+      //TODO: if success
+      commit();
     } catch (Exception e) {
       LOG.warn(e);
-    } finally {
-      if (distcp != null) {
-        //distcp.
-      }
-    }
-    
-    
+    } 
     
   }
 
-  private List<Path> getSrcPaths() throws IOException {
-    List<Path> paths = new ArrayList<Path>();
+  private void commit() throws IOException {
+    
+  }
+
+  private Path getInputPath() throws IOException {
+    Path input = null;
+    FSDataOutputStream out = destFs.create(input);
     for (Stream stream : getStreamsToFetch()) {
-      paths.addAll(getSrcPaths((ReplicatedStream) stream));
+      
     }
-    return paths;
-  }
-
-  private List<Path> getSrcPaths(ReplicatedStream stream) throws IOException {
-    List<Path> paths = new ArrayList<Path>();
-    Path fetchedTill = new Path(getSrcCluster().hdfsUrl + 
-        File.separator + stream.offset);
-    FileStatus[] list = srcFs.listStatus(fetchedTill.getParent());
-    return paths;
+    return input;
   }
 }

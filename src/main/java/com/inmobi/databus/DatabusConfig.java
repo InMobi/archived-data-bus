@@ -21,7 +21,7 @@ public class DatabusConfig {
   public static final String DATABUS_SYSTEM_DIR = DATABUS_ROOT_DIR + "system/";
   public static final String TMP = DATABUS_SYSTEM_DIR + "tmp";
   public static final String TRASH = DATABUS_SYSTEM_DIR + "trash";
-  // public static final String CONSUMER = DATABUS_SYSTEM_DIR + "consumer";
+  public static final String CONSUMER = DATABUS_SYSTEM_DIR + "consumers";
   public static final String DATA_DIR = DATABUS_ROOT_DIR + "data/";
   public static final String PUBLISH_DIR = DATABUS_ROOT_DIR + "streams/";
 
@@ -72,12 +72,20 @@ public class DatabusConfig {
     return tmpPath;
   }
 
+  public static Path getNewTmpPath() {
+    return new Path(tmpPath, Long.toString(System.currentTimeMillis()));
+  }
+
   public Path getTrashPath() {
     return new Path(TRASH);
   }
 
   public Path getDataDir() {
     return new Path(DATA_DIR);
+  }
+
+  public Path getConsumePath(Cluster srcCluster) {
+    return new Path(srcCluster.hdfsUrl + File.separator + CONSUMER);
   }
 
   public static Path getTaskAttemptTmpDir(TaskAttemptID attemptId) {
@@ -116,13 +124,12 @@ public class DatabusConfig {
 
   public static class ReplicatedStream extends Stream {
     public final int retentionHours;
-    public final String offset;
+    //public final String offset;
 
     public ReplicatedStream(String name, Set<String> sourceClusters,
-        int retentionHours, String offset) {
+        int retentionHours) {
       super(name, sourceClusters);
       this.retentionHours = retentionHours;
-      this.offset = offset;
     }
   }
 

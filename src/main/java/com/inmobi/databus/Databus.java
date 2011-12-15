@@ -12,7 +12,7 @@ import com.inmobi.databus.distcp.RemoteCopier;
 public class Databus {
   private DatabusConfig config;
 
-  Databus() {
+  public Databus() {
     this.config = new DatabusConfig();
   }
 
