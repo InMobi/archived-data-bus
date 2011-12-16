@@ -96,9 +96,7 @@ public class DatabusConfigParser {
     String publishDir;
     String fileName;
 
-    public DatabusConfigParser() throws Exception{
-        parseXmlFile();
-    }
+
 
     public DatabusConfigParser(String fileName) throws Exception {
         this.fileName = fileName;
@@ -141,7 +139,7 @@ public class DatabusConfigParser {
     }
 
     private void readAllClusters(Element docEle) {
-        NodeList tmpClusterList = docEle.getElementsByTagName("ClusterDetails");
+        NodeList tmpClusterList = docEle.getElementsByTagName("Cluster");
         if (tmpClusterList !=null && tmpClusterList.getLength() > 0 ) {
             for (int i=0; i < tmpClusterList.getLength(); i++) {
                 Element el = (Element) tmpClusterList.item(i);
@@ -163,7 +161,7 @@ public class DatabusConfigParser {
             // for each source
             String streamName =  getTextValue(replicatedConsumeStream, "name");
             int retentionHours = getIntValue(replicatedConsumeStream, "retentionHours");
-            logger.debug("Reading ClusterDetails :: Stream Name " + streamName + " retentionHours" + retentionHours);
+            logger.debug("Reading ClusterDetails :: Stream Name " + streamName + " retentionHours " + retentionHours);
             ConsumeStream consumeStream = new ConsumeStream(streamName, retentionHours);
             consumeStreams.add(consumeStream);
         }
@@ -221,9 +219,14 @@ public class DatabusConfigParser {
 
 
     public static void  main(String[] args) {
-        try {DatabusConfigParser databusConfigParser = new DatabusConfigParser();
+        try {
+            DatabusConfigParser  databusConfigParser;
+            if (args.length >=1)
+               databusConfigParser = new DatabusConfigParser(args[0]) ;
+            else
+             databusConfigParser = new DatabusConfigParser(null);
 
-            databusConfigParser.parseXmlFile();
+           // databusConfigParser.parseXmlFile();
         }
         catch (Exception e) {
             e.printStackTrace();

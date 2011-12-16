@@ -1,20 +1,19 @@
 package com.inmobi.databus;
 
-import java.util.HashSet;
-import java.util.Set;
-
+import com.inmobi.databus.DatabusConfig.Cluster;
+import com.inmobi.databus.DatabusConfig.Stream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.inmobi.databus.DatabusConfig.Cluster;
-import com.inmobi.databus.DatabusConfig.Stream;
+import java.util.HashSet;
+import java.util.Set;
 
 public abstract class AbstractCopier implements Runnable {
 
   private static final Log LOG = LogFactory.getLog(AbstractCopier.class);
 
   private final Cluster srcCluster;
-  private final DatabusConfig config;
+  protected DatabusConfig config;
   protected final Set<Stream> streamsToFetch = new HashSet<Stream>();
   private Thread thread;
 

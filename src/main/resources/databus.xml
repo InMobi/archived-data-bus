@@ -1,8 +1,8 @@
 <Databus>
   <Config>
     <RootDir>/databus</RootDir>
-    <InputDir>/databus/data</InputDir>
-    <PublishDir>/databus/streams/</PublishDir>
+    <!--<InputDir>/databus/scribelogs</InputDir>-->
+    <!--<PublishDir>/databus/streams/</PublishDir>-->
   </Config>
 
   <Streams>

@@ -1,28 +1,19 @@
 package com.inmobi.databus.consume;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
+import com.inmobi.databus.AbstractCopier;
+import com.inmobi.databus.DatabusConfig;
+import com.inmobi.databus.DatabusConfig.Stream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 
-import com.inmobi.databus.AbstractCopier;
-import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.DatabusConfig.Stream;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
 
 public class DataConsumer extends AbstractCopier {
 
@@ -106,7 +97,7 @@ public class DataConsumer extends AbstractCopier {
 
   private Job createJob(Path inputPath) throws IOException {
     String jobName = "consumer";
-    Configuration conf = new Configuration();
+    Configuration conf = config.getHadoopConf();
     Job job = new Job(conf);
     job.setJobName(jobName);
     KeyValueTextInputFormat.setInputPaths(job, inputPath);
