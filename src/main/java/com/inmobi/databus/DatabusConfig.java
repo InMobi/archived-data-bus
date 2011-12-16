@@ -25,8 +25,8 @@ public class DatabusConfig {
     public static String PUBLISH_DIR = DATABUS_ROOT_DIR + "streams/";
 
     private static final String CONFIG = "databus.xml";
-    private Map<String, Cluster> clusters = new HashMap<String, Cluster>();
-    private Map<String, Stream> streams = new HashMap<String, Stream>();
+    private Map<String, Cluster> clusters;
+    private Map<String, Stream> streams;
     private Cluster destinationCluster;
     private String wfId = null;
     private Configuration hadoopConf = null;
