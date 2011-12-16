@@ -48,9 +48,7 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text>{
         collector + "_" + src.getName() + ".gz");
     LOG.info("Renaming file " + target + " to " + destPath);
     fs.rename(target, destPath);
-    
-    //TODO:delete the src path (this is like commit)
-    //fs.delete(src);
+
   }
   
   private Path getTempPath(Context context, 

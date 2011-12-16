@@ -1,12 +1,14 @@
 package com.inmobi.databus;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
 import com.inmobi.databus.DatabusConfig.Cluster;
 import com.inmobi.databus.consume.DataConsumer;
 import com.inmobi.databus.distcp.RemoteCopier;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.log4j.Logger;
-
-import java.util.*;
 
 public class Databus {
     static Logger logger = Logger.getLogger(Databus.class);
@@ -30,6 +32,7 @@ public class Databus {
         List<AbstractCopier> copiers = new ArrayList<AbstractCopier>();
         logger.warn("My clusterName is [" + myClusterName + "] " +
                 config.getDestinationCluster().getName());
+        logger.warn("clusters " + config.getClusters().size());
         for (Cluster c : config.getClusters().values()) {
             AbstractCopier copier = null;
             if (myClusterName.equalsIgnoreCase(config.getDestinationCluster().getName())) {
@@ -49,9 +52,6 @@ public class Databus {
             copier.join();
         }
 
-        //cleanup
-        FileSystem fs = FileSystem.get(config.getHadoopConf());
-        fs.delete(config.getTmpPath());
     }
 
     public static void main(String[] args) throws Exception {
