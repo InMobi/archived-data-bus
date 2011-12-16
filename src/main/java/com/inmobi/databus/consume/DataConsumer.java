@@ -103,13 +103,10 @@ public class DataConsumer extends AbstractCopier {
       FSDataOutputStream out = fs.create(tmpConsumerPath);
       for (Path destPath : mvPaths.values()) {
         String category = getCategoryFromDestPath(destPath);
-        System.out.println("---------category " + category);
-        //TODO:
-        //if (cluster.replicatedStreams.contains(
-          //  getConfig().getStreams().get(category))) {
+        if(cluster.consumeStreams.containsKey(category)) {
           out.writeBytes(destPath.toString());
           out.writeBytes("\n");
-        //}
+        }
       }
       out.close();
       Path finalConsumerPath = new Path(getConfig().

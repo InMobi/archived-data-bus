@@ -1,15 +1,11 @@
 package com.inmobi.databus.distcp;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.tools.DistCp;
@@ -17,7 +13,6 @@ import org.apache.hadoop.tools.DistCp;
 import com.inmobi.databus.AbstractCopier;
 import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.DatabusConfig.Cluster;
-import com.inmobi.databus.DatabusConfig.ReplicatedStream;
 import com.inmobi.databus.DatabusConfig.Stream;
 
 public class RemoteCopier extends AbstractCopier {
@@ -33,11 +28,11 @@ public class RemoteCopier extends AbstractCopier {
 
   protected void addStreamsToFetch() {
     Cluster destCluster = getConfig().getDestinationCluster();
-    for (Stream s : destCluster.replicatedStreams) {
+    /*for (Stream s : destCluster.consumeStreams.values()) {
       if (s.sourceClusters.contains(getSrcCluster())) {
         streamsToFetch.add(s);
       }
-    }
+    }*/
   }
 
   @Override
