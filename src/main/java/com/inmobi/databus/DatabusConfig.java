@@ -11,17 +11,17 @@ import java.util.*;
 
 public class DatabusConfig {
 
-  public static final String DATABUS_ROOT_DIR = "/databus/";
-  public static final String DATABUS_SYSTEM_DIR = DATABUS_ROOT_DIR + "system/";
-  public static final String TMP = DATABUS_SYSTEM_DIR + "tmp";
-  public static final String TRASH = DATABUS_SYSTEM_DIR + "trash";
-  public static final String CONSUMER = DATABUS_SYSTEM_DIR + "consumers";
-  public static final String DATA_DIR = DATABUS_ROOT_DIR + "data/";
-  public static final String PUBLISH_DIR = DATABUS_ROOT_DIR + "streams/";
+  public static String DATABUS_ROOT_DIR = "/databus/";
+  public static String DATABUS_SYSTEM_DIR = DATABUS_ROOT_DIR + "system/";
+  public static String TMP = DATABUS_SYSTEM_DIR + "tmp";
+  public static String TRASH = DATABUS_SYSTEM_DIR + "trash";
+  public static String CONSUMER = DATABUS_SYSTEM_DIR + "consumers";
+  public static String DATA_DIR = DATABUS_ROOT_DIR + "data/";
+  public static String PUBLISH_DIR = DATABUS_ROOT_DIR + "streams/";
 
   private static final String CONFIG = "databus.xml";
-  private final Map<String, Cluster> clusters = new HashMap<String, Cluster>();
-  private final Map<String, Stream> streams = new HashMap<String, Stream>();
+  private Map<String, Cluster> clusters = new HashMap<String, Cluster>();
+  private Map<String, Stream> streams = new HashMap<String, Stream>();
   private final Cluster destinationCluster;
   private final String wfId;
   private final Configuration hadoopConf;
@@ -44,6 +44,18 @@ public class DatabusConfig {
     this.destinationCluster = clusters.get("uj1");
     this.hadoopConf = new Configuration();
     this.wfId = wfId;
+  }
+
+  public void setStreams(Map<String, Stream> streams) {
+    this.streams = streams;
+  }
+
+  public void setClusters(Map<String, Cluster> clusters) {
+      this.clusters = clusters;
+  }
+
+  public void setRootDir(String rootDir) {
+    DatabusConfig.DATABUS_ROOT_DIR = rootDir;
   }
 
   public Configuration getHadoopConf() {
@@ -114,6 +126,10 @@ public class DatabusConfig {
       this.hdfsUrl = hdfsUrl;
       this.replicatedStreams = replicatedStreams;
     }
+
+      public String getName() {
+          return name;
+      }
   }
 
   public static class ReplicatedStream extends Stream {
@@ -129,6 +145,15 @@ public class DatabusConfig {
 
   public static class Stream {
     public final String name;
+
+    public Set<String> getSourceClusters() {
+      return sourceClusters;
+    }
+
+    public String getName() {
+      return name;
+    }
+
     public final Set<String> sourceClusters;
 
     public Stream(String name, Set<String> sourceClusters) {

@@ -18,10 +18,13 @@ import java.util.*;
  */
 public class DatabusConfigParser {
     static Logger logger = Logger.getLogger(DatabusConfigParser.class);
+    Document dom;
+    Map<String, DatabusConfig.Stream> streamMap = new HashMap<String, DatabusConfig.Stream>();
+    Map<String, ClusterDetails> clusterMap = new HashMap<String,ClusterDetails>();
+    String rootDir;
 
-
-    class Cluster {
-        public Cluster(String name, String hdfsURL, List<ConsumeStream> consumeStreams) {
+    class ClusterDetails {
+        public ClusterDetails(String name, String hdfsURL, List<ConsumeStream> consumeStreams) {
             this.name =name;
             this.hdfsURL = hdfsURL;
             this.consumeStreams = consumeStreams;
@@ -68,18 +71,48 @@ public class DatabusConfigParser {
 
     }
 
-    Document dom;
-    Map<String, DatabusConfig.Stream> streamMap = new HashMap<String, DatabusConfig.Stream>();
-    Map<String, Cluster> clusterMap = new HashMap<String,Cluster>();
-    String rootDir;
+    public Map<String, ClusterDetails> getClusterMap() {
+        return clusterMap;
+    }
+
+    public Map<String, DatabusConfig.Stream> getStreamMap() {
+        return streamMap;
+    }
+
+    public String getRootDir() {
+
+        return rootDir;
+    }
+
+    public String getInputDir() {
+        return inputDir;
+    }
+
+    public String getPublishDir() {
+        return publishDir;
+    }
+
     String inputDir;
     String publishDir;
+    String fileName;
+
+    public DatabusConfigParser() throws Exception{
+        parseXmlFile();
+    }
+
+    public DatabusConfigParser(String fileName) throws Exception {
+        this.fileName = fileName;
+        parseXmlFile();
+    }
 
 
     public void parseXmlFile() throws Exception{
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
-        dom = db.parse(ClassLoader.getSystemResourceAsStream("databus.xml"));
+        if (fileName == null)
+            dom = db.parse(ClassLoader.getSystemResourceAsStream("databus.xml"));
+        else
+            dom = db.parse(fileName);
         if (dom != null)
             parseDocument();
         else
@@ -108,18 +141,18 @@ public class DatabusConfigParser {
     }
 
     private void readAllClusters(Element docEle) {
-        NodeList tmpClusterList = docEle.getElementsByTagName("Cluster");
+        NodeList tmpClusterList = docEle.getElementsByTagName("ClusterDetails");
         if (tmpClusterList !=null && tmpClusterList.getLength() > 0 ) {
             for (int i=0; i < tmpClusterList.getLength(); i++) {
                 Element el = (Element) tmpClusterList.item(i);
-                Cluster cluster = getCLuster(el);
-                clusterMap.put(cluster.getName(), cluster);
+                ClusterDetails clusterDetails = getCLuster(el);
+                clusterMap.put(clusterDetails.getName(), clusterDetails);
             }
         }
 
     }
 
-    private Cluster getCLuster(Element el) {
+    private ClusterDetails getCLuster(Element el) {
         String clusterName = el.getAttribute("name");
         String hdfsURL = el.getAttribute("hdfsUrl");
         logger.debug("clusterName " + clusterName + " hdfsURL " + hdfsURL);
@@ -130,11 +163,11 @@ public class DatabusConfigParser {
             // for each source
             String streamName =  getTextValue(replicatedConsumeStream, "name");
             int retentionHours = getIntValue(replicatedConsumeStream, "retentionHours");
-            logger.debug("Reading Cluster :: Stream Name " + streamName + " retentionHours" + retentionHours);
+            logger.debug("Reading ClusterDetails :: Stream Name " + streamName + " retentionHours" + retentionHours);
             ConsumeStream consumeStream = new ConsumeStream(streamName, retentionHours);
             consumeStreams.add(consumeStream);
         }
-        return new Cluster(clusterName, hdfsURL, consumeStreams);
+        return new ClusterDetails(clusterName, hdfsURL, consumeStreams);
     }
 
 
@@ -188,8 +221,8 @@ public class DatabusConfigParser {
 
 
     public static void  main(String[] args) {
-        DatabusConfigParser databusConfigParser = new DatabusConfigParser();
-        try {
+        try {DatabusConfigParser databusConfigParser = new DatabusConfigParser();
+
             databusConfigParser.parseXmlFile();
         }
         catch (Exception e) {
