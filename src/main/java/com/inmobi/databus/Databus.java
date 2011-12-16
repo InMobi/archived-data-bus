@@ -32,13 +32,13 @@ public class Databus {
                 config.getDestinationCluster().getName());
         for (Cluster c : config.getClusters().values()) {
             AbstractCopier copier = null;
-            if (myClusterName.equalsIgnoreCase(config.getDestinationCluster().getName())) {
+            if (c.getName().equalsIgnoreCase(config.getDestinationCluster().getName())) {
                 logger.warn("Starting data consumer for Cluster[" +
-                        myClusterName + "]");
+                        c.getName() + "]");
                 copier = new DataConsumer(config);
             } else {
                 logger.warn("Starting remote copier for cluster [" +
-                        config.getDestinationCluster().getName() + "]");
+                        c.getName() + "]");
                 copier = new RemoteCopier(config, c);
             }
             copiers.add(copier);
