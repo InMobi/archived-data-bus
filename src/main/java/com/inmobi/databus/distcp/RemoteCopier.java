@@ -1,24 +1,18 @@
 package com.inmobi.databus.distcp;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-
+import com.inmobi.databus.AbstractCopier;
+import com.inmobi.databus.DatabusConfig;
+import com.inmobi.databus.DatabusConfig.Cluster;
+import com.inmobi.databus.DatabusConfig.Stream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.tools.DistCp;
 
-import com.inmobi.databus.AbstractCopier;
-import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.DatabusConfig.Cluster;
-import com.inmobi.databus.DatabusConfig.ReplicatedStream;
-import com.inmobi.databus.DatabusConfig.Stream;
+import java.io.IOException;
+import java.net.URI;
 
 public class RemoteCopier extends AbstractCopier {
 
@@ -43,36 +37,36 @@ public class RemoteCopier extends AbstractCopier {
   @Override
   public void run() {
     try {
-      srcFs = FileSystem.get(new URI(getSrcCluster().hdfsUrl), 
-          getConfig().getHadoopConf());
+      srcFs = FileSystem.get(new URI(getSrcCluster().hdfsUrl),
+              getConfig().getHadoopConf());
       destFs = FileSystem.get(
-          new URI(getConfig().getDestinationCluster().hdfsUrl), 
-          getConfig().getHadoopConf());
-      
+              new URI(getConfig().getDestinationCluster().hdfsUrl),
+              getConfig().getHadoopConf());
+
       Path input = getInputPath();
       Path tmpOut = new Path(getConfig().getTmpPath(), "distcp");
       destFs.mkdirs(tmpOut);
-      String[] args = {input.makeQualified(destFs).toString(), 
-          tmpOut.toString()};
+      String[] args = {input.makeQualified(destFs).toString(),
+              tmpOut.toString()};
       DistCp.main(args);
-      
+
       //TODO: if success
       commit();
     } catch (Exception e) {
       LOG.warn(e);
-    } 
-    
+    }
+
   }
 
   private void commit() throws IOException {
-    
+
   }
 
   private Path getInputPath() throws IOException {
     Path input = null;
     FSDataOutputStream out = destFs.create(input);
     for (Stream stream : getStreamsToFetch()) {
-      
+
     }
     return input;
   }
