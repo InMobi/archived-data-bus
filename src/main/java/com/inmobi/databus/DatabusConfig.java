@@ -1,13 +1,19 @@
 package com.inmobi.databus;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
 
 public class DatabusConfig {
 
@@ -34,13 +40,19 @@ public class DatabusConfig {
   public DatabusConfig(String destCluster, String wfId) {
     // load configuration
 
-    Cluster uj1 = new Cluster("uj1", "hdfs://localhost:8020", new HashSet<ReplicatedStream>());
+    Cluster uj1 = new Cluster("uj1", "hdfs://localhost:54310", new HashSet<ReplicatedStream>());
     clusters.put(uj1.name, uj1);
+    
+    Cluster ua2 = new Cluster("ua2", "hdfs://localhost1:54310", new HashSet<ReplicatedStream>());
+    
+    clusters.put(ua2.name, ua2);
     
     Stream beacon = new Stream("beacon", new HashSet<String>());
     beacon.sourceClusters.add(uj1.name);
     streams.put(beacon.name, beacon);
 
+    ua2.replicatedStreams.add(new ReplicatedStream(beacon.name, 
+        beacon.sourceClusters, 24));
     this.destinationCluster = clusters.get("uj1");
     this.hadoopConf = new Configuration();
     this.wfId = wfId;
@@ -78,8 +90,9 @@ public class DatabusConfig {
     return new Path(DATA_DIR);
   }
 
-  public Path getConsumePath(Cluster srcCluster) {
-    return new Path(srcCluster.hdfsUrl + File.separator + CONSUMER);
+  public Path getConsumePath(Cluster srcCluster, Cluster consumeCluster) {
+    return new Path(srcCluster.hdfsUrl + File.separator + CONSUMER + 
+        File.separator + consumeCluster.name);
   }
 
   public static Path getTaskAttemptTmpDir(TaskAttemptID attemptId) {
@@ -90,8 +103,9 @@ public class DatabusConfig {
     return new Path(tmpPath, jobId.toString());
   }
 
-  public String getDestDir(String category) throws IOException {
-    Date date = new Date(System.currentTimeMillis());
+  public String getFinalDestDir(String category, 
+      long commitTime) throws IOException {
+    Date date = new Date(commitTime);
     Calendar calendar = new GregorianCalendar();
     calendar.setTime(date);
     String dest = this.destinationCluster.hdfsUrl + File.separator

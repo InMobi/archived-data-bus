@@ -34,8 +34,8 @@ public class Databus {
     }
     
     //cleanup
-    FileSystem fs = FileSystem.get(config.getHadoopConf());
-    fs.delete(config.getTmpPath());
+    //FileSystem fs = FileSystem.get(config.getHadoopConf());
+    //fs.delete(config.getTmpPath());
   }
 
   public static void main(String[] args) throws Exception {
