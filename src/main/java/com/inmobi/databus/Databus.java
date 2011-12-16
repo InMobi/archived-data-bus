@@ -20,46 +20,10 @@ public class Databus {
             configParser= new DatabusConfigParser(null);
         else
             configParser = new DatabusConfigParser(databusconfigFile);
-        Map<String, Cluster> clusterMap = createClusterMap(configParser);
+        Map<String, Cluster> clusterMap = configParser.getClusterMap();
         this.config = new DatabusConfig(configParser.getRootDir(), configParser.getStreamMap(),
                 clusterMap, clusterMap.get(myClusterName));
         logger.debug("my cluster details " + clusterMap.get(myClusterName));
-    }
-
-    private Map<String, Cluster> createClusterMap(DatabusConfigParser configParser) {
-        Map<String, Cluster>  clusterMap = new HashMap<String, Cluster>();
-        Map<String, DatabusConfigParser.ClusterDetails> clusterDetailsMap = configParser.getClusterMap();
-        Set<Map.Entry<String,DatabusConfigParser.ClusterDetails>> entrySet = clusterDetailsMap.entrySet();
-        for(Map.Entry<String, DatabusConfigParser.ClusterDetails> entry: entrySet) {
-            //for each cluster
-            String clusterName = entry.getKey();
-            DatabusConfigParser.ClusterDetails clusterDetails = entry.getValue();
-            Set<DatabusConfig.ReplicatedStream> replicatedStreams = (Set<DatabusConfig.ReplicatedStream>)
-                    getReplicatedStream(clusterDetails.getConsumeStreams(), configParser);
-            Cluster cluster = new Cluster(clusterDetails.getName(), clusterDetails.getHdfsURL(),
-                    replicatedStreams);
-            clusterMap.put(clusterDetails.getName(), cluster);
-        }
-        return clusterMap;
-
-    }
-
-    private Set<DatabusConfig.ReplicatedStream>
-    getReplicatedStream(List<DatabusConfigParser.ConsumeStream> consumeStreams, DatabusConfigParser configParser){
-        Map<String, DatabusConfig.Stream> streamMap = configParser.getStreamMap();
-        Set<DatabusConfig.ReplicatedStream> replicatedStreams = new HashSet();
-        for (DatabusConfigParser.ConsumeStream consumeStream : consumeStreams) {
-            DatabusConfig.Stream stream = streamMap.get(consumeStream.getStreamName());
-
-            DatabusConfig.ReplicatedStream replicatedStream =
-                    new DatabusConfig.ReplicatedStream(consumeStream.getStreamName(),
-                            stream.getSourceClusters(), consumeStream.getRetentionHours());
-            replicatedStreams.add(replicatedStream);
-            logger.debug("stream details :: consumeStream.getStreamName() "
-                    + consumeStream.getStreamName() + " stream.getSourceClusters() " + stream.getSourceClusters() +
-                    " consumeStream.getRetentionHours() " + consumeStream.getRetentionHours());
-        }
-        return  replicatedStreams;
     }
 
     public void start() throws Exception {

@@ -20,7 +20,11 @@ public class DatabusConfigParser {
     static Logger logger = Logger.getLogger(DatabusConfigParser.class);
     Document dom;
     Map<String, DatabusConfig.Stream> streamMap = new HashMap<String, DatabusConfig.Stream>();
-    Map<String, ClusterDetails> clusterMap = new HashMap<String,ClusterDetails>();
+    Map<String, ClusterDetails> clusterdetailsMap = new HashMap<String,ClusterDetails>();
+    String inputDir;
+    String publishDir;
+    String fileName;
+    Map<String, DatabusConfig.Cluster> clusterMap;
     String rootDir;
 
     class ClusterDetails {
@@ -71,8 +75,8 @@ public class DatabusConfigParser {
 
     }
 
-    public Map<String, ClusterDetails> getClusterMap() {
-        return clusterMap;
+    public Map<String, ClusterDetails> getClusterdetailsMap() {
+        return clusterdetailsMap;
     }
 
     public Map<String, DatabusConfig.Stream> getStreamMap() {
@@ -92,15 +96,14 @@ public class DatabusConfigParser {
         return publishDir;
     }
 
-    String inputDir;
-    String publishDir;
-    String fileName;
-
-
+    public Map<String, DatabusConfig.Cluster> getClusterMap() {
+        return clusterMap;
+    }
 
     public DatabusConfigParser(String fileName) throws Exception {
         this.fileName = fileName;
         parseXmlFile();
+        clusterMap = createClusterMap();
     }
 
 
@@ -144,7 +147,7 @@ public class DatabusConfigParser {
             for (int i=0; i < tmpClusterList.getLength(); i++) {
                 Element el = (Element) tmpClusterList.item(i);
                 ClusterDetails clusterDetails = getCLuster(el);
-                clusterMap.put(clusterDetails.getName(), clusterDetails);
+                clusterdetailsMap.put(clusterDetails.getName(), clusterDetails);
             }
         }
 
@@ -217,16 +220,53 @@ public class DatabusConfigParser {
         return Integer.parseInt(getTextValue(ele, tagName));
     }
 
+    private Map<String, DatabusConfig.Cluster> createClusterMap() {
+        Map<String, DatabusConfig.Cluster>  clusterMap = new HashMap<String, DatabusConfig.Cluster>();
+        Map<String, DatabusConfigParser.ClusterDetails> clusterDetailsMap = getClusterdetailsMap();
+        Set<Map.Entry<String,DatabusConfigParser.ClusterDetails>> entrySet = clusterDetailsMap.entrySet();
+        for(Map.Entry<String, DatabusConfigParser.ClusterDetails> entry: entrySet) {
+            //for each cluster
+            String clusterName = entry.getKey();
+            DatabusConfigParser.ClusterDetails clusterDetails = entry.getValue();
+            Set<DatabusConfig.ReplicatedStream> replicatedStreams = (Set<DatabusConfig.ReplicatedStream>)
+                    getReplicatedStream(clusterDetails.getConsumeStreams());
+            DatabusConfig.Cluster cluster = new DatabusConfig.Cluster(clusterDetails.getName(), clusterDetails.getHdfsURL(),
+                    replicatedStreams);
+            clusterMap.put(clusterDetails.getName(), cluster);
+        }
+        return clusterMap;
+
+    }
+
+
+    private Set<DatabusConfig.ReplicatedStream>
+    getReplicatedStream(List<DatabusConfigParser.ConsumeStream> consumeStreams){
+        Map<String, DatabusConfig.Stream> streamMap = getStreamMap();
+        Set<DatabusConfig.ReplicatedStream> replicatedStreams = new HashSet();
+        for (DatabusConfigParser.ConsumeStream consumeStream : consumeStreams) {
+            DatabusConfig.Stream stream = streamMap.get(consumeStream.getStreamName());
+
+            DatabusConfig.ReplicatedStream replicatedStream =
+                    new DatabusConfig.ReplicatedStream(consumeStream.getStreamName(),
+                            stream.getSourceClusters(), consumeStream.getRetentionHours());
+            replicatedStreams.add(replicatedStream);
+            logger.debug("stream details :: consumeStream.getStreamName() "
+                    + consumeStream.getStreamName() + " stream.getSourceClusters() " + stream.getSourceClusters() +
+                    " consumeStream.getRetentionHours() " + consumeStream.getRetentionHours());
+        }
+        return  replicatedStreams;
+    }
+
 
     public static void  main(String[] args) {
         try {
             DatabusConfigParser  databusConfigParser;
             if (args.length >=1)
-               databusConfigParser = new DatabusConfigParser(args[0]) ;
+                databusConfigParser = new DatabusConfigParser(args[0]) ;
             else
-             databusConfigParser = new DatabusConfigParser(null);
+                databusConfigParser = new DatabusConfigParser(null);
 
-           // databusConfigParser.parseXmlFile();
+            // databusConfigParser.parseXmlFile();
         }
         catch (Exception e) {
             e.printStackTrace();
