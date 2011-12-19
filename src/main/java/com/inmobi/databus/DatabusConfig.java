@@ -56,6 +56,8 @@ public class DatabusConfig {
       this.hadoopConf.set("databus.tmp.path", getTmpPath().toString());
       this.consumeStreams = consumeStreams;
       this.sourceStreams = sourceStreams;
+			this.hadoopConf.set("fs.default.name", hdfsUrl);
+
     }
 
     public String getHdfsUrl() {
