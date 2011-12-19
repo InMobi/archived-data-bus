@@ -1,8 +1,6 @@
 <Databus>
   <Config>
     <RootDir>/databus</RootDir>
-    <!--<InputDir>/databus/scribelogs</InputDir>-->
-    <!--<PublishDir>/databus/streams/</PublishDir>-->
   </Config>
 
   <Streams>
@@ -16,10 +14,13 @@
   </Streams>
 
   <Clusters>
-    <Cluster name="uj1" hdfsUrl="hdfs://localhost:54310/">
+    <Cluster name="uj1" hdfsUrl="hdfs://localhost:54310/" jtUrl="localhost:54311">
     </Cluster>
 
-    <Cluster name="uj2" hdfsUrl="hdfs://localhost:8020/">
+    <Cluster name="uj2" hdfsUrl="hdfs://localhost:54310/" jtUrl="localhost:54311">
+      <Config>
+        <RootDir>/databus/uj2</RootDir>
+      </Config>
       <ConsumeStreams>
         <ConsumeStream>
           <name>metric_billing</name>

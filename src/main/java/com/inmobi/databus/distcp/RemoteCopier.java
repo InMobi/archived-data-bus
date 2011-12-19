@@ -23,43 +23,36 @@ public class RemoteCopier extends AbstractCopier {
 	private FileSystem srcFs;
 	private FileSystem destFs;
 
-	public RemoteCopier(DatabusConfig config, Cluster srcCluster) {
-		super(config, srcCluster);
+	public RemoteCopier(DatabusConfig config, Cluster srcCluster, Cluster destinationCluster) {
+		super(config, srcCluster, destinationCluster);
 	}
 
 	protected void addStreamsToFetch() {
-		/*
-		Cluster destCluster = getConfig().getDestinationCluster();
-		for (DatabusConfig.ConsumeStream s : destCluster.consumeStreams.values()) {
-			if (getConfig().getStreams().get(s.name).getSourceClusters().contains(getSrcCluster())) {
-				streamsToFetch.add(getConfig().getStreams().get(s.name));
-			}
-		}
-		*/
+
 	}
 
 	@Override
-	public void run() {
+	public void fetch() throws Exception{
 		try {
 
-			srcFs = FileSystem.get(new URI(getSrcCluster().hdfsUrl),
-							getConfig().getHadoopConf());
+			srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()),
+							getSrcCluster().getHadoopConf());
 			destFs = FileSystem.get(
-							new URI(getConfig().getDestinationCluster().hdfsUrl),
-							getConfig().getHadoopConf());
+							new URI(getDestCluster().getHdfsUrl()),
+							getDestCluster().getHadoopConf());
 
 			Path inputFilePath = getInputFilePath();
 			if(inputFilePath == null) {
 				LOG.warn("No data to pull from [" + inputFilePath.toString() + "]" +
-								"Cluster [" + getSrcCluster().hdfsUrl + "]" +
-								" to Cluster [" + getConfig().getDestinationCluster().hdfsUrl + "]");
+								"Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
+								" to Cluster [" + getDestCluster().getHdfsUrl() + "]");
 				return;
 			}
 
-			Path tmpOut = new Path(getConfig().getTmpPath(), "distcp-" + getSrcCluster().getName()).makeQualified(destFs);
+			Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp-" + getSrcCluster().getName()).makeQualified(destFs);
 			LOG.warn("Starting a distcp pull from [" + inputFilePath.toString() + "] " +
-							"Cluster [" + getSrcCluster().hdfsUrl + "]" +
-							" to Cluster [" + getConfig().getDestinationCluster().hdfsUrl + "] " +
+							"Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
+							" to Cluster [" + getDestCluster().getHdfsUrl() + "] " +
 							" Path [" + tmpOut.toString() + "]");
 			destFs.mkdirs(tmpOut);
 
@@ -69,7 +62,7 @@ public class RemoteCopier extends AbstractCopier {
 			DistCp.main(args);
 
 			//if success
-			commit(inputFilePath, tmpOut, DatabusConfig.PUBLISH_DIR);
+			commit(inputFilePath, tmpOut);
 		} catch (Exception e) {
 			LOG.warn(e);
 		}
@@ -113,8 +106,8 @@ public class RemoteCopier extends AbstractCopier {
 		}
 	}
 
-	private void commit(Path inputFilePath, Path tmpOut,
-											String publishDir) throws IOException {
+	private void commit(Path inputFilePath, Path tmpOut
+	) throws IOException {
 		Map<Path, Path> commitPaths = new HashMap<Path, Path>();
 		//move tmpout to publishDir
 		long commitTime = System.currentTimeMillis();
@@ -122,7 +115,7 @@ public class RemoteCopier extends AbstractCopier {
 		for(int i=0; i < allFiles.length; i++) {
 			String fileName = allFiles[i].getPath().getName();
 			String category = getCategoryFromFileName(fileName);
-			Path destinationpath = new Path(config.getFinalDestDir(category, commitTime)).makeQualified(destFs);
+			Path destinationpath = new Path(getDestCluster().getFinalDestDir(category, commitTime)).makeQualified(destFs);
 			commitPaths.put(allFiles[i].getPath().makeQualified(destFs),
 							new Path(destinationpath + File.separator + allFiles[i].getPath().getName()));
 
@@ -135,7 +128,7 @@ public class RemoteCopier extends AbstractCopier {
 			Path destination = entry.getValue();
 			Path destParentPath = new Path(destination.getParent().makeQualified(destFs).toString());
 			if(!destFs.exists(destParentPath))
-					destFs.mkdirs(destParentPath);
+				destFs.mkdirs(destParentPath);
 			destFs.rename(source, destParentPath);
 			LOG.debug("Moving [" + source.toString() + "] to [" + destParentPath.toString() + "]");
 		}
@@ -159,8 +152,7 @@ public class RemoteCopier extends AbstractCopier {
 	}
 
 	private Path getInputPath() throws IOException {
-		Path input = new Path(srcFs.getUri().toString(), DatabusConfig.CONSUMER +
-						File.separator +  getConfig().getDestinationCluster().getName());
-		return input;
+		return getSrcCluster().getConsumePath(getDestCluster());
+
 	}
 }
