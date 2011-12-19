@@ -6,65 +6,25 @@
   </Config>
 
   <Streams>
-    <Stream streamname="beacon">
+    <Stream streamname="metric_billing">
       <Sources>
-
         <Source>
-          <name>er</name>
+          <name>uj1</name>
         </Source>
-
-        <Source>
-          <name>uj</name>
-        </Source>
-
-      </Sources>
-    </Stream>
-
-    <Stream streamname="rr">
-      <Sources>
-
-        <Source>
-          <name>ua1</name>
-        </Source>
-
-        <Source>
-          <name>ua2</name>
-        </Source>
-
       </Sources>
     </Stream>
   </Streams>
 
   <Clusters>
-    <Cluster name="ua2" hdfsUrl="hdfs://ua1">
-      <ConsumeStreams>
-
-        <ConsumeStream>
-          <name>beacon</name>
-          <retentionHours>24</retentionHours>
-        </ConsumeStream>
-
-        <ConsumeStream>
-          <name>rrlogs</name>
-          <retentionHours>24</retentionHours>
-        </ConsumeStream>
-
-      </ConsumeStreams>
+    <Cluster name="uj1" hdfsUrl="hdfs://localhost:54310/">
     </Cluster>
 
-    <Cluster name="ua2" hdfsUrl="hdfs://ua2">
+    <Cluster name="uj2" hdfsUrl="hdfs://localhost:8020/">
       <ConsumeStreams>
-
         <ConsumeStream>
-          <name>beacon1</name>
+          <name>metric_billing</name>
           <retentionHours>24</retentionHours>
         </ConsumeStream>
-
-        <ConsumeStream>
-          <name>beacon2</name>
-          <retentionHours>48</retentionHours>
-        </ConsumeStream>
-
       </ConsumeStreams>
     </Cluster>
   </Clusters>
