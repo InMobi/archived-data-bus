@@ -128,7 +128,7 @@ public class DatabusConfigParser {
           retentionHours);
       consumeStreams.put(streamName, consumeStream);
     }
-    return new Cluster(clusterName, rootDir, hdfsURL, jtURL, consumeStreams, 
+    return new Cluster(clusterName, cRootDir, hdfsURL, jtURL, consumeStreams, 
         getSourceStreams(clusterName));
   }
 
