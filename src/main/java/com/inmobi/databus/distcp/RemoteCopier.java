@@ -122,8 +122,10 @@ public class RemoteCopier extends AbstractCopier {
 		for(int i=0; i < allFiles.length; i++) {
 			String fileName = allFiles[i].getPath().getName();
 			String category = getCategoryFromFileName(fileName);
+			Path destinationpath = new Path(config.getFinalDestDir(category, commitTime)).makeQualified(destFs);
 			commitPaths.put(allFiles[i].getPath().makeQualified(destFs),
-							new Path(config.getFinalDestDir(category, commitTime)).makeQualified(destFs));
+							new Path(destinationpath + File.separator + allFiles[i].getPath().getName()));
+
 		}
 		Set<Map.Entry<Path, Path> > commitEntries = commitPaths.entrySet();
 		Iterator it = commitEntries.iterator();
@@ -131,8 +133,11 @@ public class RemoteCopier extends AbstractCopier {
 			Map.Entry<Path, Path> entry = (Map.Entry<Path, Path>) it.next();
 			Path source =  entry.getKey();
 			Path destination = entry.getValue();
-			destFs.rename(source, destination);
-			LOG.debug("Moving [" + source.toString() + "] to [" + destination.toString() + "]");
+			Path destParentPath = new Path(destination.getParent().makeQualified(destFs).toString());
+			if(!destFs.exists(destParentPath))
+					destFs.mkdirs(destParentPath);
+			destFs.rename(source, destParentPath);
+			LOG.debug("Moving [" + source.toString() + "] to [" + destParentPath.toString() + "]");
 		}
 
 		//rmr tmpOut
