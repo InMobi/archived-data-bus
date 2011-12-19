@@ -1,19 +1,22 @@
 package com.inmobi.databus;
 
-import com.inmobi.databus.DatabusConfig.Cluster;
-import com.inmobi.databus.DatabusConfig.ConsumeStream;
-import com.inmobi.databus.DatabusConfig.Stream;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import com.inmobi.databus.DatabusConfig.Cluster;
+import com.inmobi.databus.DatabusConfig.ConsumeStream;
+import com.inmobi.databus.DatabusConfig.Stream;
 
 public class DatabusConfigParser {
   
@@ -92,17 +95,24 @@ public class DatabusConfigParser {
     if (tmpClusterList != null && tmpClusterList.getLength() > 0) {
       for (int i = 0; i < tmpClusterList.getLength(); i++) {
         Element el = (Element) tmpClusterList.item(i);
-        Cluster Cluster = getCLuster(el);
+        Cluster Cluster = getCluster(el);
         clusterMap.put(Cluster.getName(), Cluster);
       }
     }
 
   }
 
-  private Cluster getCLuster(Element el) {
+  private Cluster getCluster(Element el) {
     String clusterName = el.getAttribute("name");
     String hdfsURL = el.getAttribute("hdfsUrl");
+    String jtURL = el.getAttribute("jtUrl");
     logger.debug("clusterName " + clusterName + " hdfsURL " + hdfsURL);
+    String cRootDir = rootDir;
+    NodeList list = el.getElementsByTagName("RootDir");
+    if (list != null && list.getLength() == 1) {
+      Element elem = (Element) list.item(0);
+      cRootDir = elem.getTextContent();
+    }
     Map<String, ConsumeStream> consumeStreams 
         = new HashMap<String, ConsumeStream>();
     NodeList consumeStreamList = el.getElementsByTagName("ConsumeStream");
@@ -118,7 +128,24 @@ public class DatabusConfigParser {
           retentionHours);
       consumeStreams.put(streamName, consumeStream);
     }
-    return new Cluster(clusterName, hdfsURL, consumeStreams);
+    return new Cluster(clusterName, rootDir, hdfsURL, jtURL, consumeStreams, 
+        getSourceStreams(clusterName));
+  }
+
+  private Set<String> getSourceStreams(String clusterName) {
+    Set<String> srcStreams = new HashSet<String>();
+    Set<Map.Entry<String, DatabusConfig.Stream>> entrySet  = streamMap.entrySet();
+    Iterator it = entrySet.iterator();
+    while (it.hasNext()) {
+      Map.Entry entry = (Map.Entry) it.next();
+      String streamName = (String) entry.getKey();
+      DatabusConfig.Stream streamDetails = (DatabusConfig.Stream) entry.getValue();
+      if(streamDetails.getSourceClusters().contains(clusterName)) {
+        srcStreams.add(streamName);
+      }
+       
+    }
+    return srcStreams;
   }
 
   private void readAllStreams(Element docEle) {
@@ -128,7 +155,7 @@ public class DatabusConfigParser {
         // for each stream
         Element el = (Element) tmpstreamList.item(i);
         DatabusConfig.Stream stream = getStream(el);
-        streamMap.put(stream.name, stream);
+        streamMap.put(stream.getName(), stream);
       }
     }
 

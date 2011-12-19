@@ -1,17 +1,14 @@
 package com.inmobi.databus.distcp;
 
+import java.net.URI;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileSystem;
+
 import com.inmobi.databus.AbstractCopier;
 import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.DatabusConfig.Cluster;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
 
 public class RemoteCopier extends AbstractCopier {
 
@@ -20,58 +17,53 @@ public class RemoteCopier extends AbstractCopier {
 	private FileSystem srcFs;
 	private FileSystem destFs;
 
-	public RemoteCopier(DatabusConfig config, Cluster srcCluster) {
-		super(config, srcCluster);
+	public RemoteCopier(DatabusConfig config, 
+	    Cluster srcCluster, Cluster destCluster) {
+		super(config, srcCluster, destCluster);
 	}
 
 	protected void addStreamsToFetch() {
-		Cluster destCluster = getConfig().getDestinationCluster();
-		for (DatabusConfig.ConsumeStream s : destCluster.consumeStreams.values()) {
-			if (getConfig().getStreams().get(s.name).getSourceClusters().contains(getSrcCluster())) {
-				streamsToFetch.add(getConfig().getStreams().get(s.name));
+		Cluster destCluster = getDestCluster();
+		for (DatabusConfig.ConsumeStream s : destCluster.getConsumeStreams().values()) {
+			if (getConfig().getStreams().get(s.getName()).getSourceClusters().contains(getSrcCluster())) {
+				streamsToFetch.add(getConfig().getStreams().get(s.getName()));
 			}
 		}
 	}
 
-	@Override
-	public void run() {
-		try {
+  @Override
+  public void fetch() throws Exception {
 
-			srcFs = FileSystem.get(new URI(getSrcCluster().hdfsUrl),
-							getConfig().getHadoopConf());
-			destFs = FileSystem.get(
-							new URI(getConfig().getDestinationCluster().hdfsUrl),
-							getConfig().getHadoopConf());
+    srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()), getSrcCluster()
+        .getHadoopConf());
+    destFs = FileSystem.get(new URI(getDestCluster().getHdfsUrl()), getDestCluster()
+        .getHadoopConf());
 
-			Path inputFilePath = getInputFilePath();
-			if(inputFilePath == null) {
-				LOG.warn("No data to pull from [" + inputFilePath.toString() + "]" +
-								"Cluster [" + getSrcCluster().hdfsUrl + "]" +
-								" to Cluster [" + getConfig().getDestinationCluster().hdfsUrl + "]");
-				return;
-			}
+    /*
+    Path inputFilePath = getInputFilePath();
+    if (inputFilePath == null) {
+      LOG.warn("No data to pull from [" + inputFilePath.toString() + "]"
+          + "Cluster [" + getSrcCluster().hdfsUrl + "]" + " to Cluster ["
+          + getDestCluster().hdfsUrl + "]");
+      return;
+    }
 
-			Path tmpOut = new Path(getConfig().getTmpPath(), "distcp");
-			LOG.warn("Starting a distcp pull from [" + inputFilePath.toString() + "] " +
-							"Cluster [" + getSrcCluster().hdfsUrl + "]" +
-							" to Cluster [" + getConfig().getDestinationCluster().hdfsUrl + "] " +
-			        " Path [" + tmpOut.toString() + "]");
-			//destFs.mkdirs(tmpOut);
-		 /*
-			String[] args = {input.makeQualified(destFs).toString(),
-							tmpOut.toString()};
-			DistCp.main(args);
+    Path tmpOut = new Path(getConfig().getTmpPath(), "distcp");
+    LOG.warn("Starting a distcp pull from [" + inputFilePath.toString() + "] "
+        + "Cluster [" + getSrcCluster().hdfsUrl + "]" + " to Cluster ["
+        + getDestCluster().hdfsUrl + "] " + " Path [" + tmpOut.toString() + "]");
+        */
+    // destFs.mkdirs(tmpOut);
+    /*
+     * String[] args = {input.makeQualified(destFs).toString(),
+     * tmpOut.toString()}; DistCp.main(args);
+     * 
+     * //TODO: if success commit();
+     */
 
-			//TODO: if success
-			commit();*/
-		} catch (Exception e) {
-			LOG.warn(e);
-		}
+  }
 
-
-	}
-
-	private Path getInputFilePath() throws IOException {
+	/*private Path getInputFilePath() throws IOException {
 		Path input = getInputPath();
 		FileStatus[] fileList = srcFs.listStatus(input);
 		if(fileList.length > 1) {
@@ -91,10 +83,10 @@ public class RemoteCopier extends AbstractCopier {
 	private void commit() throws IOException {
 
 	}
-
+/*
 	private Path getInputPath() throws IOException {
 		Path input = new Path(srcFs.getUri().toString(), DatabusConfig.CONSUMER +
-						File.separator +  getConfig().getDestinationCluster().getName());
+						File.separator +  getDestCluster().getName());
 		return input;
-	}
+	}*/
 }
