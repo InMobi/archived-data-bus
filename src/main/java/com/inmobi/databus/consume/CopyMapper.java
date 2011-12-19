@@ -44,7 +44,7 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text>{
 		//move to final destination
 		fs.mkdirs(new Path(dest).makeQualified(fs));
 		Path destPath = new Path(dest + File.separator +
-						collector + "_" + src.getName() + ".gz");
+						collector + "-" + src.getName() + ".gz");
 		LOG.info("Renaming file " + target + " to " + destPath);
 		fs.rename(target, destPath);
 
@@ -54,7 +54,7 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text>{
 													 Path src, String category, String collector) {
 		Path tempPath =
 						new Path(DatabusConfig.getTaskAttemptTmpDir(context.getTaskAttemptID()),
-										category + "_" + collector + "_" +src.getName() + ".gz");
+										category + "-" + collector + "-" +src.getName() + ".gz");
 		return tempPath;
 	}
 
