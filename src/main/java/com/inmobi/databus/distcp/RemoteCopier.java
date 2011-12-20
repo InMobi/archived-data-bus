@@ -10,11 +10,11 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.tools.DistCp;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.util.*;
+import java.io.File;
 
 public class RemoteCopier extends AbstractCopier {
 
@@ -49,7 +49,8 @@ public class RemoteCopier extends AbstractCopier {
 				return;
 			}
 
-			Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp-" + getSrcCluster().getName()).makeQualified(destFs);
+			Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp-" +
+							getSrcCluster().getName()).makeQualified(destFs);
 			LOG.warn("Starting a distcp pull from [" + inputFilePath.toString() + "] " +
 							"Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
 							" to Cluster [" + getDestCluster().getHdfsUrl() + "] " +
@@ -58,16 +59,21 @@ public class RemoteCopier extends AbstractCopier {
 
 			String[] args = {"-f", inputFilePath.toString(),
 							tmpOut.toString()};
-
-			DistCp.main(args);
-
+			try {
+				DistCp.main(args);
+			}
+			catch(Exception e) {
+				LOG.warn(e.getMessage());
+				LOG.warn(e);
+				LOG.warn("Problem in distcp skipping commit");
+				destFs.delete(tmpOut, true);
+				return;
+			}
 			//if success
 			commit(inputFilePath, tmpOut);
 		} catch (Exception e) {
 			LOG.warn(e);
 		}
-
-
 	}
 
 	private Path getInputFilePath() throws IOException {
@@ -107,30 +113,38 @@ public class RemoteCopier extends AbstractCopier {
 	}
 
 	private void commit(Path inputFilePath, Path tmpOut
-	) throws IOException {
-		Map<Path, Path> commitPaths = new HashMap<Path, Path>();
-		//move tmpout to publishDir
-		long commitTime = System.currentTimeMillis();
+	) throws Exception {
+		Map<String, Path> categoryToCommit = new HashMap<String, Path>();
+		//move tmpout intermediate dir per category to achive atomic move to publish dir
+
 		FileStatus[] allFiles = destFs.listStatus(tmpOut);
 		for(int i=0; i < allFiles.length; i++) {
 			String fileName = allFiles[i].getPath().getName();
 			String category = getCategoryFromFileName(fileName);
-			Path destinationpath = new Path(getDestCluster().getFinalDestDir(category, commitTime)).makeQualified(destFs);
-			commitPaths.put(allFiles[i].getPath().makeQualified(destFs),
-							new Path(destinationpath + File.separator + allFiles[i].getPath().getName()));
+
+			Path intermediatePath = new Path(tmpOut, category + File.separator +  CalendarHelper.getCurrentMinute());
+			destFs.mkdirs(intermediatePath);
+			Path source = allFiles[i].getPath().makeQualified(destFs);
+			destFs.rename(source, intermediatePath);
+			LOG.debug("Moving [" + source + "] to intermediatePath [" + intermediatePath + "]");
+			if(categoryToCommit.get(category) == null)  {
+				categoryToCommit.put(category, intermediatePath);
+			}
 
 		}
-		Set<Map.Entry<Path, Path> > commitEntries = commitPaths.entrySet();
+		Set<Map.Entry<String, Path> > commitEntries = categoryToCommit.entrySet();
 		Iterator it = commitEntries.iterator();
 		while(it.hasNext()) {
-			Map.Entry<Path, Path> entry = (Map.Entry<Path, Path>) it.next();
-			Path source =  entry.getKey();
-			Path destination = entry.getValue();
-			Path destParentPath = new Path(destination.getParent().makeQualified(destFs).toString());
-			if(!destFs.exists(destParentPath))
+			Map.Entry<String, Path> entry = (Map.Entry<String, Path>) it.next();
+			String category  =  entry.getKey();
+			Path categorySrcPath = entry.getValue();
+			long commitTime = System.currentTimeMillis();
+			Path destParentPath = new Path(getDestCluster().getFinalDestDirTillHour(category, commitTime));
+			if(!destFs.exists(destParentPath))  {
 				destFs.mkdirs(destParentPath);
-			destFs.rename(source, destParentPath);
-			LOG.debug("Moving [" + source.toString() + "] to [" + destParentPath.toString() + "]");
+			}
+			destFs.rename(categorySrcPath, destParentPath);
+			LOG.debug("Moving from intermediatePath [" + categorySrcPath + "] to [" + destParentPath + "]");
 		}
 
 		//rmr tmpOut
@@ -139,9 +153,9 @@ public class RemoteCopier extends AbstractCopier {
 		//rmr inputFilePath.getParent() this is from srcFs
 		srcFs.delete(inputFilePath.getParent(), true);
 		LOG.debug("Deleteing [" + inputFilePath.getParent() + "]");
-
-
 	}
+
+
 
 	private String getCategoryFromFileName(String fileName) {
 		StringTokenizer tokenizer = new StringTokenizer(fileName, "-");
