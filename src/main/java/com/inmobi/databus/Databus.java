@@ -1,17 +1,12 @@
 package com.inmobi.databus;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.log4j.Logger;
-
 import com.inmobi.databus.DatabusConfig.Cluster;
 import com.inmobi.databus.DatabusConfig.ConsumeStream;
 import com.inmobi.databus.consume.DataConsumer;
 import com.inmobi.databus.distcp.RemoteCopier;
+import org.apache.log4j.Logger;
+
+import java.util.*;
 
 public class Databus {
   private static Logger LOG = Logger.getLogger(Databus.class);
@@ -63,6 +58,7 @@ public class Databus {
   }
 
   public static void main(String[] args) throws Exception {
+		try {
     if (args.length != 1 && args.length != 2 ) {
       LOG.warn("Usage: com.inmobi.databus.Databus <clustersToProcess> <configFile>");
       return;
@@ -99,4 +95,11 @@ public class Databus {
     databus.init();
     databus.start();
   }
+		catch (Exception e) {
+			LOG.warn(e.getMessage());
+			LOG.warn(e);
+			throw new Exception(e);
+		}
+	}
+
 }

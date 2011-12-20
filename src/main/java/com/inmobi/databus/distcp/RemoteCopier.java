@@ -50,7 +50,7 @@ public class RemoteCopier extends AbstractCopier {
 			}
 
 			Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp-" +
-							getSrcCluster().getName()).makeQualified(destFs);
+							getSrcCluster().getName() + CalendarHelper.getCurrentDayTimeAsString()).makeQualified(destFs);
 			LOG.warn("Starting a distcp pull from [" + inputFilePath.toString() + "] " +
 							"Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
 							" to Cluster [" + getDestCluster().getHdfsUrl() + "] " +
@@ -117,12 +117,13 @@ public class RemoteCopier extends AbstractCopier {
 		Map<String, Path> categoryToCommit = new HashMap<String, Path>();
 		//move tmpout intermediate dir per category to achive atomic move to publish dir
 
+		String minute = CalendarHelper.getCurrentMinute();
 		FileStatus[] allFiles = destFs.listStatus(tmpOut);
 		for(int i=0; i < allFiles.length; i++) {
 			String fileName = allFiles[i].getPath().getName();
 			String category = getCategoryFromFileName(fileName);
 
-			Path intermediatePath = new Path(tmpOut, category + File.separator +  CalendarHelper.getCurrentMinute());
+			Path intermediatePath = new Path(tmpOut, category + File.separator + minute );
 			destFs.mkdirs(intermediatePath);
 			Path source = allFiles[i].getPath().makeQualified(destFs);
 			destFs.rename(source, intermediatePath);
@@ -146,13 +147,14 @@ public class RemoteCopier extends AbstractCopier {
 			destFs.rename(categorySrcPath, destParentPath);
 			LOG.debug("Moving from intermediatePath [" + categorySrcPath + "] to [" + destParentPath + "]");
 		}
-
-		//rmr tmpOut
+		//rmr inputFilePath.getParent() this is from srcFs
+		//commit distcp
+		srcFs.delete(inputFilePath.getParent(), true);
+		LOG.debug("Deleting [" + inputFilePath.getParent() + "]");
+		//rmr tmpOut   cleanup
 		destFs.delete(tmpOut, true);
 		LOG.debug("Deleting [" + tmpOut + "]");
-		//rmr inputFilePath.getParent() this is from srcFs
-		srcFs.delete(inputFilePath.getParent(), true);
-		LOG.debug("Deleteing [" + inputFilePath.getParent() + "]");
+
 	}
 
 
