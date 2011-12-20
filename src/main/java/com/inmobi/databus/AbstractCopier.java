@@ -17,15 +17,18 @@ public abstract class AbstractCopier implements Runnable {
   private final String name;
   protected DatabusConfig config;
   protected final Set<Stream> streamsToFetch = new HashSet<Stream>();
-  private Thread thread;
-  private volatile boolean stopped = false;
+  protected Thread thread;
+  protected volatile boolean stopped = false;
+
+
 
   public AbstractCopier(DatabusConfig config, Cluster srcCluster, 
       Cluster destCluster) {
     this.config = config;
     this.srcCluster = srcCluster;
     this.destCluster = destCluster;
-    this.name = getClass().getName() + "_" + 
+
+		this.name = getClass().getName() + "_" +
            srcCluster.getName() + "_" + destCluster.getName();
     addStreamsToFetch();
   }

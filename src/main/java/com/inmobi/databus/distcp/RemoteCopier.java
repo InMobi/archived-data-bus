@@ -10,11 +10,11 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.tools.DistCp;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.util.*;
-import java.io.File;
 
 public class RemoteCopier extends AbstractCopier {
 
@@ -22,6 +22,7 @@ public class RemoteCopier extends AbstractCopier {
 
 	private FileSystem srcFs;
 	private FileSystem destFs;
+
 
 	public RemoteCopier(DatabusConfig config, Cluster srcCluster, Cluster destinationCluster) {
 		super(config, srcCluster, destinationCluster);
@@ -31,9 +32,12 @@ public class RemoteCopier extends AbstractCopier {
 
 	}
 
+
+
 	@Override
 	public void fetch() throws Exception{
 		try {
+			boolean skipCommit = false;
 
 			srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()),
 							getSrcCluster().getHadoopConf());
@@ -42,6 +46,7 @@ public class RemoteCopier extends AbstractCopier {
 							getDestCluster().getHadoopConf());
 
 			Path inputFilePath = getInputFilePath();
+
 			if(inputFilePath == null) {
 				LOG.warn("No data to pull from [" + inputFilePath.toString() + "]" +
 								"Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
@@ -67,10 +72,14 @@ public class RemoteCopier extends AbstractCopier {
 				LOG.warn(e);
 				LOG.warn("Problem in distcp skipping commit");
 				destFs.delete(tmpOut, true);
-				return;
+				skipCommit = true;
 			}
 			//if success
-			commit(inputFilePath, tmpOut);
+			if (!skipCommit) {
+				synchronized (RemoteCopier.class) {
+					commit(inputFilePath, tmpOut);
+				}
+			}
 		} catch (Exception e) {
 			LOG.warn(e);
 		}
@@ -79,44 +88,48 @@ public class RemoteCopier extends AbstractCopier {
 	private Path getInputFilePath() throws IOException {
 		Path input = getInputPath();
 		FileStatus[] fileList = srcFs.listStatus(input);
-		if(fileList.length > 1) {
-			Set<String> sourceFiles = new HashSet<String>();
-			//inputPath has have multiple files due to backlog
-			//read all and create a tmp file
-			for(int i=0; i < fileList.length; i++) {
-				FSDataInputStream fsDataInputStream = srcFs.open(fileList[i].getPath().makeQualified(srcFs));
-				while (fsDataInputStream.available() > 0 ){
-					String fileName = fsDataInputStream.readLine();
-					if (fileName != null) {
-						fileName = fileName.trim();
-						sourceFiles.add(fileName);
+		if (fileList != null) {
+			if(fileList.length > 1) {
+				Set<String> sourceFiles = new HashSet<String>();
+				//inputPath has have multiple files due to backlog
+				//read all and create a tmp file
+				for(int i=0; i < fileList.length; i++) {
+					FSDataInputStream fsDataInputStream = srcFs.open(fileList[i].getPath().makeQualified(srcFs));
+					while (fsDataInputStream.available() > 0 ){
+						String fileName = fsDataInputStream.readLine();
+						if (fileName != null) {
+							fileName = fileName.trim();
+							sourceFiles.add(fileName);
+						}
 					}
+					fsDataInputStream.close();
 				}
-				fsDataInputStream.close();
+				Path tmpPath = new Path(input, CalendarHelper.getCurrentDayTimeAsString());
+				FSDataOutputStream out = srcFs.create(tmpPath);
+				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+				for(String sourceFile: sourceFiles) {
+					LOG.debug("Adding sourceFile [" + sourceFile + "] to distcp FinalList");
+					writer.write(sourceFile);
+					writer.write("\n");
+				}
+				writer.close();
+				LOG.debug("Source File For distCP [" + tmpPath + "]");
+				return tmpPath.makeQualified(srcFs);
 			}
-			Path tmpPath = new Path(input, CalendarHelper.getCurrentDayTimeAsString());
-			FSDataOutputStream out = srcFs.create(tmpPath);
-			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-			for(String sourceFile: sourceFiles) {
-				writer.write(sourceFile);
-				writer.write("\n");
+			else if(fileList.length == 1) {
+				return fileList[0].getPath().makeQualified(srcFs);
 			}
-			writer.close();
-			return tmpPath.makeQualified(srcFs);
+			else {
+				return null;
+			}
 		}
-		else if(fileList.length == 1) {
-			return fileList[0].getPath().makeQualified(srcFs);
-		}
-		else {
-			return null;
-		}
+		return  null;
 	}
 
 	private void commit(Path inputFilePath, Path tmpOut
 	) throws Exception {
 		Map<String, Path> categoryToCommit = new HashMap<String, Path>();
 		//move tmpout intermediate dir per category to achive atomic move to publish dir
-
 		String minute = CalendarHelper.getCurrentMinute();
 		FileStatus[] allFiles = destFs.listStatus(tmpOut);
 		for(int i=0; i < allFiles.length; i++) {
@@ -154,6 +167,7 @@ public class RemoteCopier extends AbstractCopier {
 		//rmr tmpOut   cleanup
 		destFs.delete(tmpOut, true);
 		LOG.debug("Deleting [" + tmpOut + "]");
+		Thread.sleep(60000);
 
 	}
 
