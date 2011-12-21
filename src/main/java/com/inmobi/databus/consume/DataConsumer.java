@@ -24,8 +24,7 @@ public class DataConsumer extends AbstractCopier {
 	private Path tmpJobOutputPath;
 
 	public DataConsumer(DatabusConfig config, Cluster cluster) {
-		//TODO: Locking - no locking for dataconsumer it is single thread
-		super(config, cluster, cluster, null);
+		super(config, cluster, cluster);
 		this.tmpPath = new Path(cluster.getTmpPath(), getName());
 		this.tmpJobInputPath = new Path(tmpPath, "jobIn");
 		this.tmpJobOutputPath = new Path(tmpPath, "jobOut");
@@ -111,7 +110,11 @@ public class DataConsumer extends AbstractCopier {
 		Path trash = getSrcCluster().getTrashPath();
 		for (FileStatus src : fileListing.keySet()) {
 			String category = getCategoryFromSrcPath(src.getPath());
-			Path target = new Path(trash, src.getPath().getName());
+			Path target = null;
+			synchronized (DataConsumer.class) {
+				//trash path can conflict if we run multiple consumer
+				target = new Path(trash,  src.getPath().getName() + "-" + System.currentTimeMillis());
+			}
 			LOG.debug("Trashing [" + src.getPath() + "] to [" + target + "]");
 			trashPaths.put(src.getPath(), target);
 		}

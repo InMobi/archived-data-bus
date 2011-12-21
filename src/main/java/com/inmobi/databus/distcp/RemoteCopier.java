@@ -78,6 +78,9 @@ public class RemoteCopier extends AbstractCopier {
 			if (!skipCommit) {
 				synchronized (RemoteCopier.class) {
 					commit(inputFilePath, tmpOut);
+					//every commit across all remote copiers
+					// should happen only after 1 min
+					Thread.sleep(60000);
 				}
 			}
 		} catch (Exception e) {
@@ -113,7 +116,7 @@ public class RemoteCopier extends AbstractCopier {
 					writer.write("\n");
 				}
 				writer.close();
-				LOG.debug("Source File For distCP [" + tmpPath + "]");
+				LOG.warn("Source File For distCP [" + tmpPath + "]");
 				return tmpPath.makeQualified(srcFs);
 			}
 			else if(fileList.length == 1) {
@@ -162,12 +165,13 @@ public class RemoteCopier extends AbstractCopier {
 		}
 		//rmr inputFilePath.getParent() this is from srcFs
 		//commit distcp
-		srcFs.delete(inputFilePath.getParent(), true);
+		//TODO: delete the source for actual testing
+		//srcFs.delete(inputFilePath.getParent(), true);
 		LOG.debug("Deleting [" + inputFilePath.getParent() + "]");
 		//rmr tmpOut   cleanup
 		destFs.delete(tmpOut, true);
 		LOG.debug("Deleting [" + tmpOut + "]");
-		Thread.sleep(60000);
+
 
 	}
 
