@@ -38,6 +38,7 @@ public class RemoteCopier extends AbstractCopier {
 	public void fetch() throws Exception{
 		try {
 			boolean skipCommit = false;
+			long startTime = System.currentTimeMillis();
 
 			srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()),
 							getSrcCluster().getHadoopConf());
@@ -77,7 +78,6 @@ public class RemoteCopier extends AbstractCopier {
 			//if success
 			if (!skipCommit) {
 				synchronized (getDestCluster()) {
-					long startTime = System.currentTimeMillis();
 					commit(inputFilePath, tmpOut);
 					long finishTime = System.currentTimeMillis();
 					long elapsedTime = finishTime - startTime;
@@ -172,12 +172,11 @@ public class RemoteCopier extends AbstractCopier {
 		//rmr inputFilePath.getParent() this is from srcFs
 		//commit distcp
 		//TODO: delete the source for actual testing
-		//srcFs.delete(inputFilePath.getParent(), true);
+		srcFs.delete(inputFilePath.getParent(), true);
 		LOG.debug("Deleting [" + inputFilePath.getParent() + "]");
 		//rmr tmpOut   cleanup
 		destFs.delete(tmpOut, true);
 		LOG.debug("Deleting [" + tmpOut + "]");
-
 
 	}
 
