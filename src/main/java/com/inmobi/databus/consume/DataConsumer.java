@@ -111,10 +111,7 @@ public class DataConsumer extends AbstractCopier {
 		for (FileStatus src : fileListing.keySet()) {
 			String category = getCategoryFromSrcPath(src.getPath());
 			Path target = null;
-			synchronized (DataConsumer.class) {
-				//trash path can conflict if we run multiple consumer
-				target = new Path(trash,  src.getPath().getName() + "-" + System.currentTimeMillis());
-			}
+			target = new Path(trash,  src.getPath().getParent().getName() + "-" + src.getPath().getName());
 			LOG.debug("Trashing [" + src.getPath() + "] to [" + target + "]");
 			trashPaths.put(src.getPath(), target);
 		}
