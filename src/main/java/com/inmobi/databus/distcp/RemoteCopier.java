@@ -76,11 +76,17 @@ public class RemoteCopier extends AbstractCopier {
 			}
 			//if success
 			if (!skipCommit) {
-				synchronized (RemoteCopier.class) {
+				synchronized (getDestCluster()) {
+					long startTime = System.currentTimeMillis();
 					commit(inputFilePath, tmpOut);
-					//every commit across all remote copiers
-					// should happen only after 1 min
-					Thread.sleep(60000);
+					long finishTime = System.currentTimeMillis();
+					long elapsedTime = finishTime - startTime;
+					if (elapsedTime < 60000) {
+						//every commit across all remote copiers for same destination
+						// should happen only after 1 min. This thread holds the lock
+						// for 60000 - elapsedTime to move over the next 1 min boundary
+						Thread.sleep(60000 - elapsedTime);
+					}
 				}
 			}
 		} catch (Exception e) {
