@@ -111,7 +111,7 @@ public class DataConsumer extends AbstractCopier {
 		for (FileStatus src : fileListing.keySet()) {
 			String category = getCategoryFromSrcPath(src.getPath());
 			Path target = null;
-			target = new Path(trash,  src.getPath().getParent().getName() + "-" + src.getPath().getName());
+			target = new Path(trash,  src.getPath().getParent().getName() + "-" +	 src.getPath().getName());
 			LOG.debug("Trashing [" + src.getPath() + "] to [" + target + "]");
 			trashPaths.put(src.getPath(), target);
 		}

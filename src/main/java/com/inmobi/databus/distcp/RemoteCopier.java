@@ -38,18 +38,18 @@ public class RemoteCopier extends AbstractCopier {
 	public void fetch() throws Exception{
 		try {
 			boolean skipCommit = false;
-			long startTime = System.currentTimeMillis();
+
 
 			srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()),
 							getSrcCluster().getHadoopConf());
 			destFs = FileSystem.get(
 							new URI(getDestCluster().getHdfsUrl()),
 							getDestCluster().getHadoopConf());
-
-			Path inputFilePath = getInputFilePath();
+			Set<Path> consumePaths = new HashSet<Path>();
+			Path inputFilePath = getInputFilePath(consumePaths);
 
 			if(inputFilePath == null) {
-				LOG.warn("No data to pull from [" + inputFilePath.toString() + "]" +
+				LOG.warn("No data to pull from " +
 								"Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
 								" to Cluster [" + getDestCluster().getHdfsUrl() + "]");
 				return;
@@ -78,7 +78,8 @@ public class RemoteCopier extends AbstractCopier {
 			//if success
 			if (!skipCommit) {
 				synchronized (getDestCluster()) {
-					commit(inputFilePath, tmpOut);
+					long startTime = System.currentTimeMillis();
+					commit(tmpOut, consumePaths);
 					long finishTime = System.currentTimeMillis();
 					long elapsedTime = finishTime - startTime;
 					if (elapsedTime < 60000) {
@@ -91,11 +92,15 @@ public class RemoteCopier extends AbstractCopier {
 			}
 		} catch (Exception e) {
 			LOG.warn(e);
+			LOG.warn(e.getMessage());
+			e.printStackTrace();
 		}
 	}
 
-	private Path getInputFilePath() throws IOException {
+	private Path getInputFilePath(Set<Path> consumePaths) throws IOException {
 		Path input = getInputPath();
+		if (!srcFs.exists(input))
+			return null;
 		FileStatus[] fileList = srcFs.listStatus(input);
 		if (fileList != null) {
 			if(fileList.length > 1) {
@@ -103,7 +108,9 @@ public class RemoteCopier extends AbstractCopier {
 				//inputPath has have multiple files due to backlog
 				//read all and create a tmp file
 				for(int i=0; i < fileList.length; i++) {
-					FSDataInputStream fsDataInputStream = srcFs.open(fileList[i].getPath().makeQualified(srcFs));
+					Path consumeFilePath = fileList[i].getPath().makeQualified(srcFs);
+					consumePaths.add(consumeFilePath);
+					FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
 					while (fsDataInputStream.available() > 0 ){
 						String fileName = fsDataInputStream.readLine();
 						if (fileName != null) {
@@ -123,10 +130,13 @@ public class RemoteCopier extends AbstractCopier {
 				}
 				writer.close();
 				LOG.warn("Source File For distCP [" + tmpPath + "]");
+				consumePaths.add(tmpPath.makeQualified(srcFs));
 				return tmpPath.makeQualified(srcFs);
 			}
 			else if(fileList.length == 1) {
-				return fileList[0].getPath().makeQualified(srcFs);
+				Path consumePath = fileList[0].getPath().makeQualified(srcFs);
+				consumePaths.add(consumePath);
+				return consumePath;
 			}
 			else {
 				return null;
@@ -135,8 +145,8 @@ public class RemoteCopier extends AbstractCopier {
 		return  null;
 	}
 
-	private void commit(Path inputFilePath, Path tmpOut
-	) throws Exception {
+	private void commit(Path tmpOut,
+											Set<Path> consumePaths) throws Exception {
 		Map<String, Path> categoryToCommit = new HashMap<String, Path>();
 		//move tmpout intermediate dir per category to achive atomic move to publish dir
 		String minute = CalendarHelper.getCurrentMinute();
@@ -172,8 +182,10 @@ public class RemoteCopier extends AbstractCopier {
 		//rmr inputFilePath.getParent() this is from srcFs
 		//commit distcp
 		//TODO: delete the source for actual testing
-		srcFs.delete(inputFilePath.getParent(), true);
-		LOG.debug("Deleting [" + inputFilePath.getParent() + "]");
+		for(Path consumePath : consumePaths) {
+			srcFs.delete(consumePath);
+			LOG.debug("Deleting [" + consumePath + "]");
+		}
 		//rmr tmpOut   cleanup
 		destFs.delete(tmpOut, true);
 		LOG.debug("Deleting [" + tmpOut + "]");
