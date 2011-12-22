@@ -1,11 +1,15 @@
 package com.inmobi.databus;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 
 public class DatabusConfig {
 
@@ -44,6 +48,7 @@ public class DatabusConfig {
 		private final Map<String, ConsumeStream> consumeStreams;
 		private final Set<String> sourceStreams;
 		private final Configuration hadoopConf;
+		private long lastCommitTime;
 
 		Cluster(String name, String rootDir,
 						String hdfsUrl, String jtUrl, Map<String,
@@ -58,6 +63,14 @@ public class DatabusConfig {
 			this.sourceStreams = sourceStreams;
 			this.hadoopConf.set("fs.default.name", hdfsUrl);
 
+		}
+
+		public synchronized long getCommitTime() {
+		  long current = System.currentTimeMillis();
+		  if (lastCommitTime - current >= 60000) {
+		    lastCommitTime = current;
+		  }
+		  return lastCommitTime; 
 		}
 
 		public String getHdfsUrl() {
