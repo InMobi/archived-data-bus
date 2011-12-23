@@ -49,10 +49,12 @@ public class DataConsumer extends AbstractCopier {
 		Job job = createJob(tmpJobInputPath);
 		job.waitForCompletion(true);
 		if (job.isSuccessful()) {
-			long commitTime = System.currentTimeMillis();
-			Map<Path, Path> commitPaths = prepareForCommit(commitTime, fileListing);
-			commit(commitPaths);
-			LOG.info("Committed successfully for " + commitTime);
+		  synchronized (getDestCluster()) {
+		    long commitTime = getDestCluster().getCommitTime();
+		    Map<Path, Path> commitPaths = prepareForCommit(commitTime, fileListing);
+	      commit(commitPaths);
+	      LOG.info("Committed successfully for " + commitTime);
+      }
 		}
 	}
 
