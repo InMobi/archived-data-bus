@@ -7,8 +7,6 @@ import com.inmobi.databus.distcp.RemoteCopier;
 import org.apache.log4j.Logger;
 
 import java.util.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class Databus {
   private static Logger LOG = Logger.getLogger(Databus.class);
@@ -32,7 +30,7 @@ public class Databus {
       List<Cluster> remoteClustersToFetch = new ArrayList<Cluster>();
       for (ConsumeStream cStream : cluster.getConsumeStreams().values()) {
         for (String cName : config.getStreams().get(cStream.getName())
-            .getSourceClusters()) {
+                .getSourceClusters()) {
           if (!cName.equals(cluster.getName())) {
             remoteClustersToFetch.add(config.getClusters().get(cName));
           }
@@ -60,48 +58,48 @@ public class Databus {
   }
 
   public static void main(String[] args) throws Exception {
-		try {
-    if (args.length != 1 && args.length != 2 ) {
-      LOG.warn("Usage: com.inmobi.databus.Databus <clustersToProcess> <configFile>");
-      return;
-    }
-    String clustersStr = args[0].trim();
-    String[] clusters = clustersStr.split(",");
-    
-    String databusconfigFile = null;
-    if (args.length == 2) {
-      databusconfigFile = args[1].trim();
-    }
-    DatabusConfigParser configParser = 
-        new DatabusConfigParser(databusconfigFile);
-    Map<String, Cluster> clusterMap = configParser.getClusterMap();
-    DatabusConfig config = new DatabusConfig(configParser.getRootDir(),
-        configParser.getStreamMap(), clusterMap);
-    
-    Set<String> clustersToProcess = new HashSet<String>();
-    if (clusters.length == 1 && "ALL".equalsIgnoreCase(clusters[0])) {
-      for (Cluster c : config.getClusters().values()) {
-        clustersToProcess.add(c.getName());
+    try {
+      if (args.length != 1 && args.length != 2 ) {
+        LOG.warn("Usage: com.inmobi.databus.Databus <clustersToProcess> <configFile>");
+        return;
       }
-    } else {
-      for (String c : clusters) {
-        if (config.getClusters().get(c) == null) {
-          LOG.warn("Cluster name is not found in the config - " + c);
-          return;
+      String clustersStr = args[0].trim();
+      String[] clusters = clustersStr.split(",");
+
+      String databusconfigFile = null;
+      if (args.length == 2) {
+        databusconfigFile = args[1].trim();
+      }
+      DatabusConfigParser configParser =
+              new DatabusConfigParser(databusconfigFile);
+      Map<String, Cluster> clusterMap = configParser.getClusterMap();
+      DatabusConfig config = new DatabusConfig(configParser.getRootDir(),
+              configParser.getStreamMap(), clusterMap);
+
+      Set<String> clustersToProcess = new HashSet<String>();
+      if (clusters.length == 1 && "ALL".equalsIgnoreCase(clusters[0])) {
+        for (Cluster c : config.getClusters().values()) {
+          clustersToProcess.add(c.getName());
         }
-        clustersToProcess.add(c);
+      } else {
+        for (String c : clusters) {
+          if (config.getClusters().get(c) == null) {
+            LOG.warn("Cluster name is not found in the config - " + c);
+            return;
+          }
+          clustersToProcess.add(c);
+        }
       }
+      Databus databus = new Databus(config, clustersToProcess);
+
+      databus.init();
+      databus.start();
     }
-    Databus databus = new Databus(config, clustersToProcess);
-    
-    databus.init();
-    databus.start();
+    catch (Exception e) {
+      LOG.warn(e.getMessage());
+      LOG.warn(e);
+      throw new Exception(e);
+    }
   }
-		catch (Exception e) {
-			LOG.warn(e.getMessage());
-			LOG.warn(e);
-			throw new Exception(e);
-		}
-	}
 
 }

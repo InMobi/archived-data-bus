@@ -10,200 +10,204 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.tools.DistCp;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.util.*;
+import java.io.File;
 
 public class RemoteCopier extends AbstractCopier {
 
-	private static final Log LOG = LogFactory.getLog(RemoteCopier.class);
+  private static final Log LOG = LogFactory.getLog(RemoteCopier.class);
 
-	private FileSystem srcFs;
-	private FileSystem destFs;
-
-
-	public RemoteCopier(DatabusConfig config, Cluster srcCluster, Cluster destinationCluster) {
-		super(config, srcCluster, destinationCluster);
-	}
-
-	protected void addStreamsToFetch() {
-
-	}
+  private FileSystem srcFs;
+  private FileSystem destFs;
 
 
+  public RemoteCopier(DatabusConfig config, Cluster srcCluster, Cluster destinationCluster) {
+    super(config, srcCluster, destinationCluster);
+  }
 
-	@Override
-	public void fetch() throws Exception{
-		try {
-			boolean skipCommit = false;
+  protected void addStreamsToFetch() {
 
-
-			srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()),
-							getSrcCluster().getHadoopConf());
-			destFs = FileSystem.get(
-							new URI(getDestCluster().getHdfsUrl()),
-							getDestCluster().getHadoopConf());
-			Set<Path> consumePaths = new HashSet<Path>();
-			Path inputFilePath = getInputFilePath(consumePaths);
-
-			if(inputFilePath == null) {
-				LOG.warn("No data to pull from " +
-								"Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
-								" to Cluster [" + getDestCluster().getHdfsUrl() + "]");
-				return;
-			}
-
-			Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp-" +
-							getSrcCluster().getName() + CalendarHelper.getCurrentDayTimeAsString()).makeQualified(destFs);
-			LOG.warn("Starting a distcp pull from [" + inputFilePath.toString() + "] " +
-							"Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
-							" to Cluster [" + getDestCluster().getHdfsUrl() + "] " +
-							" Path [" + tmpOut.toString() + "]");
-			destFs.mkdirs(tmpOut);
-
-			String[] args = {"-f", inputFilePath.toString(),
-							tmpOut.toString()};
-			try {
-				DistCp.main(args);
-			}
-			catch(Exception e) {
-				LOG.warn(e.getMessage());
-				LOG.warn(e);
-				LOG.warn("Problem in distcp skipping commit");
-				destFs.delete(tmpOut, true);
-				skipCommit = true;
-			}
-			//if success
-			if (!skipCommit) {
-				synchronized (getDestCluster()) {
-					long startTime = System.currentTimeMillis();
-					commit(tmpOut, consumePaths);
-					long finishTime = System.currentTimeMillis();
-					long elapsedTime = finishTime - startTime;
-					if (elapsedTime < 60000) {
-						//every commit across all remote copiers for same destination
-						// should happen only after 1 min. This thread holds the lock
-						// for 60000 - elapsedTime to move over the next 1 min boundary
-						Thread.sleep(60000 - elapsedTime);
-					}
-				}
-			}
-		} catch (Exception e) {
-			LOG.warn(e);
-			LOG.warn(e.getMessage());
-			e.printStackTrace();
-		}
-	}
-
-	private Path getInputFilePath(Set<Path> consumePaths) throws IOException {
-		Path input = getInputPath();
-		if (!srcFs.exists(input))
-			return null;
-		FileStatus[] fileList = srcFs.listStatus(input);
-		if (fileList != null) {
-			if(fileList.length > 1) {
-				Set<String> sourceFiles = new HashSet<String>();
-				//inputPath has have multiple files due to backlog
-				//read all and create a tmp file
-				for(int i=0; i < fileList.length; i++) {
-					Path consumeFilePath = fileList[i].getPath().makeQualified(srcFs);
-					consumePaths.add(consumeFilePath);
-					FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
-					while (fsDataInputStream.available() > 0 ){
-						String fileName = fsDataInputStream.readLine();
-						if (fileName != null) {
-							fileName = fileName.trim();
-							sourceFiles.add(fileName);
-						}
-					}
-					fsDataInputStream.close();
-				}
-				Path tmpPath = new Path(input, CalendarHelper.getCurrentDayTimeAsString());
-				FSDataOutputStream out = srcFs.create(tmpPath);
-				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-				for(String sourceFile: sourceFiles) {
-					LOG.debug("Adding sourceFile [" + sourceFile + "] to distcp FinalList");
-					writer.write(sourceFile);
-					writer.write("\n");
-				}
-				writer.close();
-				LOG.warn("Source File For distCP [" + tmpPath + "]");
-				consumePaths.add(tmpPath.makeQualified(srcFs));
-				return tmpPath.makeQualified(srcFs);
-			}
-			else if(fileList.length == 1) {
-				Path consumePath = fileList[0].getPath().makeQualified(srcFs);
-				consumePaths.add(consumePath);
-				return consumePath;
-			}
-			else {
-				return null;
-			}
-		}
-		return  null;
-	}
-
-	private void commit(Path tmpOut,
-											Set<Path> consumePaths) throws Exception {
-		Map<String, Path> categoryToCommit = new HashMap<String, Path>();
-		//move tmpout intermediate dir per category to achive atomic move to publish dir
-		String minute = CalendarHelper.getCurrentMinute();
-		FileStatus[] allFiles = destFs.listStatus(tmpOut);
-		for(int i=0; i < allFiles.length; i++) {
-			String fileName = allFiles[i].getPath().getName();
-			String category = getCategoryFromFileName(fileName);
-
-			Path intermediatePath = new Path(tmpOut, category + File.separator + minute );
-			destFs.mkdirs(intermediatePath);
-			Path source = allFiles[i].getPath().makeQualified(destFs);
-			destFs.rename(source, intermediatePath);
-			LOG.debug("Moving [" + source + "] to intermediatePath [" + intermediatePath + "]");
-			if(categoryToCommit.get(category) == null)  {
-				categoryToCommit.put(category, intermediatePath);
-			}
-
-		}
-		Set<Map.Entry<String, Path> > commitEntries = categoryToCommit.entrySet();
-		Iterator it = commitEntries.iterator();
-		while(it.hasNext()) {
-			Map.Entry<String, Path> entry = (Map.Entry<String, Path>) it.next();
-			String category  =  entry.getKey();
-			Path categorySrcPath = entry.getValue();
-			long commitTime = System.currentTimeMillis();
-			Path destParentPath = new Path(getDestCluster().getFinalDestDirTillHour(category, commitTime));
-			if(!destFs.exists(destParentPath))  {
-				destFs.mkdirs(destParentPath);
-			}
-			destFs.rename(categorySrcPath, destParentPath);
-			LOG.debug("Moving from intermediatePath [" + categorySrcPath + "] to [" + destParentPath + "]");
-		}
-		//rmr inputFilePath.getParent() this is from srcFs
-		//commit distcp
-		//TODO: delete the source for actual testing
-		for(Path consumePath : consumePaths) {
-			srcFs.delete(consumePath);
-			LOG.debug("Deleting [" + consumePath + "]");
-		}
-		//rmr tmpOut   cleanup
-		destFs.delete(tmpOut, true);
-		LOG.debug("Deleting [" + tmpOut + "]");
-
-	}
+  }
 
 
 
-	private String getCategoryFromFileName(String fileName) {
-		StringTokenizer tokenizer = new StringTokenizer(fileName, "-");
-		tokenizer.nextToken(); //skip collector name
-		String catgeory = tokenizer.nextToken();
-		return catgeory;
+  @Override
+  public void fetch() throws Exception{
+    try {
+      boolean skipCommit = false;
 
-	}
 
-	private Path getInputPath() throws IOException {
-		return getSrcCluster().getConsumePath(getDestCluster());
+      srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()),
+              getSrcCluster().getHadoopConf());
+      destFs = FileSystem.get(
+              new URI(getDestCluster().getHdfsUrl()),
+              getDestCluster().getHadoopConf());
+      Set<Path> consumePaths = new HashSet<Path>();
+      Path inputFilePath = getInputFilePath(consumePaths);
 
-	}
+      if(inputFilePath == null) {
+        LOG.warn("No data to pull from " +
+                "Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
+                " to Cluster [" + getDestCluster().getHdfsUrl() + "]");
+        return;
+      }
+
+      Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp-" +
+              getSrcCluster().getName() + CalendarHelper.getCurrentDayTimeAsString()).makeQualified(destFs);
+      LOG.warn("Starting a distcp pull from [" + inputFilePath.toString() + "] " +
+              "Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
+              " to Cluster [" + getDestCluster().getHdfsUrl() + "] " +
+              " Path [" + tmpOut.toString() + "]");
+      destFs.mkdirs(tmpOut);
+
+      String[] args = {"-f", inputFilePath.toString(),
+              tmpOut.toString()};
+      try {
+        DistCp.runDistCp(args);
+      }
+      catch(Throwable e) {
+        LOG.warn(e.getMessage());
+        LOG.warn(e);
+        LOG.warn("Problem in distcp skipping commit");
+        destFs.delete(tmpOut, true);
+        skipCommit = true;
+      }
+
+      //if success
+      if (!skipCommit) {
+        Map<String, List<Path>> categoriesToCommit = prepareForCommit(tmpOut);
+        synchronized (getDestCluster()) {
+          long commitTime = getDestCluster().getCommitTime();
+          commit(tmpOut, consumePaths, commitTime, categoriesToCommit);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn(e);
+      LOG.warn(e.getMessage());
+      e.printStackTrace();
+    }
+  }
+
+  private Map<String, List<Path>> prepareForCommit(Path tmpOut) throws Exception{
+    Map<String, List<Path>> categoriesToCommit = new HashMap<String, List<Path>>();
+    FileStatus[] allFiles = destFs.listStatus(tmpOut);
+    for(int i=0; i < allFiles.length; i++) {
+      String fileName = allFiles[i].getPath().getName();
+      String category = getCategoryFromFileName(fileName);
+
+      Path intermediatePath = new Path(tmpOut, category);
+      if (!destFs.exists(intermediatePath))
+        destFs.mkdirs(intermediatePath);
+      Path source = allFiles[i].getPath().makeQualified(destFs);
+
+      Path intermediateFilePath =  new Path(intermediatePath.makeQualified(destFs).toString() + File.separator +
+              fileName);
+      destFs.rename(source, intermediateFilePath);
+      LOG.debug("Moving [" + source + "] to intermediateFilePath [" + intermediateFilePath + "]");
+      List<Path> fileList = categoriesToCommit.get(category);
+      if( fileList == null)  {
+        fileList = new ArrayList<Path>();
+        fileList.add(intermediateFilePath.makeQualified(destFs));
+        categoriesToCommit.put(category, fileList);
+      }
+      else {
+        fileList.add(intermediateFilePath);
+      }
+    }
+    return categoriesToCommit;
+  }
+
+  private Path getInputFilePath(Set<Path> consumePaths) throws IOException {
+    Path input = getInputPath();
+    if (!srcFs.exists(input))
+      return null;
+    FileStatus[] fileList = srcFs.listStatus(input);
+    if (fileList != null) {
+      if(fileList.length > 1) {
+        Set<String> sourceFiles = new HashSet<String>();
+        //inputPath has have multiple files due to backlog
+        //read all and create a tmp file
+        for(int i=0; i < fileList.length; i++) {
+          Path consumeFilePath = fileList[i].getPath().makeQualified(srcFs);
+          consumePaths.add(consumeFilePath);
+          FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
+          while (fsDataInputStream.available() > 0 ){
+            String fileName = fsDataInputStream.readLine();
+            if (fileName != null) {
+              fileName = fileName.trim();
+              sourceFiles.add(fileName);
+            }
+          }
+          fsDataInputStream.close();
+        }
+        Path tmpPath = new Path(input, CalendarHelper.getCurrentDayTimeAsString());
+        FSDataOutputStream out = srcFs.create(tmpPath);
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+        for(String sourceFile: sourceFiles) {
+          LOG.debug("Adding sourceFile [" + sourceFile + "] to distcp FinalList");
+          writer.write(sourceFile);
+          writer.write("\n");
+        }
+        writer.close();
+        LOG.warn("Source File For distCP [" + tmpPath + "]");
+        consumePaths.add(tmpPath.makeQualified(srcFs));
+        return tmpPath.makeQualified(srcFs);
+      }
+      else if(fileList.length == 1) {
+        Path consumePath = fileList[0].getPath().makeQualified(srcFs);
+        consumePaths.add(consumePath);
+        return consumePath;
+      }
+      else {
+        return null;
+      }
+    }
+    return  null;
+  }
+
+  private void commit(Path tmpOut, Set<Path> consumePaths,
+                      long commitTime, Map<String, List<Path>> categoriesToCommit) throws Exception {
+    Set<Map.Entry<String, List<Path>>> commitEntries = categoriesToCommit.entrySet();
+    Iterator it = commitEntries.iterator();
+    while(it.hasNext()) {
+      Map.Entry<String, List<Path>> entry = (Map.Entry<String, List<Path>>) it.next();
+      String category  =  entry.getKey();
+      List<Path> filesInCategory = entry.getValue();
+      for (Path filePath : filesInCategory) {
+        Path destParentPath = new Path(getDestCluster().getFinalDestDir(category, commitTime));
+        if(!destFs.exists(destParentPath))  {
+          destFs.mkdirs(destParentPath);
+        }
+        destFs.rename(filePath, destParentPath);
+        LOG.debug("Moving from intermediatePath [" + filePath + "] to [" + destParentPath + "]");
+      }
+    }
+    //commit distcp
+    for(Path consumePath : consumePaths) {
+      srcFs.delete(consumePath);
+      LOG.debug("Deleting [" + consumePath + "]");
+    }
+    //rmr tmpOut   cleanup
+    destFs.delete(tmpOut, true);
+    LOG.debug("Deleting [" + tmpOut + "]");
+
+  }
+
+
+
+  private String getCategoryFromFileName(String fileName) {
+    StringTokenizer tokenizer = new StringTokenizer(fileName, "-");
+    tokenizer.nextToken(); //skip collector name
+    String catgeory = tokenizer.nextToken();
+    return catgeory;
+
+  }
+
+  private Path getInputPath() throws IOException {
+    return getSrcCluster().getConsumePath(getDestCluster());
+
+  }
 }
