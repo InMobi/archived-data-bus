@@ -22,6 +22,7 @@ public class RemoteCopier extends AbstractCopier {
 
   private FileSystem srcFs;
   private FileSystem destFs;
+  private static final int DISTCP_SUCCESS = 0;
 
 
   public RemoteCopier(DatabusConfig config, Cluster srcCluster, Cluster destinationCluster) {
@@ -66,7 +67,9 @@ public class RemoteCopier extends AbstractCopier {
       String[] args = {"-f", inputFilePath.toString(),
               tmpOut.toString()};
       try {
-        DistCp.runDistCp(args);
+        int exitCode = DistCp.runDistCp(args, getDestCluster().getHadoopConf());
+        if (exitCode != DISTCP_SUCCESS)
+          skipCommit = true;
       }
       catch(Throwable e) {
         LOG.warn(e.getMessage());
