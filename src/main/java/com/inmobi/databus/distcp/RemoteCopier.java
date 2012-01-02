@@ -146,8 +146,8 @@ public class RemoteCopier extends AbstractCopier {
           }
           fsDataInputStream.close();
         }
-        Path tmpPath = new Path(input, CalendarHelper.getCurrentDayTimeAsString());
-        FSDataOutputStream out = srcFs.create(tmpPath);
+        Path tmpPath = new Path(getDestCluster().getTmpPath(), CalendarHelper.getCurrentDayTimeAsString());
+        FSDataOutputStream out = destFs.create(tmpPath);
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
         for(String sourceFile: sourceFiles) {
           LOG.debug("Adding sourceFile [" + sourceFile + "] to distcp FinalList");
@@ -156,8 +156,8 @@ public class RemoteCopier extends AbstractCopier {
         }
         writer.close();
         LOG.warn("Source File For distCP [" + tmpPath + "]");
-        consumePaths.add(tmpPath.makeQualified(srcFs));
-        return tmpPath.makeQualified(srcFs);
+        consumePaths.add(tmpPath.makeQualified(destFs));
+        return tmpPath.makeQualified(destFs);
       }
       else if(fileList.length == 1) {
         Path consumePath = fileList[0].getPath().makeQualified(srcFs);
