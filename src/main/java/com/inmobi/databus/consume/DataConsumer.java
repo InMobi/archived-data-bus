@@ -138,6 +138,7 @@ public class DataConsumer extends AbstractCopier {
       fs.rename(entry.getKey(), entry.getValue());
     }
     //tmpPath is something like - /databus/system/tmp/com.inmobi.databus.consume.DataConsumer_uj1_uj1
+    //Fix - https://github.com/InMobi/data-bus/issues/4
     fs.delete(tmpPath, true);
     LOG.info("Cleaning up [" + tmpPath + "]") ;
   }
