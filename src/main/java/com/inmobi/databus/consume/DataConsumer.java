@@ -40,6 +40,11 @@ public class DataConsumer extends AbstractCopier {
 
   @Override
   protected void fetch() throws Exception {
+    //Cleanup tmpPath before everyRun to avoid
+    //any old data being used in this run if the old run was aborted
+    FileSystem fs = FileSystem.get(getSrcCluster().getHadoopConf());
+    if (fs.exists(tmpPath))
+      fs.delete(tmpPath, true);
     Map<FileStatus, String> fileListing = new HashMap<FileStatus, String>();
     createMRInput(tmpJobInputPath, fileListing);
     if (fileListing.size() == 0) {
