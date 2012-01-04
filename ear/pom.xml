@@ -36,6 +36,16 @@
       <version>0.20.2-cdh3u0</version>
     </dependency>
     <dependency>
+      <groupId>org.apache.zookeeper</groupId>
+      <artifactId>zookeeper</artifactId>
+      <version>3.3.3</version>
+    </dependency>
+     <dependency>
+      <groupId>org.apache.zookeeper-recipes</groupId>
+      <artifactId>zookeeper-recipes</artifactId>
+      <version>3.3.3</version>
+    </dependency>
+    <dependency>
       <groupId>commons-logging</groupId>
       <artifactId>commons-logging</artifactId>
       <version>1.1.1</version>
