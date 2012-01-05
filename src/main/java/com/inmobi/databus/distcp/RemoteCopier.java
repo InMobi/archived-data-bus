@@ -156,7 +156,6 @@ public class RemoteCopier extends AbstractCopier {
         }
         writer.close();
         LOG.warn("Source File For distCP [" + tmpPath + "]");
-        consumePaths.add(tmpPath.makeQualified(destFs));
         return tmpPath.makeQualified(destFs);
       }
       else if(fileList.length == 1) {
