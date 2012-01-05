@@ -7,7 +7,6 @@ import org.apache.zookeeper.recipes.lock.*;
 
 public class LeaderManager implements  LockListener {
   private static final Log LOG = LogFactory.getLog(LeaderManager.class);
-  volatile boolean lockAcquired = false;
   ZooKeeper zooKeeper;
   WriteLock leaderLock;
 
@@ -22,20 +21,17 @@ public class LeaderManager implements  LockListener {
   @Override
   public void lockAcquired() {
     LOG.info("Lock Acquired..starting all Threads");
-    lockAcquired = true;
+
   }
 
   @Override
   public void lockReleased() {
     LOG.info("Lock Released...releasing all Threads");
-    stopThreads();
-    waitToBecomeLeader();
+
   }
 
   private void doWork() {
-    while(!Thread.interrupted()) {
-      if (!lockAcquired)
-        break;
+    while(!Thread.interrupted() && leaderLock.isOwner()) {
       LOG.info("Doing some work");
       try {
         Thread.sleep(10000);
@@ -45,15 +41,18 @@ public class LeaderManager implements  LockListener {
         break;
       }
     }
+    //wait to become leader
+    stopThreads();
+    waitToBecomeLeader();
   }
 
   private void startThreads() {
-    lockAcquired = true;
+
     doWork();
   }
 
   private void stopThreads() {
-    lockAcquired = false;
+
   }
 
   private void waitToBecomeLeader(){
@@ -91,7 +90,7 @@ public class LeaderManager implements  LockListener {
 
   }
   public static void main(String[] args) throws Exception{
-    ZooKeeper zooKeeper = new ZooKeeper("localhost/0:0:0:0:0:0:0:1:2181", 3000, null);
+    ZooKeeper zooKeeper = new ZooKeeper("gs1104.grid.corp.inmobi.com:2181", 3000, null);
     LeaderManager leaderManager = new LeaderManager();
     Stat stat = zooKeeper.exists("/databus", false);
     if (stat == null)

@@ -49,11 +49,20 @@
       <artifactId>zookeeper-recipes</artifactId>
       <version>3.3.3</version>
     </dependency>
-
     <dependency>
-      <groupId>commons-logging</groupId>
-      <artifactId>commons-logging</artifactId>
-      <version>1.1.1</version>
+      <groupId>com.netflix.curator</groupId>
+      <artifactId>curator-client</artifactId>
+      <version>0.6.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.netflix.curator</groupId>
+      <artifactId>curator-framework</artifactId>
+      <version>0.6.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.netflix.curator</groupId>
+      <artifactId>curator-recipes</artifactId>
+      <version>0.6.1</version>
     </dependency>
     <dependency>
       <groupId>commons-httpclient</groupId>
