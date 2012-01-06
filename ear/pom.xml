@@ -16,6 +16,11 @@
       <name>cloudera repo</name>
       <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
     </repository>
+    <repository>
+      <id>mvn-central</id>
+      <name>mvn central repo</name>
+      <url>http://repo1.maven.org maven2/</url>
+    </repository>
 
   </repositories>
   <build>
@@ -45,32 +50,37 @@
       <artifactId>zookeeper-recipes</artifactId>
       <version>3.3.3</version>
     </dependency>
-     <dependency>
+    <dependency>
       <groupId>com.netflix.curator</groupId>
       <artifactId>curator-client</artifactId>
-      <version>0.6.1</version>
+      <version>1.1.0</version>
     </dependency>
     <dependency>
       <groupId>com.netflix.curator</groupId>
       <artifactId>curator-framework</artifactId>
-      <version>0.6.1</version>
+      <version>1.1.0</version>
     </dependency>
     <dependency>
       <groupId>com.netflix.curator</groupId>
       <artifactId>curator-recipes</artifactId>
-      <version>0.6.1</version>
+      <version>1.1.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>r09</version>
+      <version>10.0.1</version>
     </dependency>
     <dependency>
-      <groupId>commons-logging</groupId>
-      <artifactId>commons-logging</artifactId>
-      <version>1.1.1</version>
+      <groupId>com.github.mcpat.slf4j</groupId>
+      <artifactId>slf4cldc-simple</artifactId>
+      <version>1.6.0</version>
     </dependency>
     <dependency>
+      <groupId>com.github.mcpat.slf4j</groupId>
+      <artifactId>slf4cldc-api</artifactId>
+      <version>1.6.0</version>
+    </dependency>
+  <dependency>
       <groupId>commons-httpclient</groupId>
       <artifactId>commons-httpclient</artifactId>
       <version>1.0</version>
