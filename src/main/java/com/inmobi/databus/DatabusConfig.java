@@ -1,15 +1,10 @@
 package com.inmobi.databus;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.Map;
-import java.util.Set;
+import org.apache.hadoop.conf.*;
+import org.apache.hadoop.fs.*;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
+import java.io.*;
+import java.util.*;
 
 public class DatabusConfig {
 
@@ -24,14 +19,20 @@ public class DatabusConfig {
   */
   private final Map<String, Cluster> clusters;
   private final Map<String, Stream> streams;
+  private String zkConnectionString;
 
-  public DatabusConfig(String rootDir, Map<String, Stream> streams,
+  public DatabusConfig(String rootDir, String zkConnectionString, Map<String, Stream> streams,
                        Map<String, Cluster> clusterMap) {
     //this.hadoopConf = new Configuration();
     //hadoopConf.set("fs.default.name", destinationCluster.getHdfsUrl());
+    this.zkConnectionString = zkConnectionString;
     this.streams = streams;
     this.clusters = clusterMap;
   }
+
+  public String getZkConnectionString() {
+      return zkConnectionString;
+    }
 
   public Map<String, Cluster> getClusters() {
     return clusters;

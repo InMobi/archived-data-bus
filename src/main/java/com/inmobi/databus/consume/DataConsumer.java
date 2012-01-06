@@ -38,13 +38,25 @@ public class DataConsumer extends AbstractCopier {
     }
   }
 
+  private void cleanUpTmp(FileSystem fs) throws  Exception{
+    if (fs.exists(tmpJobInputPath) )   {
+      LOG.info("Deleting tmpPath recursively [" + tmpJobInputPath + "]");
+      fs.delete(tmpJobInputPath, true);
+    }
+    if (fs.exists(tmpJobOutputPath)) {
+       LOG.info("Deleting tmpPath recursively [" + tmpJobOutputPath + "]");
+      fs.delete(tmpJobInputPath, true);
+    }
+  }
+
   @Override
   protected void fetch() throws Exception {
+
+    FileSystem fs = FileSystem.get(getSrcCluster().getHadoopConf());
     //Cleanup tmpPath before everyRun to avoid
     //any old data being used in this run if the old run was aborted
-    FileSystem fs = FileSystem.get(getSrcCluster().getHadoopConf());
-    if (fs.exists(tmpPath))
-      fs.delete(tmpPath, true);
+    cleanUpTmp(fs);
+    LOG.info("TmpPath is [" + tmpPath + "]");
     Map<FileStatus, String> fileListing = new HashMap<FileStatus, String>();
     createMRInput(tmpJobInputPath, fileListing);
     if (fileListing.size() == 0) {
@@ -142,10 +154,7 @@ public class DataConsumer extends AbstractCopier {
       fs.mkdirs(entry.getValue().getParent());
       fs.rename(entry.getKey(), entry.getValue());
     }
-    //tmpPath is something like - /databus/system/tmp/com.inmobi.databus.consume.DataConsumer_uj1_uj1
-    //Fix - https://github.com/InMobi/data-bus/issues/4
-    fs.delete(tmpPath, true);
-    LOG.info("Cleaning up [" + tmpPath + "]") ;
+
   }
 
   private void createMRInput(Path inputPath, Map<FileStatus, String> fileListing)

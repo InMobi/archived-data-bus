@@ -1,25 +1,14 @@
 package com.inmobi.databus;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import com.inmobi.databus.DatabusConfig.*;
+import org.apache.log4j.*;
+import org.w3c.dom.*;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import org.apache.log4j.Logger;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-
-import com.inmobi.databus.DatabusConfig.Cluster;
-import com.inmobi.databus.DatabusConfig.ConsumeStream;
-import com.inmobi.databus.DatabusConfig.Stream;
+import javax.xml.parsers.*;
+import java.util.*;
 
 public class DatabusConfigParser {
-  
+
   static Logger logger = Logger.getLogger(DatabusConfigParser.class);
   Document dom;
   Map<String, Stream> streamMap = new HashMap<String, Stream>();
@@ -27,7 +16,12 @@ public class DatabusConfigParser {
   String inputDir;
   String publishDir;
   String fileName;
+  String zkConnectString;
   String rootDir;
+
+  public String getZkConnectString() {
+    return zkConnectString;
+  }
 
   public Map<String, Stream> getStreamMap() {
     return streamMap;
@@ -85,8 +79,10 @@ public class DatabusConfigParser {
       rootDir = getTextValue((Element) configList.item(0), "RootDir");
       inputDir = getTextValue((Element) configList.item(0), "InputDir");
       publishDir = getTextValue((Element) configList.item(0), "PublishDir");
+      zkConnectString =  getTextValue((Element) configList.item(0), "ZookeeperConnectString");
+
       logger.debug("rootDir = " + rootDir + " inputDir " + inputDir
-          + " publishDir " + publishDir);
+              + " publishDir " + publishDir + " zkConnectString " + zkConnectString);
     }
   }
 
@@ -113,23 +109,23 @@ public class DatabusConfigParser {
       Element elem = (Element) list.item(0);
       cRootDir = elem.getTextContent();
     }
-    Map<String, ConsumeStream> consumeStreams 
-        = new HashMap<String, ConsumeStream>();
+    Map<String, ConsumeStream> consumeStreams
+            = new HashMap<String, ConsumeStream>();
     NodeList consumeStreamList = el.getElementsByTagName("ConsumeStream");
     for (int i = 0; i < consumeStreamList.getLength(); i++) {
       Element replicatedConsumeStream = (Element) consumeStreamList.item(i);
       // for each source
       String streamName = getTextValue(replicatedConsumeStream, "name");
       int retentionHours = getIntValue(replicatedConsumeStream,
-          "retentionHours");
+              "retentionHours");
       logger.debug("Reading Cluster :: Stream Name " + streamName
-          + " retentionHours " + retentionHours);
+              + " retentionHours " + retentionHours);
       ConsumeStream consumeStream = new ConsumeStream(streamName,
-          retentionHours);
+              retentionHours);
       consumeStreams.put(streamName, consumeStream);
     }
-    return new Cluster(clusterName, cRootDir, hdfsURL, jtURL, consumeStreams, 
-        getSourceStreams(clusterName));
+    return new Cluster(clusterName, cRootDir, hdfsURL, jtURL, consumeStreams,
+            getSourceStreams(clusterName));
   }
 
   private Set<String> getSourceStreams(String clusterName) {
@@ -143,7 +139,7 @@ public class DatabusConfigParser {
       if(streamDetails.getSourceClusters().contains(clusterName)) {
         srcStreams.add(streamName);
       }
-       
+
     }
     return srcStreams;
   }

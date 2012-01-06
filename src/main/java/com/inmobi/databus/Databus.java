@@ -1,22 +1,32 @@
 package com.inmobi.databus;
 
-import com.inmobi.databus.DatabusConfig.Cluster;
-import com.inmobi.databus.DatabusConfig.ConsumeStream;
-import com.inmobi.databus.consume.DataConsumer;
-import com.inmobi.databus.distcp.RemoteCopier;
-import org.apache.log4j.Logger;
+import com.inmobi.databus.DatabusConfig.*;
+import com.inmobi.databus.consume.*;
+import com.inmobi.databus.distcp.*;
+import com.inmobi.databus.zookeeper.*;
+import org.apache.log4j.*;
 
 import java.util.*;
 
 public class Databus {
   private static Logger LOG = Logger.getLogger(Databus.class);
   private DatabusConfig config;
+
+  public Set<String> getClustersToProcess() {
+    return clustersToProcess;
+  }
+
   private final Set<String> clustersToProcess;
   private final List<AbstractCopier> copiers = new ArrayList<AbstractCopier>();
+
 
   public Databus(DatabusConfig config, Set<String> clustersToProcess) {
     this.config = config;
     this.clustersToProcess = clustersToProcess;
+  }
+
+  public DatabusConfig getConfig() {
+    return config;
   }
 
   public void init() throws Exception {
@@ -57,6 +67,21 @@ public class Databus {
     }
   }
 
+  public void startDatabusWork() throws Exception{
+    init();
+    start();
+    //Block this method to avoid losing leadership
+    //of current work
+    for (AbstractCopier copier : copiers) {
+      copier.join();
+    }
+  }
+
+  private void startDatabus() throws Exception{
+    init();
+    start();
+  }
+
   public static void main(String[] args) throws Exception {
     try {
       if (args.length != 1 && args.length != 2 ) {
@@ -73,7 +98,7 @@ public class Databus {
       DatabusConfigParser configParser =
               new DatabusConfigParser(databusconfigFile);
       Map<String, Cluster> clusterMap = configParser.getClusterMap();
-      DatabusConfig config = new DatabusConfig(configParser.getRootDir(),
+      DatabusConfig config = new DatabusConfig(configParser.getRootDir(), configParser.getZkConnectString(),
               configParser.getStreamMap(), clusterMap);
 
       Set<String> clustersToProcess = new HashSet<String>();
@@ -91,9 +116,18 @@ public class Databus {
         }
       }
       Databus databus = new Databus(config, clustersToProcess);
+      if (clustersToProcess.size() == 1 &&
+              !"ALL".equalsIgnoreCase(clusters[0])) {
+        //Elect a leader and then start
+        LOG.info("Starting CuratorLeaderManager for eleader election ");
+        CuratorLeaderManager curatorLeaderManager =  new CuratorLeaderManager(databus);
+        curatorLeaderManager.becomeLeader();
+      }
+      else {
+        //Running in simulated mode don't use ZK
+        databus.startDatabus();
+      }
 
-      databus.init();
-      databus.start();
     }
     catch (Exception e) {
       LOG.warn(e.getMessage());

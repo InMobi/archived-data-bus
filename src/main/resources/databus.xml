@@ -1,6 +1,7 @@
 <Databus>
   <Config>
     <RootDir>/databus</RootDir>
+    <ZookeeperConnectString>gs1104.grid.corp.inmobi.com:2188</ZookeeperConnectString>
   </Config>
 
   <Streams>
