@@ -126,7 +126,7 @@ public class DataConsumer extends AbstractCopier {
 
     // find trash paths
     Map<Path, Path> trashPaths = new LinkedHashMap<Path, Path>();
-    Path trash = getSrcCluster().getTrashPath();
+    Path trash = getSrcCluster().getTrashPathWithDate();
     for (FileStatus src : fileListing.keySet()) {
       String category = getCategoryFromSrcPath(src.getPath());
       Path target = null;
