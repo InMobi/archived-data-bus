@@ -71,13 +71,13 @@
       <version>10.0.1</version>
     </dependency>
     <dependency>
-      <groupId>com.github.mcpat.slf4j</groupId>
-      <artifactId>slf4cldc-simple</artifactId>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
       <version>1.6.0</version>
     </dependency>
     <dependency>
-      <groupId>com.github.mcpat.slf4j</groupId>
-      <artifactId>slf4cldc-api</artifactId>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
       <version>1.6.0</version>
     </dependency>
   <dependency>
