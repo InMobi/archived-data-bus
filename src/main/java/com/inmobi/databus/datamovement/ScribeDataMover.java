@@ -1,20 +1,7 @@
 package com.inmobi.databus.datamovement;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.log4j.Logger;
-
-import java.util.*;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
 /**
- * Created by IntelliJ IDEA.
- * User: inderbir.singh
- * Date: 04/12/11
- * Time: 3:20 PM
- * To change this template use File | Settings | File Templates.
- */
+
 public class ScribeDataMover {
     Logger logger = Logger.getLogger(ScribeDataMover.class);
     Constants  constants;
@@ -81,14 +68,15 @@ public class ScribeDataMover {
     public static void main(String[] args) {
         ScribeDataMover scribeDataMover = new ScribeDataMover();
         //1. Load all scribe related config
-        /*
+
         if (args.length <=1 || ( args.length > 1  && args[1] == null)) {
             scribeDataMover.moveScribeData(null);
         }
         else
             scribeDataMover.moveScribeData(args[1]);
     }
-    */
+
         scribeDataMover.moveScribeData(null, args[1]);
     }
 }
+*/

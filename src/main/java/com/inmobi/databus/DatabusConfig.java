@@ -1,6 +1,6 @@
 package com.inmobi.databus;
 
-import com.inmobi.databus.datamovement.*;
+import com.inmobi.databus.utils.*;
 import org.apache.hadoop.conf.*;
 import org.apache.hadoop.fs.*;
 

@@ -1,4 +1,4 @@
-package com.inmobi.databus.datamovement;
+package com.inmobi.databus.utils;
 
 import org.apache.log4j.Logger;
 

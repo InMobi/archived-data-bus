@@ -3,7 +3,7 @@ package com.inmobi.databus.distcp;
 import com.inmobi.databus.AbstractCopier;
 import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.DatabusConfig.Cluster;
-import com.inmobi.databus.datamovement.CalendarHelper;
+import com.inmobi.databus.utils.CalendarHelper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.*;

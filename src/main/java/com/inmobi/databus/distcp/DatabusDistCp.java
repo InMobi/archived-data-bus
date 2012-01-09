@@ -1,18 +1,6 @@
 package com.inmobi.databus.distcp;
 
-import com.inmobi.databus.consume.ConsumerJob;
-import com.inmobi.databus.datamovement.CalendarHelper;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
-import org.apache.hadoop.tools.DistCp;
-import org.apache.log4j.Logger;
-
-import java.io.BufferedWriter;
-import java.io.OutputStreamWriter;
-import java.util.*;
-
+/*
 public class DatabusDistCp {
     private Configuration conf = new Configuration();
     public Configuration getConf() {
@@ -158,3 +146,4 @@ public class DatabusDistCp {
 
     }
 }
+*/
