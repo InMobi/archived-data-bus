@@ -1,5 +1,6 @@
 package com.inmobi.databus;
 
+import com.inmobi.databus.datamovement.*;
 import org.apache.hadoop.conf.*;
 import org.apache.hadoop.fs.*;
 
@@ -31,8 +32,8 @@ public class DatabusConfig {
   }
 
   public String getZkConnectionString() {
-      return zkConnectionString;
-    }
+    return zkConnectionString;
+  }
 
   public Map<String, Cluster> getClusters() {
     return clusters;
@@ -43,6 +44,7 @@ public class DatabusConfig {
   }
 
   public static class Cluster {
+    private final String zkConnectionString;
     private final String name;
     private final String rootDir;
     private final String hdfsUrl;
@@ -54,7 +56,7 @@ public class DatabusConfig {
 
     Cluster(String name, String rootDir,
             String hdfsUrl, String jtUrl, Map<String,
-            ConsumeStream> consumeStreams, Set<String> sourceStreams) {
+            ConsumeStream> consumeStreams, Set<String> sourceStreams, String zkConnectionString) {
       this.name = name;
       this.hdfsUrl = hdfsUrl;
       this.rootDir = rootDir;
@@ -64,7 +66,7 @@ public class DatabusConfig {
       this.consumeStreams = consumeStreams;
       this.sourceStreams = sourceStreams;
       this.hadoopConf.set("fs.default.name", hdfsUrl);
-
+      this.zkConnectionString = zkConnectionString;
     }
 
     public synchronized long getCommitTime() {
@@ -73,6 +75,10 @@ public class DatabusConfig {
         lastCommitTime = current;
       }
       return lastCommitTime;
+    }
+
+    public String getZkConnectionString() {
+      return zkConnectionString;
     }
 
     public String getHdfsUrl() {
@@ -151,6 +157,10 @@ public class DatabusConfig {
     public Path getTrashPath() {
       return new Path(getSystemDir() + File.separator +
               "trash");
+    }
+
+    public Path getTrashPathWithDate() {
+      return new Path(getTrashPath(), CalendarHelper.getCurrentDateAsString());
     }
 
     public Path getDataDir() {

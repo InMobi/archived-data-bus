@@ -118,14 +118,26 @@ public class DatabusConfigParser {
       String streamName = getTextValue(replicatedConsumeStream, "name");
       int retentionHours = getIntValue(replicatedConsumeStream,
               "retentionHours");
-      logger.debug("Reading Cluster :: Stream Name " + streamName
+      logger.info("Reading Cluster :: Stream Name " + streamName
               + " retentionHours " + retentionHours);
       ConsumeStream consumeStream = new ConsumeStream(streamName,
               retentionHours);
       consumeStreams.put(streamName, consumeStream);
     }
+    String zkConnectString = getZKConnectStringForCluster(el.getElementsByTagName("Zookeeper"));
+    logger.info("zkConnectString [" + zkConnectString + "]");
     return new Cluster(clusterName, cRootDir, hdfsURL, jtURL, consumeStreams,
-            getSourceStreams(clusterName));
+            getSourceStreams(clusterName), zkConnectString);
+  }
+
+  private String getZKConnectStringForCluster(NodeList zkConnectionStringList) {
+    String zkConnectString = null;
+    if (zkConnectionStringList != null && zkConnectionStringList.getLength() == 1) {
+      Element elem = (Element) zkConnectionStringList.item(0);
+      zkConnectString = getTextValue(elem, "connectionString");
+      logger.debug("getZKConnectStringForCluster [" + zkConnectString + "]");
+    }
+    return zkConnectString;
   }
 
   private Set<String> getSourceStreams(String clusterName) {

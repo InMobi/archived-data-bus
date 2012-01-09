@@ -13,24 +13,34 @@
         <Source>
           <name>er1</name>
         </Source>
-
       </Sources>
     </Stream>
   </Streams>
 
   <Clusters>
     <Cluster name="uj1" hdfsUrl="hdfs://gs1104.grid.corp.inmobi.com:8020/" jtUrl="gs1104.grid.corp.inmobi.com:8021">
+      <Zookeeper>
+        <connectionString>gs1104.grid.corp.inmobi.com:2188</connectionString>
+      </Zookeeper>
     </Cluster>
+
     <Cluster name="er1" hdfsUrl="hdfs://gs1103.grid.corp.inmobi.com:8020/" jtUrl="gs1103.grid.corp.inmobi.com:8023">
+      <Zookeeper>
+        <connectionString>gs1104.grid.corp.inmobi.com:2188</connectionString>
+      </Zookeeper>
     </Cluster>
 
     <Cluster name="ua2" hdfsUrl="hdfs://localhost:8020/" jtUrl="localhost:8021">
+      <Zookeeper>
+        <connectionString>gs1104.grid.corp.inmobi.com:2188</connectionString>
+      </Zookeeper>
       <ConsumeStreams>
         <ConsumeStream>
           <name>metric_billing</name>
           <retentionHours>24</retentionHours>
         </ConsumeStream>
       </ConsumeStreams>
+
     </Cluster>
   </Clusters>
 </Databus>
