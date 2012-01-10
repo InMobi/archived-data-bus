@@ -116,12 +116,12 @@ public class DatabusConfigParser {
       Element replicatedConsumeStream = (Element) consumeStreamList.item(i);
       // for each source
       String streamName = getTextValue(replicatedConsumeStream, "name");
-      int retentionHours = getIntValue(replicatedConsumeStream,
-              "retentionHours");
+      int retentionInDays = getIntValue(replicatedConsumeStream,
+              "retentionInDays");
       logger.info("Reading Cluster :: Stream Name " + streamName
-              + " retentionHours " + retentionHours);
+              + " retentionInDays " + retentionInDays);
       ConsumeStream consumeStream = new ConsumeStream(streamName,
-              retentionHours);
+              retentionInDays);
       consumeStreams.put(streamName, consumeStream);
     }
     String zkConnectString = getZKConnectStringForCluster(el.getElementsByTagName("Zookeeper"));
@@ -170,7 +170,7 @@ public class DatabusConfigParser {
   }
 
   private DatabusConfig.Stream getStream(Element el) {
-    Set<String> sourceClusters = new HashSet<String>();
+    Map<String, Integer> streamRetention = new HashMap();
     // get sources for each stream
     String streamName = el.getAttribute("streamname");
     NodeList sourceList = el.getElementsByTagName("Source");
@@ -178,10 +178,13 @@ public class DatabusConfigParser {
       Element source = (Element) sourceList.item(i);
       // for each source
       String clusterName = getTextValue(source, "name");
-      logger.debug(" streamname " + streamName + " clusterName " + clusterName);
-      sourceClusters.add(clusterName);
+      int rententionHours = getIntValue(source, "retentionInDays");
+      logger.debug(" streamname " + streamName + " rententionHours " + rententionHours + " clusterName " +
+              clusterName);
+      streamRetention.put(clusterName, new Integer(rententionHours));
+
     }
-    return new DatabusConfig.Stream(streamName, sourceClusters);
+    return new DatabusConfig.Stream(streamName, streamRetention);
   }
 
   private String getTextValue(Element ele, String tagName) {

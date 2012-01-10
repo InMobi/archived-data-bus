@@ -9,9 +9,11 @@
       <Sources>
         <Source>
           <name>uj1</name>
+          <retentionInDays>24</retentionInDays>
         </Source>
         <Source>
           <name>er1</name>
+          <retentionInDays>24</retentionInDays>
         </Source>
       </Sources>
     </Stream>
@@ -37,7 +39,7 @@
       <ConsumeStreams>
         <ConsumeStream>
           <name>metric_billing</name>
-          <retentionHours>24</retentionHours>
+          <retentionInDays>24</retentionInDays>
         </ConsumeStream>
       </ConsumeStreams>
 

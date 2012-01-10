@@ -193,34 +193,40 @@ public class DatabusConfig {
   }
 
   public static class ConsumeStream {
-    private final int retentionHours;
+    private final int retentionInDays;
     private final String name;
 
-    public ConsumeStream(String name, int retentionHours) {
+    public ConsumeStream(String name, int retentionInDays) {
       this.name = name;
-      this.retentionHours = retentionHours;
+      this.retentionInDays = retentionInDays;
     }
 
     public String getName() {
       return name;
     }
-    public int getRentionHours() {
-      return retentionHours;
+    public int getRentionInDays() {
+      return retentionInDays;
     }
   }
 
   public static class Stream {
     private final String name;
-    private final Set<String> sourceClusters;
+    //Map of ClusterName, Retention for a stream
+    private final Map<String, Integer> sourceClusters;
 
-    public Stream(String name, Set<String> sourceClusters) {
+
+    public Stream(String name, Map<String, Integer> sourceClusters) {
       super();
       this.name = name;
       this.sourceClusters = sourceClusters;
     }
 
+    public int getretentionInDays(String clusterName) {
+      return sourceClusters.get(clusterName).intValue();
+    }
+
     public Set<String> getSourceClusters() {
-      return sourceClusters;
+      return sourceClusters.keySet();
     }
 
     public String getName() {

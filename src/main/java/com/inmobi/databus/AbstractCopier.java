@@ -51,6 +51,8 @@ public abstract class AbstractCopier implements Runnable {
 
   protected abstract void addStreamsToFetch();
 
+  protected abstract long getRunIntervalInmsec();
+
   protected abstract void fetch() throws Exception;
 
   @Override
@@ -64,9 +66,9 @@ public abstract class AbstractCopier implements Runnable {
       }
       long finishTime = System.currentTimeMillis();
       long elapsedTime = finishTime - startTime;
-      if (elapsedTime < 60000) {
+      if (elapsedTime < getRunIntervalInmsec()) {
         try {
-          long sleep = 60000 - elapsedTime;
+          long sleep = getRunIntervalInmsec() - elapsedTime;
           LOG.info("Sleeping for " + sleep);
           Thread.sleep(sleep);
         } catch (InterruptedException e) {

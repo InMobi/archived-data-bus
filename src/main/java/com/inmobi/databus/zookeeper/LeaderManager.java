@@ -1,11 +1,10 @@
+/*
 package com.inmobi.databus.zookeeper;
 
-import org.apache.commons.logging.*;
-import org.apache.zookeeper.*;
-import org.apache.zookeeper.data.*;
+
 import org.apache.zookeeper.recipes.lock.*;
 
-public class LeaderManager implements  LockListener {
+public class LeaderManager implements LockListener {
   private static final Log LOG = LogFactory.getLog(LeaderManager.class);
   ZooKeeper zooKeeper;
   WriteLock leaderLock;
@@ -106,3 +105,4 @@ public class LeaderManager implements  LockListener {
 
 
 }
+*/

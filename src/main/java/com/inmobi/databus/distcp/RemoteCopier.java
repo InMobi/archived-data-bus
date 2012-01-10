@@ -30,9 +30,13 @@ public class RemoteCopier extends AbstractCopier {
   }
 
   protected void addStreamsToFetch() {
-
+    // nothing to do
   }
 
+  @Override
+  protected long getRunIntervalInmsec() {
+    return 60000; //1 min
+  }
 
 
   @Override

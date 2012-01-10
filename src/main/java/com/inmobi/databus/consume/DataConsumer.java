@@ -38,6 +38,11 @@ public class DataConsumer extends AbstractCopier {
     }
   }
 
+  @Override
+  protected long getRunIntervalInmsec() {
+    return 60000; //1 min
+  }
+
   private void cleanUpTmp(FileSystem fs) throws  Exception{
     if (fs.exists(tmpJobInputPath) )   {
       LOG.info("Deleting tmpPath recursively [" + tmpJobInputPath + "]");

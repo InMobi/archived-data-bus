@@ -3,6 +3,7 @@ package com.inmobi.databus;
 import com.inmobi.databus.DatabusConfig.*;
 import com.inmobi.databus.consume.*;
 import com.inmobi.databus.distcp.*;
+import com.inmobi.databus.purge.*;
 import com.inmobi.databus.zookeeper.*;
 import org.apache.log4j.*;
 
@@ -50,6 +51,14 @@ public class Databus {
         copiers.add(new RemoteCopier(config, remote, cluster));
       }
     }
+    Iterator it = clustersToProcess.iterator();
+    while(it.hasNext()) {
+      String  clusterName = (String) it.next();
+      Cluster cluster =  config.getClusters().get(clusterName);
+      LOG.info("Starting Purger for Cluster [" + clusterName + "]");
+      //Start a purger per cluster
+      copiers.add(new DataPurger(config, cluster));
+    }
   }
 
   public synchronized void start() {
@@ -68,8 +77,7 @@ public class Databus {
   }
 
   public void startDatabusWork() throws Exception{
-    init();
-    start();
+    startDatabus();
     //Block this method to avoid losing leadership
     //of current work
     for (AbstractCopier copier : copiers) {
