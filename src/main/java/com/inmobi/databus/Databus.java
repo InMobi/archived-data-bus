@@ -40,9 +40,11 @@ public class Databus {
       }
       List<Cluster> remoteClustersToFetch = new ArrayList<Cluster>();
       for (ConsumeStream cStream : cluster.getConsumeStreams().values()) {
-        for (String cName : config.getStreams().get(cStream.getName())
-                .getSourceClusters()) {
-          remoteClustersToFetch.add(config.getClusters().get(cName));
+        if (cStream.isPrimary()) {
+          for (String cName : config.getStreams().get(cStream.getName())
+                  .getSourceClusters()) {
+            remoteClustersToFetch.add(config.getClusters().get(cName));
+          }
         }
       }
       for (Cluster remote : remoteClustersToFetch) {
@@ -104,7 +106,8 @@ public class Databus {
       DatabusConfigParser configParser =
               new DatabusConfigParser(databusconfigFile);
       Map<String, Cluster> clusterMap = configParser.getClusterMap();
-      DatabusConfig config = new DatabusConfig(configParser.getRootDir(), configParser.getZkConnectString(),
+      DatabusConfig config = new DatabusConfig(configParser.getRetentionInDays(), configParser.getRootDir(),
+              configParser.getZkConnectString(),
               configParser.getStreamMap(), clusterMap);
 
       Set<String> clustersToProcess = new HashSet<String>();

@@ -22,14 +22,23 @@ public class DatabusConfig {
   private final Map<String, Stream> streams;
   private String zkConnectionString;
 
-  public DatabusConfig(String rootDir, String zkConnectionString, Map<String, Stream> streams,
+
+  public static int globalRetention;
+
+  public DatabusConfig(int globalRetention, String rootDir, String zkConnectionString, Map<String, Stream> streams,
                        Map<String, Cluster> clusterMap) {
     //this.hadoopConf = new Configuration();
     //hadoopConf.set("fs.default.name", destinationCluster.getHdfsUrl());
+    this.globalRetention = globalRetention;
     this.zkConnectionString = zkConnectionString;
     this.streams = streams;
     this.clusters = clusterMap;
   }
+
+  public static int getGlobalRetention() {
+    return globalRetention;
+  }
+
 
   public String getZkConnectionString() {
     return zkConnectionString;
@@ -67,6 +76,27 @@ public class DatabusConfig {
       this.sourceStreams = sourceStreams;
       this.hadoopConf.set("fs.default.name", hdfsUrl);
       this.zkConnectionString = zkConnectionString;
+    }
+
+    public String getLocalFinalDestDirRoot() {
+      String dest = hdfsUrl + File.separator + rootDir + File.separator + "streams-local"
+              + File.separator;
+      return dest;
+    }
+
+    public String getLocalDestDir(String category, long commitTime)
+        throws IOException {
+      Date date = new Date(commitTime);
+      Calendar calendar = new GregorianCalendar();
+      calendar.setTime(date);
+      String dest = hdfsUrl + File.separator + rootDir + File.separator
+          + "streams-local" + File.separator + category + File.separator
+          + calendar.get(Calendar.YEAR) + File.separator
+          + (calendar.get(Calendar.MONTH) + 1) + File.separator
+          + calendar.get(Calendar.DAY_OF_MONTH) + File.separator
+          + calendar.get(Calendar.HOUR_OF_DAY) + File.separator
+          + calendar.get(Calendar.MINUTE);
+      return dest;
     }
 
     public synchronized long getCommitTime() {
@@ -179,12 +209,7 @@ public class DatabusConfig {
       return new Path(getSystemDir() + File.separator +
               "tmp");
     }
-    /*
-        public Path getNewTmpPath() {
-          return new Path(getTmpPath(),
-              Long.toString(System.currentTimeMillis()));
-        }
-    */
+
     private String getSystemDir() {
       return hdfsUrl + File.separator +
               rootDir + File.separator +
@@ -195,11 +220,12 @@ public class DatabusConfig {
   public static class ConsumeStream {
     private final int retentionInDays;
     private final String name;
-    private boolean isPrimary = false;
+    private Boolean isPrimary = false;
 
-    public ConsumeStream(String name, int retentionInDays) {
+    public ConsumeStream(String name, int retentionInDays, Boolean isPrimary) {
       this.name = name;
       this.retentionInDays = retentionInDays;
+      this.isPrimary = isPrimary;
     }
 
     public boolean isPrimary() {
@@ -214,8 +240,15 @@ public class DatabusConfig {
     public String getName() {
       return name;
     }
-    public int getRentionInDays() {
-      return retentionInDays;
+    public int getRetentionInDays() {
+      if (retentionInDays > 0)
+        return retentionInDays;
+      else if(getGlobalRetention() > 0) {
+        return getGlobalRetention(); //Returns Global retention
+      }
+      else
+        return 2; //default to 2 days
+
     }
   }
 
@@ -231,8 +264,15 @@ public class DatabusConfig {
       this.sourceClusters = sourceClusters;
     }
 
-    public int getretentionInDays(String clusterName) {
-      return sourceClusters.get(clusterName).intValue();
+    public int getRetentionInDays(String clusterName) {
+      int clusterRetention = sourceClusters.get(clusterName).intValue();
+      if (clusterRetention > 0)
+        return clusterRetention;
+      else if(getGlobalRetention() > 0)
+        return getGlobalRetention();
+      else
+        return 2;
+
     }
 
     public Set<String> getSourceClusters() {

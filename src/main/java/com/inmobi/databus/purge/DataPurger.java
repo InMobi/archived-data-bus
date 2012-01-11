@@ -36,11 +36,12 @@ public class DataPurger extends AbstractCopier{
       Map.Entry entry = (Map.Entry) it.next();
       String streamName = (String) entry.getKey();
       DatabusConfig.ConsumeStream  consumeStream = (DatabusConfig.ConsumeStream) entry.getValue();
-      Integer mergedStreamRetentionInDays = consumeStream.getRentionInDays();
-      LOG.debug("streamName [" + streamName + "] mergedStreamRetentionInDays [" + mergedStreamRetentionInDays + "]");
+      Integer mergedStreamRetentionInDays = consumeStream.getRetentionInDays();
+      LOG.debug("Merged Stream :: streamName [" + streamName + "] mergedStreamRetentionInDays [" +
+              mergedStreamRetentionInDays + "]");
       if (streamRetention.get(streamName) == null) {
         streamRetention.put(streamName, mergedStreamRetentionInDays);
-        LOG.debug("Adding Stream [" + streamName + "] retentionInDays [" + mergedStreamRetentionInDays + "]");
+        LOG.debug("Adding Merged Stream [" + streamName + "] retentionInDays [" + mergedStreamRetentionInDays + "]");
       }
       else {
         //Partial & Merged stream are produced at this cluster
@@ -65,9 +66,9 @@ public class DataPurger extends AbstractCopier{
     for (DatabusConfig.Stream s : getConfig().getStreams().values()) {
       if (s.getSourceClusters().contains(getSrcCluster())) {
         String streamName = s.getName();
-        Integer retentionInDays =  new Integer(s.getretentionInDays(getSrcCluster().getName()));
+        Integer retentionInDays =  new Integer(s.getRetentionInDays(getSrcCluster().getName()));
         streamRetention.put(streamName, retentionInDays);
-        LOG.debug("Adding Stream [" + streamName + "] with retentionPeriod [" + retentionInDays + "]");
+        LOG.debug("Adding Partial Stream [" + streamName + "] with retentionPeriod [" + retentionInDays + "]");
       }
     }
   }
@@ -99,33 +100,35 @@ public class DataPurger extends AbstractCopier{
 
   @Override
   protected void fetch() throws Exception {
-    streamRetention = new HashMap<String, Integer>();
-    streamsToPurge = new HashSet<Path>();
-    String mergedStreamRoot = getSrcCluster().getFinalDestDirRoot();
-    mergedStreamsInClusterPathMap = getStreamsInCluster(mergedStreamRoot);
-    String localStreamRoot = getSrcCluster().getLocalFinalDestDirRoot();
-    localStreamsInClusterPathMap = getStreamsInCluster(localStreamRoot);
-    // populates - streamRetention
-    //Map of streams and their retention period at this cluster (Partial + Merged)
-    //Partial streams produced at this cluster - retention period config
-    addPartialStreams();
-    //Merged streams at this cluster - retention period config
-    addMergedStreams();
-    getPathsToPurge(mergedStreamsInClusterPathMap, localStreamsInClusterPathMap);
-    purge();
-  }
-
-  private void getPathsToPurge(Map<String, Path> mergedStreamsInClusterPathMap, Map<String, Path> localStreamsInClusterPathMap) throws Exception {
     try {
-      getStreamsPathToPurge(mergedStreamsInClusterPathMap);
-      getStreamsPathToPurge(localStreamsInClusterPathMap);
-      getTrashPathsToPurge();
+      streamRetention = new HashMap<String, Integer>();
+      streamsToPurge = new HashSet<Path>();
+
+      // populates - streamRetention
+      //Map of streams and their retention period at this cluster (Partial + Merged)
+      //Partial streams produced at this cluster - retention period config
+      addPartialStreams();
+      //Merged streams at this cluster - retention period config
+      addMergedStreams();
+      String mergedStreamRoot = getSrcCluster().getFinalDestDirRoot();
+      mergedStreamsInClusterPathMap = getStreamsInCluster(mergedStreamRoot);
+      String localStreamRoot = getSrcCluster().getLocalFinalDestDirRoot();
+      localStreamsInClusterPathMap = getStreamsInCluster(localStreamRoot);
+      getPathsToPurge(mergedStreamsInClusterPathMap, localStreamsInClusterPathMap);
+      purge();
     }
     catch (Exception e) {
       LOG.warn(e);
       e.printStackTrace();
       throw new Exception(e);
     }
+  }
+
+  private void getPathsToPurge(Map<String, Path> mergedStreamsInClusterPathMap, Map<String, Path> localStreamsInClusterPathMap) throws Exception {
+    getStreamsPathToPurge(mergedStreamsInClusterPathMap);
+    getStreamsPathToPurge(localStreamsInClusterPathMap);
+    getTrashPathsToPurge();
+
   }
   private void getTrashPathsToPurge() throws Exception {
     Path trashRoot = getSrcCluster().getTrashPath();
@@ -154,11 +157,16 @@ public class DataPurger extends AbstractCopier{
 
   private Map<String, Path> getStreamsInCluster(String root) throws Exception{
     Map<String, Path> streams = new HashMap<String, Path>();
+    LOG.debug("Find streams in [" + root + "]");
     FileStatus[] paths = fs.listStatus(new Path(root));
-    for (FileStatus fileStatus : paths) {
-      streams.put(fileStatus.getPath().getName(), fileStatus.getPath().makeQualified(fs));
-      LOG.debug("Purger working for stream [" + fileStatus.getPath() + "]");
+    if (paths != null) {
+      for (FileStatus fileStatus : paths) {
+        streams.put(fileStatus.getPath().getName(), fileStatus.getPath().makeQualified(fs));
+        LOG.debug("Purger working for stream [" + fileStatus.getPath() + "]");
+      }
     }
+    else
+      LOG.debug("No streams found in [" + root + "]");
     return streams;
   }
 
@@ -205,10 +213,10 @@ public class DataPurger extends AbstractCopier{
     Calendar nowTime = CalendarHelper.getNowTime();
     LOG.info("streamDate ::"  + streamDate.getTimeInMillis() + " nowTime ::" + nowTime.getTimeInMillis());
     if (streamDate.before(nowTime))
-       return true;
+      return true;
     else
-    return false;
-   }
+      return false;
+  }
 
   private void purge() throws Exception {
     Iterator it = streamsToPurge.iterator();
@@ -220,6 +228,6 @@ public class DataPurger extends AbstractCopier{
   }
 
   private FileStatus[] getAllFilesInDir(Path dir, FileSystem fs) throws Exception{
-   return fs.listStatus(dir);
+    return fs.listStatus(dir);
   }
 }

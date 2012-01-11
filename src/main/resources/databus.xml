@@ -2,6 +2,7 @@
   <defaults>
     <rootdir>/databus</rootdir>
     <zookeeperconnectstring>gs1104.grid.corp.inmobi.com:2188</zookeeperconnectstring>
+    <retentionindays>2</retentionindays>
   </defaults>
 
   <!-- A stream can have only one primary and multiple mirrors as destinations
@@ -11,41 +12,41 @@
       <sources>
         <source>
           <name>uj1</name>
-          <retentionIndays>2</retentionIndays>
+          <retentionindays>2</retentionindays>
         </source>
         <source>
-          <name>er1</name>
-          <retentionIndays>2</retentionIndays>
+          <name>uj2</name>
+          <retentionindays>2</retentionindays>
         </source>
       </sources>
       <destinations>
         <destination>
-          <name>ua2</name>
-          <retentionIndays>1</retentionIndays>
+          <name>ua1</name>
+          <retentionindays>1</retentionindays>
           <primary>true</primary>
         </destination>
         <destination>
           <name>uj1</name>
-          <retentionIndays>1</retentionIndays>
+          <retentionindays>1</retentionindays>
         </destination>
       </destinations>
     </stream>
   </streams>
 
   <clusters>
-    <cluster name="uj1" hdfsUrl="hdfs://gs1104.grid.corp.inmobi.com:8020/" jtUrl="gs1104.grid.corp.inmobi.com:8021">
+    <cluster name="uj1" hdfsurl="hdfs://gs1104.grid.corp.inmobi.com:8020/" jturl="gs1104.grid.corp.inmobi.com:8021">
       <zookeeper>
         <connectionstring>gs1104.grid.corp.inmobi.com:2188</connectionstring>
       </zookeeper>
     </cluster>
 
-    <cluster name="er1" hdfsUrl="hdfs://gs1103.grid.corp.inmobi.com:8020/" jtUrl="gs1103.grid.corp.inmobi.com:8023">
+    <cluster name="uj2" hdfsurl="hdfs://gs1103.grid.corp.inmobi.com:8020/" jturl="gs1103.grid.corp.inmobi.com:19023">
       <zookeeper>
         <connectionstring>gs1104.grid.corp.inmobi.com:2188</connectionstring>
       </zookeeper>
     </cluster>
 
-    <cluster name="ua2" hdfsUrl="hdfs://localhost:8020/" jtUrl="localhost:8021">
+    <cluster name="ua1" hdfsurl="hdfs://localhost:8020/" jturl="localhost:8021">
       <zookeeper>
         <connectionstring>gs1104.grid.corp.inmobi.com:2188</connectionstring>
       </zookeeper>
