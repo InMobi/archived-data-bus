@@ -42,9 +42,7 @@ public class Databus {
       for (ConsumeStream cStream : cluster.getConsumeStreams().values()) {
         for (String cName : config.getStreams().get(cStream.getName())
                 .getSourceClusters()) {
-          if (!cName.equals(cluster.getName())) {
-            remoteClustersToFetch.add(config.getClusters().get(cName));
-          }
+          remoteClustersToFetch.add(config.getClusters().get(cName));
         }
       }
       for (Cluster remote : remoteClustersToFetch) {

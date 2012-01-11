@@ -13,7 +13,8 @@ public class DataPurger extends AbstractCopier{
 
   Map<String, Integer> streamRetention;
   Set<Path> streamsToPurge;
-  Map<String, Path> streamsInClusterPathMap;
+  Map<String, Path> mergedStreamsInClusterPathMap;
+  Map<String, Path> localStreamsInClusterPathMap;
   FileSystem fs = null;
 
   public DataPurger(DatabusConfig databusConfig, DatabusConfig.Cluster cluster) throws Exception{
@@ -100,20 +101,24 @@ public class DataPurger extends AbstractCopier{
   protected void fetch() throws Exception {
     streamRetention = new HashMap<String, Integer>();
     streamsToPurge = new HashSet<Path>();
-    streamsInClusterPathMap = getStreamsInCluster();
+    String mergedStreamRoot = getSrcCluster().getFinalDestDirRoot();
+    mergedStreamsInClusterPathMap = getStreamsInCluster(mergedStreamRoot);
+    String localStreamRoot = getSrcCluster().getLocalFinalDestDirRoot();
+    localStreamsInClusterPathMap = getStreamsInCluster(localStreamRoot);
     // populates - streamRetention
     //Map of streams and their retention period at this cluster (Partial + Merged)
-    //Partial streams produced at this cluster
+    //Partial streams produced at this cluster - retention period config
     addPartialStreams();
-    //Merged streams at this cluster
+    //Merged streams at this cluster - retention period config
     addMergedStreams();
-    getPathsToPurge();
+    getPathsToPurge(mergedStreamsInClusterPathMap, localStreamsInClusterPathMap);
     purge();
   }
 
-  private void getPathsToPurge() throws Exception {
+  private void getPathsToPurge(Map<String, Path> mergedStreamsInClusterPathMap, Map<String, Path> localStreamsInClusterPathMap) throws Exception {
     try {
-      getStreamsPathToPurge();
+      getStreamsPathToPurge(mergedStreamsInClusterPathMap);
+      getStreamsPathToPurge(localStreamsInClusterPathMap);
       getTrashPathsToPurge();
     }
     catch (Exception e) {
@@ -147,9 +152,8 @@ public class DataPurger extends AbstractCopier{
 
   }
 
-  private Map<String, Path> getStreamsInCluster() throws Exception{
+  private Map<String, Path> getStreamsInCluster(String root) throws Exception{
     Map<String, Path> streams = new HashMap<String, Path>();
-    String root = getSrcCluster().getFinalDestDirRoot();
     FileStatus[] paths = fs.listStatus(new Path(root));
     for (FileStatus fileStatus : paths) {
       streams.put(fileStatus.getPath().getName(), fileStatus.getPath().makeQualified(fs));
@@ -158,8 +162,8 @@ public class DataPurger extends AbstractCopier{
     return streams;
   }
 
-  private void getStreamsPathToPurge() throws Exception {
-    Set<Map.Entry<String, Path>> streamsToProcess = streamsInClusterPathMap.entrySet();
+  private void getStreamsPathToPurge(Map<String, Path> streamPathMap) throws Exception {
+    Set<Map.Entry<String, Path>> streamsToProcess = streamPathMap.entrySet();
     Iterator it = streamsToProcess.iterator();
     while (it.hasNext()) {
       Map.Entry<String, Path> entry = (Map.Entry<String, Path>) it.next();

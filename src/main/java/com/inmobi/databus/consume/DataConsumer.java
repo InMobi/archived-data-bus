@@ -88,7 +88,7 @@ public class DataConsumer extends AbstractCopier {
     Map<Path, Path> mvPaths = new LinkedHashMap<Path, Path>();
     FileStatus[] categories = fs.listStatus(tmpJobOutputPath);
     for (FileStatus categoryDir : categories) {
-      Path destDir = new Path(getSrcCluster().getFinalDestDir(
+      Path destDir = new Path(getSrcCluster().getLocalDestDir(
               categoryDir.getPath().getName(), commitTime));
       FileStatus[] files = fs.listStatus(categoryDir.getPath());
       for (FileStatus file : files) {
@@ -100,9 +100,6 @@ public class DataConsumer extends AbstractCopier {
     // find input files for consumers
     Map<Path, Path> consumerCommitPaths = new HashMap<Path, Path>();
     for (Cluster cluster : getConfig().getClusters().values()) {
-      if (cluster.getName().equals(getSrcCluster().getName())) {
-        continue;
-      }
       Set<String> consumeStreams = cluster.getConsumeStreams().keySet();
       boolean consumeCluster = false;
       for(String stream : consumeStreams) {

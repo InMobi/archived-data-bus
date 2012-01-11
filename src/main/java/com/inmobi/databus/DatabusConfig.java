@@ -99,6 +99,13 @@ public class DatabusConfig {
       return dest;
     }
 
+    public String getLocalFinalDestDirRoot() {
+      String dest = hdfsUrl + File.separator + rootDir + File.separator + "streams-local"
+              + File.separator;
+      return dest;
+    }
+
+
     public String getDateTimeDestDir(String category, long commitTime) {
       Date date = new Date(commitTime);
       Calendar calendar = new GregorianCalendar();
@@ -113,6 +120,21 @@ public class DatabusConfig {
     }
 
 
+    public String getLocalDestDir(String category, long commitTime)
+        throws IOException {
+      Date date = new Date(commitTime);
+      Calendar calendar = new GregorianCalendar();
+      calendar.setTime(date);
+      String dest = hdfsUrl + File.separator + rootDir + File.separator
+          + "streams-local" + File.separator + category + File.separator
+          + calendar.get(Calendar.YEAR) + File.separator
+          + (calendar.get(Calendar.MONTH) + 1) + File.separator
+          + calendar.get(Calendar.DAY_OF_MONTH) + File.separator
+          + calendar.get(Calendar.HOUR_OF_DAY) + File.separator
+          + calendar.get(Calendar.MINUTE);
+      return dest;
+    }
+    
     public String getFinalDestDir(String category, long commitTime)
             throws IOException {
       Date date = new Date(commitTime);
