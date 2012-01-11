@@ -9,13 +9,23 @@ import java.util.*;
 
 public class DatabusConfig {
 
-
+  /*
+    public static String DATABUS_ROOT_DIR = "/databus/";
+    public static String DATABUS_SYSTEM_DIR = DATABUS_ROOT_DIR + "system/";
+    public static String TMP = DATABUS_SYSTEM_DIR + "tmp";
+    public static String TRASH = DATABUS_SYSTEM_DIR + "trash";
+    public static String CONSUMER = DATABUS_SYSTEM_DIR + "consumers";
+    public static String DATA_DIR = DATABUS_ROOT_DIR + "data/";
+    public static String PUBLISH_DIR = DATABUS_ROOT_DIR + "streams/";
+  */
   private final Map<String, Cluster> clusters;
   private final Map<String, Stream> streams;
   private String zkConnectionString;
 
   public DatabusConfig(String rootDir, String zkConnectionString, Map<String, Stream> streams,
                        Map<String, Cluster> clusterMap) {
+    //this.hadoopConf = new Configuration();
+    //hadoopConf.set("fs.default.name", destinationCluster.getHdfsUrl());
     this.zkConnectionString = zkConnectionString;
     this.streams = streams;
     this.clusters = clusterMap;
@@ -89,13 +99,6 @@ public class DatabusConfig {
       return dest;
     }
 
-    public String getLocalFinalDestDirRoot() {
-      String dest = hdfsUrl + File.separator + rootDir + File.separator + "streams-local"
-              + File.separator;
-      return dest;
-    }
-
-
     public String getDateTimeDestDir(String category, long commitTime) {
       Date date = new Date(commitTime);
       Calendar calendar = new GregorianCalendar();
@@ -110,21 +113,6 @@ public class DatabusConfig {
     }
 
 
-    public String getLocalDestDir(String category, long commitTime)
-        throws IOException {
-      Date date = new Date(commitTime);
-      Calendar calendar = new GregorianCalendar();
-      calendar.setTime(date);
-      String dest = hdfsUrl + File.separator + rootDir + File.separator
-          + "streams-local" + File.separator + category + File.separator
-          + calendar.get(Calendar.YEAR) + File.separator
-          + (calendar.get(Calendar.MONTH) + 1) + File.separator
-          + calendar.get(Calendar.DAY_OF_MONTH) + File.separator
-          + calendar.get(Calendar.HOUR_OF_DAY) + File.separator
-          + calendar.get(Calendar.MINUTE);
-      return dest;
-    }
-    
     public String getFinalDestDir(String category, long commitTime)
             throws IOException {
       Date date = new Date(commitTime);
@@ -191,7 +179,12 @@ public class DatabusConfig {
       return new Path(getSystemDir() + File.separator +
               "tmp");
     }
-
+    /*
+        public Path getNewTmpPath() {
+          return new Path(getTmpPath(),
+              Long.toString(System.currentTimeMillis()));
+        }
+    */
     private String getSystemDir() {
       return hdfsUrl + File.separator +
               rootDir + File.separator +
@@ -202,11 +195,21 @@ public class DatabusConfig {
   public static class ConsumeStream {
     private final int retentionInDays;
     private final String name;
+    private boolean isPrimary = false;
 
     public ConsumeStream(String name, int retentionInDays) {
       this.name = name;
       this.retentionInDays = retentionInDays;
     }
+
+    public boolean isPrimary() {
+      return isPrimary;
+    }
+
+    public void setPrimary(boolean primary) {
+      isPrimary = primary;
+    }
+
 
     public String getName() {
       return name;
@@ -218,52 +221,18 @@ public class DatabusConfig {
 
   public static class Stream {
     private final String name;
-    //Map of SourceClusterName, Retention for stream on it.
-    private Map<String, Integer> sourceClusters;
-    private String primaryDestClusterName = null;
-    private Integer retentionOnPrimaryDestCluster = null;
-    //Map of DestClusterName, Retention for stream on it.
-    private Map<String, Integer> mirrorClusters = null;
+    //Map of ClusterName, Retention for a stream
+    private final Map<String, Integer> sourceClusters;
 
 
-    public Stream(String name, Map<String, Integer> sourceClusters,
-                  String primaryDestClusterName, Integer retentionOnPrimaryDestCluster,
-                  Map<String, Integer> mirrorClusters) {
+    public Stream(String name, Map<String, Integer> sourceClusters) {
       super();
       this.name = name;
       this.sourceClusters = sourceClusters;
-      this.primaryDestClusterName = primaryDestClusterName;
-      this.retentionOnPrimaryDestCluster = retentionOnPrimaryDestCluster;
-      this.mirrorClusters = mirrorClusters;
-    }
-
-    public boolean isPrimaryCluster(String clusterName) {
-      return primaryDestClusterName.equalsIgnoreCase(clusterName);
-    }
-
-    public String getPrimaryDestClusterName() {
-      return primaryDestClusterName;
-    }
-
-    public boolean isMirrorDestCluster(String clusterName) {
-      return mirrorClusters.containsKey(clusterName);
-    }
-
-    public int getDefaultRetention(){
-      return 2;
     }
 
     public int getretentionInDays(String clusterName) {
-      if (isPrimaryCluster(clusterName))
       return sourceClusters.get(clusterName).intValue();
-      else if (isMirrorDestCluster(clusterName))
-        return mirrorClusters.get(clusterName).intValue();
-      else
-        return getDefaultRetention();
-    }
-
-    public Set<String> getMirrorClusters() {
-      return mirrorClusters.keySet();
     }
 
     public Set<String> getSourceClusters() {

@@ -1,55 +1,54 @@
-<Databus>
-  <Config>
-    <RootDir>/databus</RootDir>
-    <ZookeeperConnectString>gs1104.grid.corp.inmobi.com:2188</ZookeeperConnectString>
-  </Config>
+<databus>
+  <defaults>
+    <rootdir>/databus</rootdir>
+    <zookeeperconnectstring>gs1104.grid.corp.inmobi.com:2188</zookeeperconnectstring>
+  </defaults>
 
   <!-- A stream can have only one primary and multiple mirrors as destinations
-
-  -->
-  <Streams>
-    <Stream name="metric_billing">
-      <Sources>
-        <Source>
+    -->
+  <streams>
+    <stream name="metric_billing">
+      <sources>
+        <source>
           <name>uj1</name>
-          <retentionInDays>2</retentionInDays>
-        </Source>
-        <Source>
+          <retentionIndays>2</retentionIndays>
+        </source>
+        <source>
           <name>er1</name>
-          <retentionInDays>2</retentionInDays>
-        </Source>
-      </Sources>
-      <Destinations>
-        <Destination>
+          <retentionIndays>2</retentionIndays>
+        </source>
+      </sources>
+      <destinations>
+        <destination>
           <name>ua2</name>
-          <retentionInDays>1</retentionInDays>
+          <retentionIndays>1</retentionIndays>
           <primary>true</primary>
-        </Destination>
-        <Destination>
+        </destination>
+        <destination>
           <name>uj1</name>
-          <retentionInDays>1</retentionInDays>
-        </Destination>
-      </Destinations>
-    </Stream>
-  </Streams>
+          <retentionIndays>1</retentionIndays>
+        </destination>
+      </destinations>
+    </stream>
+  </streams>
 
-  <Clusters>
-    <Cluster name="uj1" hdfsUrl="hdfs://gs1104.grid.corp.inmobi.com:8020/" jtUrl="gs1104.grid.corp.inmobi.com:8021">
-      <Zookeeper>
-        <connectionString>gs1104.grid.corp.inmobi.com:2188</connectionString>
-      </Zookeeper>
-    </Cluster>
+  <clusters>
+    <cluster name="uj1" hdfsUrl="hdfs://gs1104.grid.corp.inmobi.com:8020/" jtUrl="gs1104.grid.corp.inmobi.com:8021">
+      <zookeeper>
+        <connectionstring>gs1104.grid.corp.inmobi.com:2188</connectionstring>
+      </zookeeper>
+    </cluster>
 
-    <Cluster name="er1" hdfsUrl="hdfs://gs1103.grid.corp.inmobi.com:8020/" jtUrl="gs1103.grid.corp.inmobi.com:8023">
-      <Zookeeper>
-        <connectionString>gs1104.grid.corp.inmobi.com:2188</connectionString>
-      </Zookeeper>
-    </Cluster>
+    <cluster name="er1" hdfsUrl="hdfs://gs1103.grid.corp.inmobi.com:8020/" jtUrl="gs1103.grid.corp.inmobi.com:8023">
+      <zookeeper>
+        <connectionstring>gs1104.grid.corp.inmobi.com:2188</connectionstring>
+      </zookeeper>
+    </cluster>
 
-    <Cluster name="ua2" hdfsUrl="hdfs://localhost:8020/" jtUrl="localhost:8021">
-      <Zookeeper>
-        <connectionString>gs1104.grid.corp.inmobi.com:2188</connectionString>
-      </Zookeeper>
-    </Cluster>
-  </Clusters>
-</Databus>
+    <cluster name="ua2" hdfsUrl="hdfs://localhost:8020/" jtUrl="localhost:8021">
+      <zookeeper>
+        <connectionstring>gs1104.grid.corp.inmobi.com:2188</connectionstring>
+      </zookeeper>
+    </cluster>
+  </clusters>
+</databus>
