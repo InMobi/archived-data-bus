@@ -4,18 +4,32 @@
     <ZookeeperConnectString>gs1104.grid.corp.inmobi.com:2188</ZookeeperConnectString>
   </Config>
 
+  <!-- A stream can have only one primary and multiple mirrors as destinations
+
+  -->
   <Streams>
-    <Stream streamname="metric_billing">
+    <Stream name="metric_billing">
       <Sources>
         <Source>
           <name>uj1</name>
-          <retentionInDays>24</retentionInDays>
+          <retentionInDays>2</retentionInDays>
         </Source>
         <Source>
           <name>er1</name>
-          <retentionInDays>24</retentionInDays>
+          <retentionInDays>2</retentionInDays>
         </Source>
       </Sources>
+      <Destinations>
+        <Destination>
+          <name>ua2</name>
+          <retentionInDays>1</retentionInDays>
+          <primary>true</primary>
+        </Destination>
+        <Destination>
+          <name>uj1</name>
+          <retentionInDays>1</retentionInDays>
+        </Destination>
+      </Destinations>
     </Stream>
   </Streams>
 
@@ -36,13 +50,6 @@
       <Zookeeper>
         <connectionString>gs1104.grid.corp.inmobi.com:2188</connectionString>
       </Zookeeper>
-      <ConsumeStreams>
-        <ConsumeStream>
-          <name>metric_billing</name>
-          <retentionInDays>24</retentionInDays>
-        </ConsumeStream>
-      </ConsumeStreams>
-
     </Cluster>
   </Clusters>
 </Databus>

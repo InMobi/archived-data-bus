@@ -9,23 +9,13 @@ import java.util.*;
 
 public class DatabusConfig {
 
-  /*
-    public static String DATABUS_ROOT_DIR = "/databus/";
-    public static String DATABUS_SYSTEM_DIR = DATABUS_ROOT_DIR + "system/";
-    public static String TMP = DATABUS_SYSTEM_DIR + "tmp";
-    public static String TRASH = DATABUS_SYSTEM_DIR + "trash";
-    public static String CONSUMER = DATABUS_SYSTEM_DIR + "consumers";
-    public static String DATA_DIR = DATABUS_ROOT_DIR + "data/";
-    public static String PUBLISH_DIR = DATABUS_ROOT_DIR + "streams/";
-  */
+
   private final Map<String, Cluster> clusters;
   private final Map<String, Stream> streams;
   private String zkConnectionString;
 
   public DatabusConfig(String rootDir, String zkConnectionString, Map<String, Stream> streams,
                        Map<String, Cluster> clusterMap) {
-    //this.hadoopConf = new Configuration();
-    //hadoopConf.set("fs.default.name", destinationCluster.getHdfsUrl());
     this.zkConnectionString = zkConnectionString;
     this.streams = streams;
     this.clusters = clusterMap;
@@ -201,12 +191,7 @@ public class DatabusConfig {
       return new Path(getSystemDir() + File.separator +
               "tmp");
     }
-    /*
-        public Path getNewTmpPath() {
-          return new Path(getTmpPath(),
-              Long.toString(System.currentTimeMillis()));
-        }
-    */
+
     private String getSystemDir() {
       return hdfsUrl + File.separator +
               rootDir + File.separator +
@@ -233,18 +218,52 @@ public class DatabusConfig {
 
   public static class Stream {
     private final String name;
-    //Map of ClusterName, Retention for a stream
-    private final Map<String, Integer> sourceClusters;
+    //Map of SourceClusterName, Retention for stream on it.
+    private Map<String, Integer> sourceClusters;
+    private String primaryDestClusterName = null;
+    private Integer retentionOnPrimaryDestCluster = null;
+    //Map of DestClusterName, Retention for stream on it.
+    private Map<String, Integer> mirrorClusters = null;
 
 
-    public Stream(String name, Map<String, Integer> sourceClusters) {
+    public Stream(String name, Map<String, Integer> sourceClusters,
+                  String primaryDestClusterName, Integer retentionOnPrimaryDestCluster,
+                  Map<String, Integer> mirrorClusters) {
       super();
       this.name = name;
       this.sourceClusters = sourceClusters;
+      this.primaryDestClusterName = primaryDestClusterName;
+      this.retentionOnPrimaryDestCluster = retentionOnPrimaryDestCluster;
+      this.mirrorClusters = mirrorClusters;
+    }
+
+    public boolean isPrimaryCluster(String clusterName) {
+      return primaryDestClusterName.equalsIgnoreCase(clusterName);
+    }
+
+    public String getPrimaryDestClusterName() {
+      return primaryDestClusterName;
+    }
+
+    public boolean isMirrorDestCluster(String clusterName) {
+      return mirrorClusters.containsKey(clusterName);
+    }
+
+    public int getDefaultRetention(){
+      return 2;
     }
 
     public int getretentionInDays(String clusterName) {
+      if (isPrimaryCluster(clusterName))
       return sourceClusters.get(clusterName).intValue();
+      else if (isMirrorDestCluster(clusterName))
+        return mirrorClusters.get(clusterName).intValue();
+      else
+        return getDefaultRetention();
+    }
+
+    public Set<String> getMirrorClusters() {
+      return mirrorClusters.keySet();
     }
 
     public Set<String> getSourceClusters() {
