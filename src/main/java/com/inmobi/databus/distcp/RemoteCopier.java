@@ -1,20 +1,16 @@
 package com.inmobi.databus.distcp;
 
-import com.inmobi.databus.AbstractCopier;
-import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.DatabusConfig.Cluster;
-import com.inmobi.databus.utils.CalendarHelper;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import com.inmobi.databus.*;
+import com.inmobi.databus.DatabusConfig.*;
+import com.inmobi.databus.utils.*;
+import org.apache.commons.logging.*;
 import org.apache.hadoop.fs.*;
-import org.apache.hadoop.tools.DistCp;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.tools.*;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.net.URI;
+import java.io.*;
+import java.net.*;
 import java.util.*;
-import java.io.File;
 
 public class RemoteCopier extends AbstractCopier {
 
@@ -82,20 +78,95 @@ public class RemoteCopier extends AbstractCopier {
         destFs.delete(tmpOut, true);
         skipCommit = true;
       }
-
+      Map<String, Set<Path>> commitedPaths;
       //if success
       if (!skipCommit) {
         Map<String, List<Path>> categoriesToCommit = prepareForCommit(tmpOut);
         synchronized (getDestCluster()) {
           long commitTime = getDestCluster().getCommitTime();
-          commit(tmpOut, consumePaths, commitTime, categoriesToCommit);
+          //category, Set of Paths to commit
+          commitedPaths = doLocalcommit(commitTime, categoriesToCommit);
         }
+        //Prepare paths for MirrorDataService
+        commitMirroredConsumerPaths(commitedPaths);
+        //Cleanup happens in parallel without sync
+        //no race is there in consumePaths, tmpOut
+        doFinalCommit(consumePaths, tmpOut);
       }
     } catch (Exception e) {
       LOG.warn(e);
       LOG.warn(e.getMessage());
       e.printStackTrace();
     }
+  }
+
+  private void commitMirroredConsumerPaths(Map<String, Set<Path>> commitedPaths) throws Exception{
+    //Map of Stream and clusters where it's mirrored
+    Map<String, Set<Cluster>> mirrorStreamConsumers = new HashMap<String, Set<Cluster>>();
+    Map<Path, Path> consumerCommitPaths = new LinkedHashMap<Path, Path>();
+    //for each stream in committedPaths
+    for(String stream : commitedPaths.keySet()) {
+      //for each cluster
+      for (Cluster cluster : getConfig().getClusters().values()) {
+        //is this stream mirrored on this cluster
+        if (cluster.getMirroredStreams().contains(stream)) {
+          Set<Cluster> mirrorConsumers = mirrorStreamConsumers.get(stream);
+          if (mirrorConsumers == null)
+            mirrorConsumers = new HashSet<Cluster>();
+          mirrorConsumers.add(cluster);
+          mirrorStreamConsumers.put(stream, mirrorConsumers);
+        }
+      }
+    } //for each stream
+
+    //Commit paths for each consumer
+    for(String stream : commitedPaths.keySet()) {
+      //consumers for this stream
+      Set<Cluster> consumers = mirrorStreamConsumers.get(stream);
+      Path tmpConsumerPath;
+      for (Cluster consumer : consumers) {
+        //commit paths for this consumer, this stream
+         tmpConsumerPath = new Path(getDestCluster().getTmpPath(), "src-" + getSrcCluster().getName() +
+                 "-via-"+ getDestCluster().getName() + "-mirrorto-" +
+                consumer.getName() + "-" + stream);
+        FSDataOutputStream out = destFs.create(tmpConsumerPath);
+        for (Path path : commitedPaths.get(stream)) {
+          out.writeBytes(path.toString());
+          out.writeBytes("\n");
+        }
+        out.close();
+        synchronized (getDestCluster()) {
+        Path finalMirrorPath = new Path(getDestCluster().getMirrorConsumePath(consumer),
+                new Long(System.currentTimeMillis()).toString());
+         consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
+          //Two remote copiers will write file for same consumer within the same time
+          //sleep for 1msec to avoid filename conflict
+          Thread.sleep(1);
+        }
+      } //for each consumer
+    } //for each stream
+
+    //Do the final mirrorCommit
+    LOG.info("Committing " + consumerCommitPaths.size() + " paths.");
+    FileSystem fs = FileSystem.get(getDestCluster().getHadoopConf());
+    for (Map.Entry<Path, Path> entry : consumerCommitPaths.entrySet()) {
+      LOG.info("Renaming " + entry.getKey() + " to " + entry.getValue());
+      fs.mkdirs(entry.getValue().getParent());
+      fs.rename(entry.getKey(), entry.getValue());
+    }
+  }
+
+
+  private void doFinalCommit(Set<Path> consumePaths, Path tmpOut) throws Exception{
+    //commit distcp consume Path from remote cluster
+    for(Path consumePath : consumePaths) {
+      srcFs.delete(consumePath);
+      LOG.debug("Deleting [" + consumePath + "]");
+    }
+    //rmr tmpOut   cleanup
+    destFs.delete(tmpOut, true);
+    LOG.debug("Deleting [" + tmpOut + "]");
+
   }
 
   private Map<String, List<Path>> prepareForCommit(Path tmpOut) throws Exception{
@@ -174,8 +245,12 @@ public class RemoteCopier extends AbstractCopier {
     return  null;
   }
 
-  private void commit(Path tmpOut, Set<Path> consumePaths,
-                      long commitTime, Map<String, List<Path>> categoriesToCommit) throws Exception {
+  /*
+   * @returns Map<String, Set<Path>> - Map of StreamName, Set of paths committed for stream
+   */
+  private Map<String, Set<Path>> doLocalcommit(long commitTime, Map<String, List<Path>> categoriesToCommit) throws
+          Exception {
+    Map<String, Set<Path>> comittedPaths = new HashMap<String, Set<Path>>();
     Set<Map.Entry<String, List<Path>>> commitEntries = categoriesToCommit.entrySet();
     Iterator it = commitEntries.iterator();
     while(it.hasNext()) {
@@ -188,18 +263,20 @@ public class RemoteCopier extends AbstractCopier {
           destFs.mkdirs(destParentPath);
         }
         destFs.rename(filePath, destParentPath);
+        Path commitPath = new Path(destParentPath, filePath.getName());
+        Set<Path> commitPaths;
+        if (comittedPaths.get(category) == null) {
+          commitPaths = new HashSet<Path>();
+          commitPaths.add(commitPath);
+          comittedPaths.put(category, commitPaths);
+        }
+        else {
+          comittedPaths.get(category).add(commitPath);
+        }
         LOG.debug("Moving from intermediatePath [" + filePath + "] to [" + destParentPath + "]");
       }
     }
-    //commit distcp
-    for(Path consumePath : consumePaths) {
-      srcFs.delete(consumePath);
-      LOG.debug("Deleting [" + consumePath + "]");
-    }
-    //rmr tmpOut   cleanup
-    destFs.delete(tmpOut, true);
-    LOG.debug("Deleting [" + tmpOut + "]");
-
+    return comittedPaths;
   }
 
 

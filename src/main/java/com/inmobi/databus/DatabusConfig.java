@@ -78,6 +78,8 @@ public class DatabusConfig {
       this.zkConnectionString = zkConnectionString;
     }
 
+
+
     public String getLocalFinalDestDirRoot() {
       String dest = hdfsUrl + File.separator + rootDir + File.separator + "streams-local"
               + File.separator;
@@ -85,17 +87,17 @@ public class DatabusConfig {
     }
 
     public String getLocalDestDir(String category, long commitTime)
-        throws IOException {
+            throws IOException {
       Date date = new Date(commitTime);
       Calendar calendar = new GregorianCalendar();
       calendar.setTime(date);
       String dest = hdfsUrl + File.separator + rootDir + File.separator
-          + "streams-local" + File.separator + category + File.separator
-          + calendar.get(Calendar.YEAR) + File.separator
-          + (calendar.get(Calendar.MONTH) + 1) + File.separator
-          + calendar.get(Calendar.DAY_OF_MONTH) + File.separator
-          + calendar.get(Calendar.HOUR_OF_DAY) + File.separator
-          + calendar.get(Calendar.MINUTE);
+              + "streams-local" + File.separator + category + File.separator
+              + calendar.get(Calendar.YEAR) + File.separator
+              + (calendar.get(Calendar.MONTH) + 1) + File.separator
+              + calendar.get(Calendar.DAY_OF_MONTH) + File.separator
+              + calendar.get(Calendar.HOUR_OF_DAY) + File.separator
+              + calendar.get(Calendar.MINUTE);
       return dest;
     }
 
@@ -180,6 +182,25 @@ public class DatabusConfig {
       return consumeStreams;
     }
 
+    public Set<String> getMirroredStreams() {
+      Set<String> mirroredStreams = new HashSet<String>();
+      for(ConsumeStream consumeStream : getConsumeStreams().values()) {
+        if (!consumeStream.isPrimary())
+          mirroredStreams.add(consumeStream.getName());
+      }
+      return mirroredStreams;
+    }
+
+    public Set<String> getPrimaryStreams() {
+      Set<String> primaryStreams = new HashSet<String>();
+      for(ConsumeStream consumeStream : getConsumeStreams().values()) {
+        if (consumeStream.isPrimary())
+          primaryStreams.add(consumeStream.getName());
+      }
+      return primaryStreams;
+
+    }
+
     public Set<String> getSourceStreams() {
       return sourceStreams;
     }
@@ -204,6 +225,14 @@ public class DatabusConfig {
               + File.separator + "consumers" + File.separator +
               consumeCluster.name);
     }
+
+    public Path getMirrorConsumePath(Cluster consumeCluster) {
+      return new Path(getSystemDir()
+              + File.separator + "mirrors" + File.separator +
+              consumeCluster.name);
+    }
+
+
 
     public Path getTmpPath() {
       return new Path(getSystemDir() + File.separator +

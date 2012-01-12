@@ -49,7 +49,7 @@ public class DataConsumer extends AbstractCopier {
       fs.delete(tmpJobInputPath, true);
     }
     if (fs.exists(tmpJobOutputPath)) {
-       LOG.info("Deleting tmpPath recursively [" + tmpJobOutputPath + "]");
+      LOG.info("Deleting tmpPath recursively [" + tmpJobOutputPath + "]");
       fs.delete(tmpJobInputPath, true);
     }
   }
@@ -97,13 +97,14 @@ public class DataConsumer extends AbstractCopier {
       }
     }
 
-    // find input files for consumers
+    // find input files for RemoteCopier(consumer) only for primary stream
     Map<Path, Path> consumerCommitPaths = new HashMap<Path, Path>();
     for (Cluster cluster : getConfig().getClusters().values()) {
       Set<String> consumeStreams = cluster.getConsumeStreams().keySet();
       boolean consumeCluster = false;
       for(String stream : consumeStreams) {
-        if (getSrcCluster().getSourceStreams().contains(stream)){
+        DatabusConfig.ConsumeStream consumeStream = cluster.getConsumeStreams().get(stream);
+        if (consumeStream.isPrimary() && getSrcCluster().getSourceStreams().contains(stream)){
           consumeCluster = true;
           break;
         }

@@ -35,12 +35,17 @@ public class Databus {
       if (!clustersToProcess.contains(cluster.getName())) {
         continue;
       }
+      //Start data consumer for this cluster if it's the source of any stream
       if (cluster.getSourceStreams().size() > 0) {
         copiers.add(new DataConsumer(config, cluster));
       }
+
       List<Cluster> remoteClustersToFetch = new ArrayList<Cluster>();
       for (ConsumeStream cStream : cluster.getConsumeStreams().values()) {
         if (cStream.isPrimary()) {
+          //Start remote copiers for this cluster for each cluster
+          // from where it has to fetch a partial stream and is hosting
+          // a primary stream
           for (String cName : config.getStreams().get(cStream.getName())
                   .getSourceClusters()) {
             remoteClustersToFetch.add(config.getClusters().get(cName));
@@ -51,6 +56,7 @@ public class Databus {
         copiers.add(new RemoteCopier(config, remote, cluster));
       }
     }
+    //Start a data purger for this Cluster/Clusters to process
     Iterator it = clustersToProcess.iterator();
     while(it.hasNext()) {
       String  clusterName = (String) it.next();
