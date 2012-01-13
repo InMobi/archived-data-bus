@@ -81,7 +81,7 @@ public class DatabusConfig {
 
 
     public String getLocalFinalDestDirRoot() {
-      String dest = hdfsUrl + File.separator + rootDir + File.separator + "streams-local"
+      String dest = hdfsUrl + File.separator + rootDir + File.separator + "streams_local"
               + File.separator;
       return dest;
     }
@@ -92,7 +92,7 @@ public class DatabusConfig {
       Calendar calendar = new GregorianCalendar();
       calendar.setTime(date);
       String dest = hdfsUrl + File.separator + rootDir + File.separator
-              + "streams-local" + File.separator + category + File.separator
+              + "streams_local" + File.separator + category + File.separator
               + calendar.get(Calendar.YEAR) + File.separator
               + (calendar.get(Calendar.MONTH) + 1) + File.separator
               + calendar.get(Calendar.DAY_OF_MONTH) + File.separator

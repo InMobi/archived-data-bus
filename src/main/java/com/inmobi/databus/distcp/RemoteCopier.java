@@ -2,7 +2,6 @@ package com.inmobi.databus.distcp;
 
 import com.inmobi.databus.*;
 import com.inmobi.databus.DatabusConfig.*;
-import com.inmobi.databus.utils.*;
 import org.apache.commons.logging.*;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.FileSystem;
@@ -39,30 +38,39 @@ public class RemoteCopier extends AbstractCopier {
   public void fetch() throws Exception{
     try {
       boolean skipCommit = false;
-
+      Map<Path, FileSystem> consumePaths = new HashMap<Path, FileSystem>();
 
       srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()),
               getSrcCluster().getHadoopConf());
       destFs = FileSystem.get(
               new URI(getDestCluster().getHdfsUrl()),
               getDestCluster().getHadoopConf());
-      Set<Path> consumePaths = new HashSet<Path>();
-      Path inputFilePath = getInputFilePath(consumePaths);
+      Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp_" +
+              getSrcCluster().getName() + "_" + getDestCluster().getName()).makeQualified(destFs);
+      //CleanuptmpOut before every run
+      if (destFs.exists(tmpOut))
+        destFs.delete(tmpOut, true);
+      if (!destFs.mkdirs(tmpOut)) {
+        LOG.warn("Cannot create [" + tmpOut + "]..skipping this run");
+        return;
+      }
+      Path tmp = new Path(tmpOut, "tmp");
+      if (!destFs.mkdirs(tmp)) {
+        LOG.warn("Cannot create [" + tmp + "]..skipping this run");
+        return;
+      }
 
+      Path inputFilePath = getInputFilePath(consumePaths, tmp);
       if(inputFilePath == null) {
         LOG.warn("No data to pull from " +
                 "Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
                 " to Cluster [" + getDestCluster().getHdfsUrl() + "]");
         return;
       }
-
-      Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp-" +
-              getSrcCluster().getName() + CalendarHelper.getCurrentDayTimeAsString()).makeQualified(destFs);
       LOG.warn("Starting a distcp pull from [" + inputFilePath.toString() + "] " +
               "Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
               " to Cluster [" + getDestCluster().getHdfsUrl() + "] " +
               " Path [" + tmpOut.toString() + "]");
-      destFs.mkdirs(tmpOut);
 
       String[] args = {"-f", inputFilePath.toString(),
               tmpOut.toString()};
@@ -73,39 +81,46 @@ public class RemoteCopier extends AbstractCopier {
       }
       catch(Throwable e) {
         LOG.warn(e.getMessage());
-        LOG.warn(e);
+        e.printStackTrace();
         LOG.warn("Problem in distcp skipping commit");
         destFs.delete(tmpOut, true);
         skipCommit = true;
       }
-      Map<String, Set<Path>> commitedPaths;
+      Map<String, Set<Path>> committedPaths;
       //if success
       if (!skipCommit) {
         Map<String, List<Path>> categoriesToCommit = prepareForCommit(tmpOut);
         synchronized (getDestCluster()) {
           long commitTime = getDestCluster().getCommitTime();
           //category, Set of Paths to commit
-          commitedPaths = doLocalcommit(commitTime, categoriesToCommit);
+          committedPaths = doLocalCommit(commitTime, categoriesToCommit);
         }
         //Prepare paths for MirrorDataService
-        commitMirroredConsumerPaths(commitedPaths);
+        commitMirroredConsumerPaths(committedPaths, tmp);
         //Cleanup happens in parallel without sync
         //no race is there in consumePaths, tmpOut
-        doFinalCommit(consumePaths, tmpOut);
+        doFinalCommit(consumePaths);
       }
-    } catch (Exception e) {
+      //rmr tmpOut   cleanup
+      destFs.delete(tmpOut, true);
+      LOG.debug("Deleting [" + tmpOut + "]");
+    }
+    catch (Exception e) {
       LOG.warn(e);
       LOG.warn(e.getMessage());
       e.printStackTrace();
     }
   }
 
-  private void commitMirroredConsumerPaths(Map<String, Set<Path>> commitedPaths) throws Exception{
+  /*
+   * @param Map<String, Set<Path>> commitedPaths - Stream Name, It's committed Path.
+   */
+  private void commitMirroredConsumerPaths(Map<String, Set<Path>> committedPaths, Path tmp) throws Exception{
     //Map of Stream and clusters where it's mirrored
     Map<String, Set<Cluster>> mirrorStreamConsumers = new HashMap<String, Set<Cluster>>();
     Map<Path, Path> consumerCommitPaths = new LinkedHashMap<Path, Path>();
     //for each stream in committedPaths
-    for(String stream : commitedPaths.keySet()) {
+    for(String stream : committedPaths.keySet()) {
       //for each cluster
       for (Cluster cluster : getConfig().getClusters().values()) {
         //is this stream mirrored on this cluster
@@ -120,29 +135,29 @@ public class RemoteCopier extends AbstractCopier {
     } //for each stream
 
     //Commit paths for each consumer
-    for(String stream : commitedPaths.keySet()) {
+    for(String stream : committedPaths.keySet()) {
       //consumers for this stream
       Set<Cluster> consumers = mirrorStreamConsumers.get(stream);
       Path tmpConsumerPath;
       for (Cluster consumer : consumers) {
         //commit paths for this consumer, this stream
-         tmpConsumerPath = new Path(getDestCluster().getTmpPath(), "src-" + getSrcCluster().getName() +
-                 "-via-"+ getDestCluster().getName() + "-mirrorto-" +
-                consumer.getName() + "-" + stream);
+        //adding srcCluster avoids two Remote Copiers creating same filename
+        String tmpPath = "src_" + getSrcCluster().getName() +
+                "_via_"+ getDestCluster().getName() + "_mirrorto_" +
+                consumer.getName() + "_" + stream;
+        tmpConsumerPath = new Path(tmp, tmpPath);
         FSDataOutputStream out = destFs.create(tmpConsumerPath);
-        for (Path path : commitedPaths.get(stream)) {
+        for (Path path : committedPaths.get(stream)) {
           out.writeBytes(path.toString());
           out.writeBytes("\n");
         }
         out.close();
-        synchronized (getDestCluster()) {
+        //Two remote copiers will write file for same consumer within the same time
+        //adding srcCLuster name avoids that conflict
         Path finalMirrorPath = new Path(getDestCluster().getMirrorConsumePath(consumer),
-                new Long(System.currentTimeMillis()).toString());
-         consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
-          //Two remote copiers will write file for same consumer within the same time
-          //sleep for 1msec to avoid filename conflict
-          Thread.sleep(1);
-        }
+                tmpPath + "_" + new Long(System.currentTimeMillis()).toString());
+        consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
+
       } //for each consumer
     } //for each stream
 
@@ -157,15 +172,15 @@ public class RemoteCopier extends AbstractCopier {
   }
 
 
-  private void doFinalCommit(Set<Path> consumePaths, Path tmpOut) throws Exception{
+  private void doFinalCommit(Map<Path, FileSystem> consumePaths) throws Exception{
     //commit distcp consume Path from remote cluster
-    for(Path consumePath : consumePaths) {
-      srcFs.delete(consumePath);
+    Set<Map.Entry<Path, FileSystem>> consumeEntries = consumePaths.entrySet();
+    for(Map.Entry<Path, FileSystem> consumePathEntry : consumeEntries) {
+      FileSystem fileSystem = consumePathEntry.getValue();
+      Path consumePath = consumePathEntry.getKey();
+      fileSystem.delete(consumePath);
       LOG.debug("Deleting [" + consumePath + "]");
     }
-    //rmr tmpOut   cleanup
-    destFs.delete(tmpOut, true);
-    LOG.debug("Deleting [" + tmpOut + "]");
 
   }
 
@@ -174,31 +189,34 @@ public class RemoteCopier extends AbstractCopier {
     FileStatus[] allFiles = destFs.listStatus(tmpOut);
     for(int i=0; i < allFiles.length; i++) {
       String fileName = allFiles[i].getPath().getName();
-      String category = getCategoryFromFileName(fileName);
+      if (fileName != null) {
+        String category = getCategoryFromFileName(fileName);
+        if (category != null) {
+          Path intermediatePath = new Path(tmpOut, category);
+          if (!destFs.exists(intermediatePath))
+            destFs.mkdirs(intermediatePath);
+          Path source = allFiles[i].getPath().makeQualified(destFs);
 
-      Path intermediatePath = new Path(tmpOut, category);
-      if (!destFs.exists(intermediatePath))
-        destFs.mkdirs(intermediatePath);
-      Path source = allFiles[i].getPath().makeQualified(destFs);
-
-      Path intermediateFilePath =  new Path(intermediatePath.makeQualified(destFs).toString() + File.separator +
-              fileName);
-      destFs.rename(source, intermediateFilePath);
-      LOG.debug("Moving [" + source + "] to intermediateFilePath [" + intermediateFilePath + "]");
-      List<Path> fileList = categoriesToCommit.get(category);
-      if( fileList == null)  {
-        fileList = new ArrayList<Path>();
-        fileList.add(intermediateFilePath.makeQualified(destFs));
-        categoriesToCommit.put(category, fileList);
-      }
-      else {
-        fileList.add(intermediateFilePath);
+          Path intermediateFilePath =  new Path(intermediatePath.makeQualified(destFs).toString() + File.separator +
+                  fileName);
+          destFs.rename(source, intermediateFilePath);
+          LOG.debug("Moving [" + source + "] to intermediateFilePath [" + intermediateFilePath + "]");
+          List<Path> fileList = categoriesToCommit.get(category);
+          if( fileList == null)  {
+            fileList = new ArrayList<Path>();
+            fileList.add(intermediateFilePath.makeQualified(destFs));
+            categoriesToCommit.put(category, fileList);
+          }
+          else {
+            fileList.add(intermediateFilePath);
+          }
+        }
       }
     }
     return categoriesToCommit;
   }
 
-  private Path getInputFilePath(Set<Path> consumePaths) throws IOException {
+  private Path getInputFilePath(Map<Path, FileSystem> consumePaths, Path tmp) throws IOException {
     Path input = getInputPath();
     if (!srcFs.exists(input))
       return null;
@@ -210,7 +228,7 @@ public class RemoteCopier extends AbstractCopier {
         //read all and create a tmp file
         for(int i=0; i < fileList.length; i++) {
           Path consumeFilePath = fileList[i].getPath().makeQualified(srcFs);
-          consumePaths.add(consumeFilePath);
+          consumePaths.put(consumeFilePath, srcFs);
           FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
           while (fsDataInputStream.available() > 0 ){
             String fileName = fsDataInputStream.readLine();
@@ -221,7 +239,9 @@ public class RemoteCopier extends AbstractCopier {
           }
           fsDataInputStream.close();
         }
-        Path tmpPath = new Path(getDestCluster().getTmpPath(), CalendarHelper.getCurrentDayTimeAsString());
+        //two remote copiers can create the same tmpPath, putting srcCluster avoids the conflict
+        Path tmpPath = new Path(tmp, getSrcCluster().getName() + new Long(System
+                .currentTimeMillis()).toString());
         FSDataOutputStream out = destFs.create(tmpPath);
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
         for(String sourceFile: sourceFiles) {
@@ -231,11 +251,12 @@ public class RemoteCopier extends AbstractCopier {
         }
         writer.close();
         LOG.warn("Source File For distCP [" + tmpPath + "]");
+        consumePaths.put(tmpPath.makeQualified(destFs), destFs);
         return tmpPath.makeQualified(destFs);
       }
       else if(fileList.length == 1) {
         Path consumePath = fileList[0].getPath().makeQualified(srcFs);
-        consumePaths.add(consumePath);
+        consumePaths.put(consumePath, srcFs);
         return consumePath;
       }
       else {
@@ -248,7 +269,7 @@ public class RemoteCopier extends AbstractCopier {
   /*
    * @returns Map<String, Set<Path>> - Map of StreamName, Set of paths committed for stream
    */
-  private Map<String, Set<Path>> doLocalcommit(long commitTime, Map<String, List<Path>> categoriesToCommit) throws
+  private Map<String, Set<Path>> doLocalCommit(long commitTime, Map<String, List<Path>> categoriesToCommit) throws
           Exception {
     Map<String, Set<Path>> comittedPaths = new HashMap<String, Set<Path>>();
     Set<Map.Entry<String, List<Path>>> commitEntries = categoriesToCommit.entrySet();
@@ -263,17 +284,14 @@ public class RemoteCopier extends AbstractCopier {
           destFs.mkdirs(destParentPath);
         }
         destFs.rename(filePath, destParentPath);
-        Path commitPath = new Path(destParentPath, filePath.getName());
-        Set<Path> commitPaths;
-        if (comittedPaths.get(category) == null) {
-          commitPaths = new HashSet<Path>();
-          commitPaths.add(commitPath);
-          comittedPaths.put(category, commitPaths);
-        }
-        else {
-          comittedPaths.get(category).add(commitPath);
-        }
         LOG.debug("Moving from intermediatePath [" + filePath + "] to [" + destParentPath + "]");
+        Path commitPath = new Path(destParentPath, filePath.getName());
+        Set<Path> commitPaths = comittedPaths.get(category);
+        if (commitPaths == null) {
+          commitPaths = new HashSet<Path>();
+        }
+        commitPaths.add(commitPath);
+        comittedPaths.put(category, commitPaths);
       }
     }
     return comittedPaths;
@@ -282,11 +300,14 @@ public class RemoteCopier extends AbstractCopier {
 
 
   private String getCategoryFromFileName(String fileName) {
-    StringTokenizer tokenizer = new StringTokenizer(fileName, "-");
-    tokenizer.nextToken(); //skip collector name
-    String catgeory = tokenizer.nextToken();
-    return catgeory;
-
+    LOG.debug("Splitting [" + fileName + "] on -");
+    if (fileName != null && fileName.length() > 1 && fileName.contains("-")) {
+      StringTokenizer tokenizer = new StringTokenizer(fileName, "-");
+      tokenizer.nextToken(); //skip collector name
+      String catgeory = tokenizer.nextToken();
+      return catgeory;
+    }
+    return null;
   }
 
   private Path getInputPath() throws IOException {

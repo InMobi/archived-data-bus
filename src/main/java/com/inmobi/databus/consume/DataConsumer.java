@@ -97,7 +97,7 @@ public class DataConsumer extends AbstractCopier {
       }
     }
 
-    // find input files for RemoteCopier(consumer) only for primary stream
+    // find input files for consumer
     Map<Path, Path> consumerCommitPaths = new HashMap<Path, Path>();
     for (Cluster cluster : getConfig().getClusters().values()) {
       Set<String> consumeStreams = cluster.getConsumeStreams().keySet();
