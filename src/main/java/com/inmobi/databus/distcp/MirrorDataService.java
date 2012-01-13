@@ -3,27 +3,29 @@ package com.inmobi.databus.distcp;
 
 import com.inmobi.databus.*;
 import org.apache.commons.logging.*;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.*;
+import org.apache.hadoop.tools.*;
 
-import java.net.*;
+import java.io.*;
 import java.util.*;
-import java.io.File;
 
-public class MirrorDataService extends AbstractCopier{
+public class MirrorDataService extends DistcpBaseService{
   private static final Log LOG = LogFactory.getLog(MirrorDataService.class);
-  private FileSystem srcFs;
-  private FileSystem destFs;
-  private static final int DISTCP_SUCCESS = 0;
-
 
   public MirrorDataService(DatabusConfig config, DatabusConfig.Cluster srcCluster,
-                           DatabusConfig.Cluster destinationCluster) {
+                           DatabusConfig.Cluster destinationCluster) throws Exception{
     super(config, srcCluster, destinationCluster);
   }
 
   @Override
-  protected void addStreamsToFetch() {
+  protected Path getInputPath() throws IOException {
+    return getSrcCluster().getMirrorConsumePath(getDestCluster());
+  }
 
+  @Override
+  protected void addStreamsToFetch() {
+    //do nothing
   }
 
   @Override
@@ -33,32 +35,69 @@ public class MirrorDataService extends AbstractCopier{
 
   @Override
   protected void fetch() throws Exception {
-    //Assumption - Mirror is always of a merged Stream.
-    //and there is only 1 instance of a merged Stream
-    srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()),
-            getSrcCluster().getHadoopConf());
-    destFs = FileSystem.get(
-            new URI(getDestCluster().getHdfsUrl()),
-            getDestCluster().getHadoopConf());
+    /* Assumption - Mirror is always of a merged Stream.There is only 1 instance of a merged Stream
+    * 1 Mirror Thread per src DatabusConfig.Cluster from where streams need to be mirrored on destCluster
+    *
+    */
+    try {
+      boolean skipCommit = false;
+      Map<Path, FileSystem> consumePaths = new HashMap<Path, FileSystem>();
 
-    Set<String> streamsToMirror = getStreamsToMirror();
-    String srcStreamRoot = getSrcCluster().getFinalDestDirRoot();
-    String destStreamRoot = getDestCluster().getFinalDestDirRoot();
-    for (String stream : streamsToMirror) {
-      String srcStreamPath = srcStreamRoot + File.separator + stream;
-      String destStreamPath = destStreamRoot + File.separator + stream;
-    //  LOG.info("Starting distcp Pull from + " srcStreamPath + " to destination");
+      Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp_mirror" +
+              getSrcCluster().getName() + "_" + getDestCluster().getName()).makeQualified(destFs);
+      //CleanuptmpOut before every run
+      if (destFs.exists(tmpOut))
+        destFs.delete(tmpOut, true);
+      if (!destFs.mkdirs(tmpOut)) {
+        LOG.warn("Cannot create [" + tmpOut + "]..skipping this run");
+        return;
+      }
+      Path tmp = new Path(tmpOut, "tmp");
+      if (!destFs.mkdirs(tmp)) {
+        LOG.warn("Cannot create [" + tmp + "]..skipping this run");
+        return;
+      }
+      Path inputFilePath = getInputFilePath(consumePaths, tmp);
+      if(inputFilePath == null) {
+        LOG.warn("No data to pull from " +
+                "Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
+                " to Cluster [" + getDestCluster().getHdfsUrl() + "]");
+        return;
+      }
+
+      LOG.warn("Starting a Mirrored distcp pull from [" + inputFilePath.toString() + "] " +
+              "Cluster [" + getSrcCluster().getHdfsUrl() + "]" +
+              " to Cluster [" + getDestCluster().getHdfsUrl() + "] " +
+              " Path [" + tmpOut.toString() + "]");
+
+      String[] args = {"-preserveSrcPath", "-f", inputFilePath.toString(),
+              tmpOut.toString()};
+       try {
+        int exitCode = DistCp.runDistCp(args, getDestCluster().getHadoopConf());
+        if (exitCode != DISTCP_SUCCESS)
+          skipCommit = true;
+      }
+      catch(Throwable e) {
+        LOG.warn(e.getMessage());
+        e.printStackTrace();
+        LOG.warn("Problem in distcp skipping commit");
+        destFs.delete(tmpOut, true);
+        skipCommit = true;
+      }
+      if (!skipCommit) {
+        //Commit Paths in time ordered way
+      }
+
+
+
+
+    }
+    catch (Exception e) {
+      LOG.warn(e);
+      LOG.warn(e.getMessage());
+      e.printStackTrace();
     }
 
-  }
 
-  Set<String> getStreamsToMirror() {
-    //all mirrored streams on this cluster
-    Set<String> mirrorStreamsOnCluster =  getDestCluster().getMirroredStreams();
-    Set<String> primaryStreamsOnSrc = getSrcCluster().getPrimaryStreams();
-    //mirrored streams on this Cluster from this Source
-    mirrorStreamsOnCluster.retainAll(primaryStreamsOnSrc);
-    return mirrorStreamsOnCluster;
   }
-
 }

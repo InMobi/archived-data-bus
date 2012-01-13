@@ -8,19 +8,13 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.tools.*;
 
 import java.io.*;
-import java.net.*;
 import java.util.*;
 
-public class RemoteCopier extends AbstractCopier {
+public class RemoteCopier extends DistcpBaseService {
 
   private static final Log LOG = LogFactory.getLog(RemoteCopier.class);
 
-  private FileSystem srcFs;
-  private FileSystem destFs;
-  private static final int DISTCP_SUCCESS = 0;
-
-
-  public RemoteCopier(DatabusConfig config, Cluster srcCluster, Cluster destinationCluster) {
+  public RemoteCopier(DatabusConfig config, Cluster srcCluster, Cluster destinationCluster) throws Exception{
     super(config, srcCluster, destinationCluster);
   }
 
@@ -40,11 +34,6 @@ public class RemoteCopier extends AbstractCopier {
       boolean skipCommit = false;
       Map<Path, FileSystem> consumePaths = new HashMap<Path, FileSystem>();
 
-      srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()),
-              getSrcCluster().getHadoopConf());
-      destFs = FileSystem.get(
-              new URI(getDestCluster().getHdfsUrl()),
-              getDestCluster().getHadoopConf());
       Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp_" +
               getSrcCluster().getName() + "_" + getDestCluster().getName()).makeQualified(destFs);
       //CleanuptmpOut before every run
@@ -216,57 +205,7 @@ public class RemoteCopier extends AbstractCopier {
     return categoriesToCommit;
   }
 
-  private Path getInputFilePath(Map<Path, FileSystem> consumePaths, Path tmp) throws IOException {
-    Path input = getInputPath();
-    if (!srcFs.exists(input))
-      return null;
-    FileStatus[] fileList = srcFs.listStatus(input);
-    if (fileList != null) {
-      if(fileList.length > 1) {
-        Set<String> sourceFiles = new HashSet<String>();
-        //inputPath has have multiple files due to backlog
-        //read all and create a tmp file
-        for(int i=0; i < fileList.length; i++) {
-          Path consumeFilePath = fileList[i].getPath().makeQualified(srcFs);
-          consumePaths.put(consumeFilePath, srcFs);
-          FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
-          while (fsDataInputStream.available() > 0 ){
-            String fileName = fsDataInputStream.readLine();
-            if (fileName != null) {
-              fileName = fileName.trim();
-              sourceFiles.add(fileName);
-            }
-          }
-          fsDataInputStream.close();
-        }
-        //two remote copiers can create the same tmpPath, putting srcCluster avoids the conflict
-        Path tmpPath = new Path(tmp, getSrcCluster().getName() + new Long(System
-                .currentTimeMillis()).toString());
-        FSDataOutputStream out = destFs.create(tmpPath);
-        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-        for(String sourceFile: sourceFiles) {
-          LOG.debug("Adding sourceFile [" + sourceFile + "] to distcp FinalList");
-          writer.write(sourceFile);
-          writer.write("\n");
-        }
-        writer.close();
-        LOG.warn("Source File For distCP [" + tmpPath + "]");
-        consumePaths.put(tmpPath.makeQualified(destFs), destFs);
-        return tmpPath.makeQualified(destFs);
-      }
-      else if(fileList.length == 1) {
-        Path consumePath = fileList[0].getPath().makeQualified(srcFs);
-        consumePaths.put(consumePath, srcFs);
-        return consumePath;
-      }
-      else {
-        return null;
-      }
-    }
-    return  null;
-  }
-
-  /*
+ /*
    * @returns Map<String, Set<Path>> - Map of StreamName, Set of paths committed for stream
    */
   private Map<String, Set<Path>> doLocalCommit(long commitTime, Map<String, List<Path>> categoriesToCommit) throws
@@ -298,19 +237,7 @@ public class RemoteCopier extends AbstractCopier {
   }
 
 
-
-  private String getCategoryFromFileName(String fileName) {
-    LOG.debug("Splitting [" + fileName + "] on -");
-    if (fileName != null && fileName.length() > 1 && fileName.contains("-")) {
-      StringTokenizer tokenizer = new StringTokenizer(fileName, "-");
-      tokenizer.nextToken(); //skip collector name
-      String catgeory = tokenizer.nextToken();
-      return catgeory;
-    }
-    return null;
-  }
-
-  private Path getInputPath() throws IOException {
+   protected Path getInputPath() throws IOException {
     return getSrcCluster().getConsumePath(getDestCluster());
 
   }
