@@ -44,6 +44,18 @@ public class DatabusConfig {
     return zkConnectionString;
   }
 
+  public Cluster getPrimaryClusterForConsumeStream(String streamName) {
+   for(Cluster cluster : getClusters().values()) {
+     if (cluster.getConsumeStreams().containsKey(streamName)) {
+       ConsumeStream consumeStream = cluster.getConsumeStreams().get(streamName);
+       if (consumeStream.isPrimary())
+         return cluster;
+     }
+   }
+    return null;
+  }
+
+
   public Map<String, Cluster> getClusters() {
     return clusters;
   }
@@ -130,7 +142,7 @@ public class DatabusConfig {
     }
 
     public String getUnqaulifiedFinalDestDirRoot() {
-      String dest = rootDir + File.separator + "streams" + File.separator;
+      String dest = File.separator + rootDir + File.separator + "streams" + File.separator;
       return dest;
     }
 

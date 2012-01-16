@@ -145,7 +145,7 @@ public class MergedStreamConsumerService extends DistcpBaseService {
           out.writeBytes("\n");
         }
         out.close();
-        //Two remote copiers will write file for same consumer within the same time
+        //Two MergedStreamConsumers will write file for same consumer within the same time
         //adding srcCLuster name avoids that conflict
         Path finalMirrorPath = new Path(getDestCluster().getMirrorConsumePath(consumer),
                 tmpPath + "_" + new Long(System.currentTimeMillis()).toString());

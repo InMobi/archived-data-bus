@@ -52,17 +52,23 @@ public class Databus {
                 .getSourceClusters()) {
           if (cStream.isPrimary())
             mergedStreamRemoteClusters.add(config.getClusters().get(cName));
-          else
-            mirroredRemoteClusters.add(config.getClusters().get(cName));
+        }
+        if (!cStream.isPrimary())  {
+          Cluster primaryCluster = config.getPrimaryClusterForConsumeStream(cStream.getName());
+          if (primaryCluster != null)
+            mirroredRemoteClusters.add(primaryCluster);
         }
       }
+
+
       for (Cluster remote : mergedStreamRemoteClusters) {
         copiers.add(new MergedStreamConsumerService(config, remote, cluster));
       }
       for (Cluster remote : mirroredRemoteClusters) {
-        copiers.add(new MergedStreamConsumerService(config, remote, cluster));
+        copiers.add(new MirrorStreamConsumerService(config, remote, cluster));
       }
     }
+
     //Start a DataPurgerService for this Cluster/Clusters to process
     Iterator it = clustersToProcess.iterator();
     while(it.hasNext()) {
