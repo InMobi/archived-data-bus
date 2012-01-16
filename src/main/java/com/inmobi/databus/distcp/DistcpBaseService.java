@@ -14,7 +14,7 @@ public abstract  class DistcpBaseService extends AbstractCopier{
   protected FileSystem destFs;
   protected static final int DISTCP_SUCCESS = 0;
 
-  protected static final Log LOG = LogFactory.getLog(RemoteCopier.class);
+  protected static final Log LOG = LogFactory.getLog(MergedStreamConsumerService.class);
 
   public DistcpBaseService(DatabusConfig config, DatabusConfig.Cluster srcCluster, DatabusConfig.Cluster destCluster)
           throws Exception {
@@ -28,8 +28,8 @@ public abstract  class DistcpBaseService extends AbstractCopier{
 
   /*
    * return remote Path from where this consumer can consume
-   * eg: RemoteCopier - Path eg: hdfs://remoteCluster/databus/system/consumers/<consumerName>
-   * eg: MirrorDataService - Path eg: hdfs://remoteCluster/databus/system/mirrors/<consumerName>
+   * eg: MergedStreamConsumerService - Path eg: hdfs://remoteCluster/databus/system/consumers/<consumerName>
+   * eg: MirrorStreamConsumerService - Path eg: hdfs://remoteCluster/databus/system/mirrors/<consumerName>
    */
   protected abstract Path getInputPath() throws IOException;
 
@@ -43,6 +43,18 @@ public abstract  class DistcpBaseService extends AbstractCopier{
     }
     return null;
   }
+
+  protected void doFinalCommit(Map<Path, FileSystem> consumePaths) throws Exception{
+      //commit distcp consume Path from remote cluster
+      Set<Map.Entry<Path, FileSystem>> consumeEntries = consumePaths.entrySet();
+      for(Map.Entry<Path, FileSystem> consumePathEntry : consumeEntries) {
+        FileSystem fileSystem = consumePathEntry.getValue();
+        Path consumePath = consumePathEntry.getKey();
+        fileSystem.delete(consumePath);
+        LOG.debug("Deleting [" + consumePath + "]");
+      }
+
+    }
 
 
   protected Path getInputFilePath(Map<Path, FileSystem> consumePaths, Path tmp) throws IOException {
@@ -68,7 +80,6 @@ public abstract  class DistcpBaseService extends AbstractCopier{
           }
           fsDataInputStream.close();
         }
-        //two remote copiers can create the same tmpPath, putting srcCluster avoids the conflict
         Path tmpPath = new Path(tmp, getSrcCluster().getName() + new Long(System
                 .currentTimeMillis()).toString());
         FSDataOutputStream out = destFs.create(tmpPath);

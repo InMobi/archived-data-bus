@@ -16,14 +16,20 @@ import java.io.IOException;
 import java.util.*;
 import java.util.Map.Entry;
 
-public class DataConsumer extends AbstractCopier {
+/*
+ * Handles Local Streams for a Cluster
+ * Assumptions
+ * (i) One LocalStreamConsumerService per Cluster
+ */
 
-  private static final Log LOG = LogFactory.getLog(DataConsumer.class);
+public class LocalStreamConsumerService extends AbstractCopier {
+
+  private static final Log LOG = LogFactory.getLog(LocalStreamConsumerService.class);
   private Path tmpPath;
   private Path tmpJobInputPath;
   private Path tmpJobOutputPath;
 
-  public DataConsumer(DatabusConfig config, Cluster cluster) {
+  public LocalStreamConsumerService(DatabusConfig config, Cluster cluster) {
     super(config, cluster, cluster);
     this.tmpPath = new Path(cluster.getTmpPath(), getName());
     this.tmpJobInputPath = new Path(tmpPath, "jobIn");

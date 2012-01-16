@@ -55,6 +55,7 @@ public class DatabusConfig {
   public static class Cluster {
     private final String zkConnectionString;
     private final String name;
+
     private final String rootDir;
     private final String hdfsUrl;
     private final Map<String, ConsumeStream> consumeStreams;
@@ -79,6 +80,9 @@ public class DatabusConfig {
     }
 
 
+    public String getRootDir() {
+      return hdfsUrl + File.separator + rootDir + File.separator;
+    }
 
     public String getLocalFinalDestDirRoot() {
       String dest = hdfsUrl + File.separator + rootDir + File.separator + "streams_local"
@@ -123,6 +127,11 @@ public class DatabusConfig {
 
     public String getName() {
       return name;
+    }
+
+    public String getUnqaulifiedFinalDestDirRoot() {
+      String dest = rootDir + File.separator + "streams" + File.separator;
+      return dest;
     }
 
     public String getFinalDestDirRoot() {

@@ -8,8 +8,13 @@ import org.apache.hadoop.fs.*;
 
 import java.util.*;
 
-public class DataPurger extends AbstractCopier{
-  private static final Log LOG = LogFactory.getLog(DataPurger.class);
+/*
+ * Assumptions
+ * (i) One data Purger Service for a cluster
+ */
+
+public class DataPurgerService extends AbstractCopier{
+  private static final Log LOG = LogFactory.getLog(DataPurgerService.class);
 
   Map<String, Integer> streamRetention;
   Set<Path> streamsToPurge;
@@ -17,7 +22,7 @@ public class DataPurger extends AbstractCopier{
   Map<String, Path> localStreamsInClusterPathMap;
   FileSystem fs = null;
 
-  public DataPurger(DatabusConfig databusConfig, DatabusConfig.Cluster cluster) throws Exception{
+  public DataPurgerService(DatabusConfig databusConfig, DatabusConfig.Cluster cluster) throws Exception{
     super(databusConfig, cluster, cluster);
     fs = FileSystem.get(getSrcCluster().getHadoopConf());
   }

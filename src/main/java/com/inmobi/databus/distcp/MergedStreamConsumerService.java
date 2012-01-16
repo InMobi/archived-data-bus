@@ -10,11 +10,15 @@ import org.apache.hadoop.tools.*;
 import java.io.*;
 import java.util.*;
 
-public class RemoteCopier extends DistcpBaseService {
+/*
+ * Handles MergedStreams for a Cluster
+ */
 
-  private static final Log LOG = LogFactory.getLog(RemoteCopier.class);
+public class MergedStreamConsumerService extends DistcpBaseService {
 
-  public RemoteCopier(DatabusConfig config, Cluster srcCluster, Cluster destinationCluster) throws Exception{
+  private static final Log LOG = LogFactory.getLog(MergedStreamConsumerService.class);
+
+  public MergedStreamConsumerService(DatabusConfig config, Cluster srcCluster, Cluster destinationCluster) throws Exception{
     super(config, srcCluster, destinationCluster);
   }
 
@@ -34,7 +38,7 @@ public class RemoteCopier extends DistcpBaseService {
       boolean skipCommit = false;
       Map<Path, FileSystem> consumePaths = new HashMap<Path, FileSystem>();
 
-      Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp_" +
+      Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp_mergedStream_" +
               getSrcCluster().getName() + "_" + getDestCluster().getName()).makeQualified(destFs);
       //CleanuptmpOut before every run
       if (destFs.exists(tmpOut))
@@ -71,7 +75,7 @@ public class RemoteCopier extends DistcpBaseService {
       catch(Throwable e) {
         LOG.warn(e.getMessage());
         e.printStackTrace();
-        LOG.warn("Problem in distcp skipping commit");
+        LOG.warn("Problem in MergedStream distcp PULL..skipping commit for this run");
         destFs.delete(tmpOut, true);
         skipCommit = true;
       }
@@ -84,7 +88,7 @@ public class RemoteCopier extends DistcpBaseService {
           //category, Set of Paths to commit
           committedPaths = doLocalCommit(commitTime, categoriesToCommit);
         }
-        //Prepare paths for MirrorDataService
+        //Prepare paths for MirrorStreamConsumerService
         commitMirroredConsumerPaths(committedPaths, tmp);
         //Cleanup happens in parallel without sync
         //no race is there in consumePaths, tmpOut
@@ -112,7 +116,7 @@ public class RemoteCopier extends DistcpBaseService {
     for(String stream : committedPaths.keySet()) {
       //for each cluster
       for (Cluster cluster : getConfig().getClusters().values()) {
-        //is this stream mirrored on this cluster
+        //is this stream to be mirrored on this cluster
         if (cluster.getMirroredStreams().contains(stream)) {
           Set<Cluster> mirrorConsumers = mirrorStreamConsumers.get(stream);
           if (mirrorConsumers == null)
@@ -161,17 +165,6 @@ public class RemoteCopier extends DistcpBaseService {
   }
 
 
-  private void doFinalCommit(Map<Path, FileSystem> consumePaths) throws Exception{
-    //commit distcp consume Path from remote cluster
-    Set<Map.Entry<Path, FileSystem>> consumeEntries = consumePaths.entrySet();
-    for(Map.Entry<Path, FileSystem> consumePathEntry : consumeEntries) {
-      FileSystem fileSystem = consumePathEntry.getValue();
-      Path consumePath = consumePathEntry.getKey();
-      fileSystem.delete(consumePath);
-      LOG.debug("Deleting [" + consumePath + "]");
-    }
-
-  }
 
   private Map<String, List<Path>> prepareForCommit(Path tmpOut) throws Exception{
     Map<String, List<Path>> categoriesToCommit = new HashMap<String, List<Path>>();

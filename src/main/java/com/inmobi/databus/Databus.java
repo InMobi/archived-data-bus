@@ -37,7 +37,7 @@ public class Databus {
       }
       //Start data consumer for this cluster if it's the source of any stream
       if (cluster.getSourceStreams().size() > 0) {
-        copiers.add(new DataConsumer(config, cluster));
+        copiers.add(new LocalStreamConsumerService(config, cluster));
       }
 
       List<Cluster> remoteClustersToFetch = new ArrayList<Cluster>();
@@ -53,7 +53,7 @@ public class Databus {
         }
       }
       for (Cluster remote : remoteClustersToFetch) {
-        copiers.add(new RemoteCopier(config, remote, cluster));
+        copiers.add(new MergedStreamConsumerService(config, remote, cluster));
       }
     }
     //Start a data purger for this Cluster/Clusters to process
@@ -63,7 +63,7 @@ public class Databus {
       Cluster cluster =  config.getClusters().get(clusterName);
       LOG.info("Starting Purger for Cluster [" + clusterName + "]");
       //Start a purger per cluster
-      copiers.add(new DataPurger(config, cluster));
+      copiers.add(new DataPurgerService(config, cluster));
     }
   }
 
