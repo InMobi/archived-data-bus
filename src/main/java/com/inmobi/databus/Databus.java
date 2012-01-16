@@ -35,28 +35,35 @@ public class Databus {
       if (!clustersToProcess.contains(cluster.getName())) {
         continue;
       }
-      //Start data consumer for this cluster if it's the source of any stream
+      //Start LocalStreamConsumerService for this cluster if it's the source of any stream
       if (cluster.getSourceStreams().size() > 0) {
         copiers.add(new LocalStreamConsumerService(config, cluster));
       }
 
-      List<Cluster> remoteClustersToFetch = new ArrayList<Cluster>();
+      List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();
+      List<Cluster> mirroredRemoteClusters = new ArrayList<Cluster>();
       for (ConsumeStream cStream : cluster.getConsumeStreams().values()) {
-        if (cStream.isPrimary()) {
-          //Start remote copiers for this cluster for each cluster
-          // from where it has to fetch a partial stream and is hosting
-          // a primary stream
-          for (String cName : config.getStreams().get(cStream.getName())
-                  .getSourceClusters()) {
-            remoteClustersToFetch.add(config.getClusters().get(cName));
-          }
+        //Start MergedStreamConsumerService instances for this cluster for each cluster
+        //from where it has to fetch a partial stream and is hosting a primary stream
+        //Start MirroredStreamConsumerService instances for this cluster for each cluster
+        //from where it has to mirror mergedStreams
+
+        for (String cName : config.getStreams().get(cStream.getName())
+                .getSourceClusters()) {
+          if (cStream.isPrimary())
+            mergedStreamRemoteClusters.add(config.getClusters().get(cName));
+          else
+            mirroredRemoteClusters.add(config.getClusters().get(cName));
         }
       }
-      for (Cluster remote : remoteClustersToFetch) {
+      for (Cluster remote : mergedStreamRemoteClusters) {
+        copiers.add(new MergedStreamConsumerService(config, remote, cluster));
+      }
+      for (Cluster remote : mirroredRemoteClusters) {
         copiers.add(new MergedStreamConsumerService(config, remote, cluster));
       }
     }
-    //Start a data purger for this Cluster/Clusters to process
+    //Start a DataPurgerService for this Cluster/Clusters to process
     Iterator it = clustersToProcess.iterator();
     while(it.hasNext()) {
       String  clusterName = (String) it.next();
