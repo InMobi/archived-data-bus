@@ -15,7 +15,6 @@ import java.util.Set;
 
 
 public class Cluster {
-  private final String zkConnectionString;
   private final String name;
 
   private final String rootDir;
@@ -28,7 +27,7 @@ public class Cluster {
 
   Cluster(String name, String rootDir,
           String hdfsUrl, String jtUrl, Map<String,
-          DestinationStream> consumeStreams, Set<String> sourceStreams, String zkConnectionString) {
+          DestinationStream> consumeStreams, Set<String> sourceStreams) {
     this.name = name;
     this.hdfsUrl = hdfsUrl;
     this.rootDir = rootDir;
@@ -38,7 +37,6 @@ public class Cluster {
     this.consumeStreams = consumeStreams;
     this.sourceStreams = sourceStreams;
     this.hadoopConf.set("fs.default.name", hdfsUrl);
-    this.zkConnectionString = zkConnectionString;
   }
 
 
@@ -73,10 +71,6 @@ public class Cluster {
       lastCommitTime = current;
     }
     return lastCommitTime;
-  }
-
-  public String getZkConnectionString() {
-    return zkConnectionString;
   }
 
   public String getHdfsUrl() {

@@ -13,7 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-public class Databus {
+public class Databus implements Service {
   private static Logger LOG = Logger.getLogger(Databus.class);
   private DatabusConfig config;
 
@@ -22,7 +22,7 @@ public class Databus {
   }
 
   private final Set<String> clustersToProcess;
-  private final List<AbstractService> copiers = new ArrayList<AbstractService>();
+  private final List<AbstractService> services = new ArrayList<AbstractService>();
 
 
   public Databus(DatabusConfig config, Set<String> clustersToProcess) {
@@ -34,14 +34,14 @@ public class Databus {
     return config;
   }
 
-  public void init() throws Exception {
+  private void init() throws Exception {
     for (Cluster cluster : config.getClusters().values()) {
       if (!clustersToProcess.contains(cluster.getName())) {
         continue;
       }
       //Start LocalStreamConsumerService for this cluster if it's the source of any stream
       if (cluster.getSourceStreams().size() > 0) {
-        copiers.add(new LocalStreamService(config, cluster));
+        services.add(new LocalStreamService(config, cluster));
       }
 
       List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();
@@ -66,70 +66,65 @@ public class Databus {
 
 
       for (Cluster remote : mergedStreamRemoteClusters) {
-        copiers.add(new MergedStreamService(config, remote, cluster));
+        services.add(new MergedStreamService(config, remote, cluster));
       }
       for (Cluster remote : mirroredRemoteClusters) {
-        copiers.add(new MirrorStreamService(config, remote, cluster));
+        services.add(new MirrorStreamService(config, remote, cluster));
       }
     }
 
     //Start a DataPurgerService for this Cluster/Clusters to process
-    Iterator it = clustersToProcess.iterator();
+    Iterator<String> it = clustersToProcess.iterator();
     while(it.hasNext()) {
-      String  clusterName = (String) it.next();
+      String  clusterName = it.next();
       Cluster cluster =  config.getClusters().get(clusterName);
       LOG.info("Starting Purger for Cluster [" + clusterName + "]");
       //Start a purger per cluster
-      copiers.add(new DataPurgerService(config, cluster));
+      services.add(new DataPurgerService(config, cluster));
     }
   }
 
-  public synchronized void start() {
-    for (AbstractService copier : copiers) {
-      copier.start();
+  @Override
+  public synchronized void stop() throws Exception {
+    for (AbstractService service : services) {
+      service.stop();
     }
   }
 
-  public synchronized void stop() {
-    for (AbstractService copier : copiers) {
-      copier.stop();
-    }
-    for (AbstractService copier : copiers) {
-      copier.join();
+  @Override
+  public synchronized void join() throws Exception {
+    for (AbstractService service : services) {
+      service.join();
     }
   }
 
-  public void startDatabusWork() throws Exception{
-    startDatabus();
+  @Override
+  public synchronized void start() throws Exception {
+    init();
+    for (AbstractService service : services) {
+      service.start();
+    }
     //Block this method to avoid losing leadership
     //of current work
-    for (AbstractService copier : copiers) {
-      copier.join();
+    for (AbstractService service : services) {
+      service.join();
     }
-  }
-
-  private void startDatabus() throws Exception{
-    init();
-    start();
   }
 
   public static void main(String[] args) throws Exception {
     try {
-      if (args.length != 1 && args.length != 2 ) {
-        LOG.warn("Usage: com.inmobi.databus.Databus <clustersToProcess> <configFile>");
+      if (args.length != 3 ) {
+        LOG.warn("Usage: com.inmobi.databus.Databus <clustersToProcess> <configFile> <zkconnectstring>");
         return;
       }
       String clustersStr = args[0].trim();
       String[] clusters = clustersStr.split(",");
-
-      String databusconfigFile = null;
-      if (args.length == 2) {
-        databusconfigFile = args[1].trim();
-      }
+      String databusconfigFile = args[1].trim();
+      String zkConnectString = args[2].trim();
       DatabusConfigParser configParser =
               new DatabusConfigParser(databusconfigFile);
       DatabusConfig config = configParser.getConfig();
-
+      StringBuffer databusClusterId = new StringBuffer();
       Set<String> clustersToProcess = new HashSet<String>();
       if (clusters.length == 1 && "ALL".equalsIgnoreCase(clusters[0])) {
         for (Cluster c : config.getClusters().values()) {
@@ -142,25 +137,20 @@ public class Databus {
             return;
           }
           clustersToProcess.add(c);
+          databusClusterId.append(c);
+          databusClusterId.append("_");
         }
       }
       Databus databus = new Databus(config, clustersToProcess);
-      if (clustersToProcess.size() == 1 &&
-              !"ALL".equalsIgnoreCase(clusters[0])) {
-        //Elect a leader and then start
-        LOG.info("Starting CuratorLeaderManager for eleader election ");
-        CuratorLeaderManager curatorLeaderManager =  new CuratorLeaderManager(databus);
-        curatorLeaderManager.becomeLeader();
-      }
-      else {
-        //Running in simulated mode don't use ZK
-        databus.startDatabus();
-      }
+      LOG.info("Starting CuratorLeaderManager for eleader election ");
+      CuratorLeaderManager curatorLeaderManager =  
+          new CuratorLeaderManager(databus, databusClusterId.toString(), 
+              zkConnectString);
+      curatorLeaderManager.start();
 
     }
     catch (Exception e) {
-      LOG.warn(e.getMessage());
-      LOG.warn(e);
+      LOG.warn("Error in starting Databus daemon", e);
       throw new Exception(e);
     }
   }

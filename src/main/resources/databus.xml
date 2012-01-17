@@ -1,7 +1,6 @@
 <databus>
   <defaults>
     <rootdir>/databus</rootdir>
-    <zookeeperconnectstring>gs1104.grid.corp.inmobi.com:2188</zookeeperconnectstring>
     <retentionindays>2</retentionindays>
   </defaults>
 
@@ -35,21 +34,12 @@
 
   <clusters>
     <cluster name="uj1" hdfsurl="hdfs://gs1104.grid.corp.inmobi.com:8020/" jturl="gs1104.grid.corp.inmobi.com:8021">
-      <zookeeper>
-        <connectionstring>gs1104.grid.corp.inmobi.com:2188</connectionstring>
-      </zookeeper>
     </cluster>
 
     <cluster name="uj2" hdfsurl="hdfs://gs1103.grid.corp.inmobi.com:8020/" jturl="gs1103.grid.corp.inmobi.com:19023">
-      <zookeeper>
-        <connectionstring>gs1104.grid.corp.inmobi.com:2188</connectionstring>
-      </zookeeper>
     </cluster>
 
     <cluster name="ua1" hdfsurl="hdfs://localhost:8020/" jturl="localhost:8021">
-      <zookeeper>
-        <connectionstring>gs1104.grid.corp.inmobi.com:2188</connectionstring>
-      </zookeeper>
     </cluster>
   </clusters>
 </databus>
