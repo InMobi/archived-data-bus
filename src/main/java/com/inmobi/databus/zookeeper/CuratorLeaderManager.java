@@ -1,112 +1,76 @@
 package com.inmobi.databus.zookeeper;
 
-import com.inmobi.databus.*;
-import com.netflix.curator.framework.*;
-import com.netflix.curator.framework.recipes.leader.*;
-import com.netflix.curator.framework.state.*;
-import com.netflix.curator.retry.*;
-import org.apache.commons.logging.*;
+import java.net.InetAddress;
 
-import java.net.*;
-import java.util.*;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.inmobi.databus.Service;
+import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.CuratorFrameworkFactory;
+import com.netflix.curator.framework.recipes.leader.LeaderSelector;
+import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
+import com.netflix.curator.framework.state.ConnectionState;
+import com.netflix.curator.retry.RetryOneTime;
 
 public class CuratorLeaderManager implements LeaderSelectorListener {
   private static final Log LOG = LogFactory.getLog(CuratorLeaderManager.class);
-  private Databus databus;
-  private CuratorFramework client = null;
-  private LeaderSelector leaderSelector = null;
-  private String zkConnectString;
-  private String zkPath;
-  private String myClusterName;
+  private final Service databus;
+  private final String databusClusterId;
+  private final String zkConnectString;
+  private CuratorFramework client;
+  private LeaderSelector leaderSelector;
 
-  public CuratorLeaderManager(Databus databus) throws Exception {
+  public CuratorLeaderManager(Service databus, String databusClusterId, 
+      String zkConnectString){
     this.databus = databus;
-    setClusterName();
-    zkPath = getZkPath();
-    Cluster myCluster = databus.getConfig().getClusters().get(myClusterName);
-    // Use Cluster specific ZKConnection String
-    // if it's not present then use the global Config
-    zkConnectString = myCluster.getZkConnectionString() != null ? myCluster
-        .getZkConnectionString() : databus.getConfig().getZkConnectionString();
-    if (zkConnectString == null)
-      throw new Exception(
-          "ZooKeeperConnectionString not defined in databus.xml");
+    this.databusClusterId = databusClusterId;
+    this.zkConnectString = zkConnectString;
   }
 
-  private void setClusterName() {
-    Iterator it = databus.getClustersToProcess().iterator();
-    // TODO: better way to get current clusterName
-    myClusterName = (String) it.next();
-    LOG.info("MyClusterName [" + myClusterName + "]");
+  public void start() throws Exception {
+    String zkPath = "/databus/" + databusClusterId; 
+    this.client = CuratorFrameworkFactory.newClient(zkConnectString,
+        new RetryOneTime(3));
+    this.leaderSelector = new LeaderSelector(client, zkPath, this);
+    leaderSelector.setId(InetAddress.getLocalHost().getHostName());
+    connect();
   }
 
-  private String getZkPath() {
-    String zkPath = "/databus";
-    zkPath = zkPath + "/" + myClusterName;
-    return zkPath;
+  private void connect() throws Exception {
+    client.start();// connect to ZK
+    LOG.info("becomeLeader :: connect to ZK [" + zkConnectString + "]");
+    leaderSelector.start();
+    LOG.info("started the LeaderSelector");
   }
 
   @Override
   public void takeLeadership(CuratorFramework curatorFramework)
       throws Exception {
     LOG.info("Became Leader..starting to do work");
-    doWork();
-  }
-
-  private void doWork() throws Exception {
-    // This method shouldn't return till you want to release leadership
-    databus.startDatabusWork();
-
+ // This method shouldn't return till you want to release leadership
+    databus.start();
   }
 
   @Override
   public void stateChanged(CuratorFramework curatorFramework,
       ConnectionState connectionState) {
     if (connectionState == ConnectionState.LOST) {
-      releaseLeaderShip();
+      try {
+        databus.stop();
+      } catch (Exception e1) {
+        LOG.warn("Error while stopping databus service", e1);
+      }
       LOG.info("Releasing leadership..connection LOST");
       try {
-        LOG.info("Trying to become leader");
-        becomeLeader();
+        LOG.info("Trying reconnect..");
+        connect();
       } catch (Exception e) {
-        LOG.warn("Error in attempting to becoming leader after releasing leadership");
-        LOG.warn(e.getMessage());
-        LOG.warn(e);
+        LOG.warn("Error in attempting to connect to ZK after releasing leadership", e);
       }
     }
   }
 
-  private void releaseLeaderShip() {
-    databus.stop();
-  }
-
-  private CuratorFramework getCuratorInstance() throws Exception {
-    if (client == null) {
-
-      synchronized (this) {
-        client = CuratorFrameworkFactory.newClient(zkConnectString,
-            new RetryOneTime(3));
-        return client;
-      }
-    } else
-      return client;
-  }
-
-  private LeaderSelector getLeaderSelector() throws Exception {
-    if (leaderSelector == null)
-      leaderSelector = new LeaderSelector(client, zkPath,
-          new CuratorLeaderManager(databus));
-    return leaderSelector;
-  }
-
-  public void becomeLeader() throws Exception {
-    client = getCuratorInstance();
-    client.start();// connect to ZK
-    LOG.info("becomeLeader :: connect to ZK [" + zkConnectString + "]");
-    leaderSelector = getLeaderSelector();
-    leaderSelector.setId(InetAddress.getLocalHost().getHostName());
-    leaderSelector.start();
-    LOG.info("started the LeaderSelector");
-  }
+  
 
 }

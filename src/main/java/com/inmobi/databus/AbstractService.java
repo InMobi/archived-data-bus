@@ -3,7 +3,7 @@ package com.inmobi.databus;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public abstract class AbstractService implements Runnable {
+public abstract class AbstractService implements Service, Runnable {
 
   private static final Log LOG = LogFactory.getLog(AbstractService.class);
   private static final long DEFAULT_RUN_INTERVAL = 60000;
@@ -59,17 +59,20 @@ public abstract class AbstractService implements Runnable {
     }
   }
 
+  @Override
   public synchronized void start() {
     thread = new Thread(this, this.name);
     LOG.info("Starting thread " + thread.getName());
     thread.start();
   }
 
+  @Override
   public synchronized void stop() {
     stopped = true;
     thread.interrupt();
   }
 
+  @Override
   public synchronized void join() {
     try {
       thread.join();

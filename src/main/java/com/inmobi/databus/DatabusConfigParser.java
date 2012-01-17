@@ -19,7 +19,6 @@ import org.w3c.dom.NodeList;
 public class DatabusConfigParser {
 
   private static Logger logger = Logger.getLogger(DatabusConfigParser.class);
-  private Document dom;
   private Map<String, SourceStream> streamMap = new HashMap<String, SourceStream>();
   private Map<String, Cluster> clusterMap = new HashMap<String, Cluster>();
   private Map<String, List<DestinationStream>> clusterConsumeStreams =
@@ -27,7 +26,6 @@ public class DatabusConfigParser {
 
   private String inputDir;
   private String publishDir;
-  private String defaultZkConnectString;
   private String rootDir;
   private int defaultRetentionInDays = 2;
 
@@ -36,25 +34,25 @@ public class DatabusConfigParser {
   }
 
   public DatabusConfig getConfig() {
-    DatabusConfig config = new DatabusConfig(defaultZkConnectString, streamMap,
-        clusterMap);
+    DatabusConfig config = new DatabusConfig(streamMap, clusterMap);
     return config;
   }
 
   private void parseXmlFile(String fileName) throws Exception {
     DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
     DocumentBuilder db = dbf.newDocumentBuilder();
+    Document dom;
     if (fileName == null)
       dom = db.parse(ClassLoader.getSystemResourceAsStream("databus.xml"));
     else
       dom = db.parse(fileName);
     if (dom != null)
-      parseDocument();
+      parseDocument(dom);
     else
       throw new Exception("databus.xml file not found");
   }
 
-  private void parseDocument() {
+  private void parseDocument(Document dom) {
     Element docEle = dom.getDocumentElement();
     // read configs
     readDefaultPaths(docEle);
@@ -71,8 +69,6 @@ public class DatabusConfigParser {
       rootDir = getTextValue((Element) configList.item(0), "rootdir");
       inputDir = getTextValue((Element) configList.item(0), "inputdir");
       publishDir = getTextValue((Element) configList.item(0), "publishdir");
-      defaultZkConnectString = getTextValue((Element) configList.item(0),
-          "zookeeperconnectstring");
       String retention = getTextValue((Element) configList.item(0),
           "retentionindays");
       if (retention != null) {
@@ -80,8 +76,7 @@ public class DatabusConfigParser {
       }
 
       logger.debug("rootDir = " + rootDir + " inputDir " + inputDir
-          + " publishDir " + publishDir + " zkConnectString "
-          + defaultZkConnectString + " global retentionInDays "
+          + " publishDir " + publishDir + " global retentionInDays "
           + defaultRetentionInDays);
     }
   }
@@ -110,9 +105,6 @@ public class DatabusConfigParser {
       Element elem = (Element) list.item(0);
       cRootDir = elem.getTextContent();
     }
-    String zkConnectString = getZKConnectStringForCluster(el
-        .getElementsByTagName("zookeeper"));
-    logger.info("zkConnectString [" + zkConnectString + "]");
     Map<String, DestinationStream> consumeStreams = new HashMap<String, DestinationStream>();
     logger.debug("getting consume streams for CLuster ::" + clusterName);
     List<DestinationStream> consumeStreamList = getConsumeStreams(clusterName);
@@ -125,18 +117,7 @@ public class DatabusConfigParser {
       cRootDir = rootDir;
 
     return new Cluster(clusterName, cRootDir, hdfsURL, jtURL, consumeStreams,
-        getSourceStreams(clusterName), zkConnectString);
-  }
-
-  private String getZKConnectStringForCluster(NodeList zkConnectionStringList) {
-    String zkConnectString = null;
-    if (zkConnectionStringList != null
-        && zkConnectionStringList.getLength() == 1) {
-      Element elem = (Element) zkConnectionStringList.item(0);
-      zkConnectString = getTextValue(elem, "connectionstring");
-      logger.debug("getZKConnectStringForCluster [" + zkConnectString + "]");
-    }
-    return zkConnectString;
+        getSourceStreams(clusterName));
   }
 
   private Set<String> getSourceStreams(String clusterName) {
