@@ -22,8 +22,8 @@ public class DatabusConfig {
 
   public Cluster getPrimaryClusterForDestinationStream(String streamName) {
    for(Cluster cluster : getClusters().values()) {
-     if (cluster.getConsumeStreams().containsKey(streamName)) {
-       DestinationStream consumeStream = cluster.getConsumeStreams().get(streamName);
+     if (cluster.getDestinationStreams().containsKey(streamName)) {
+       DestinationStream consumeStream = cluster.getDestinationStreams().get(streamName);
        if (consumeStream.isPrimary())
          return cluster;
      }

@@ -1,5 +1,9 @@
 package com.inmobi.databus;
 
+import com.inmobi.databus.utils.CalendarHelper;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Calendar;
@@ -9,10 +13,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-
-import com.inmobi.databus.utils.CalendarHelper;
 
 public class Cluster {
   private final String zkConnectionString;
@@ -149,22 +149,22 @@ public class Cluster {
   }
 
 
-  public Map<String, DestinationStream> getConsumeStreams() {
+  public Map<String, DestinationStream> getDestinationStreams() {
     return consumeStreams;
   }
 
   public Set<String> getMirroredStreams() {
     Set<String> mirroredStreams = new HashSet<String>();
-    for(DestinationStream consumeStream : getConsumeStreams().values()) {
+    for(DestinationStream consumeStream : getDestinationStreams().values()) {
       if (!consumeStream.isPrimary())
         mirroredStreams.add(consumeStream.getName());
     }
     return mirroredStreams;
   }
 
-  public Set<String> getPrimaryStreams() {
+  public Set<String> getPrimaryDestinationStreams() {
     Set<String> primaryStreams = new HashSet<String>();
-    for(DestinationStream consumeStream : getConsumeStreams().values()) {
+    for(DestinationStream consumeStream : getDestinationStreams().values()) {
       if (consumeStream.isPrimary())
         primaryStreams.add(consumeStream.getName());
     }

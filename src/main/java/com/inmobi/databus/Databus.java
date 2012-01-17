@@ -1,18 +1,17 @@
 package com.inmobi.databus;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-
-import org.apache.log4j.Logger;
-
 import com.inmobi.databus.distcp.MergedStreamService;
 import com.inmobi.databus.distcp.MirrorStreamService;
 import com.inmobi.databus.local.LocalStreamService;
 import com.inmobi.databus.purge.DataPurgerService;
 import com.inmobi.databus.zookeeper.CuratorLeaderManager;
+import org.apache.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 public class Databus {
   private static Logger LOG = Logger.getLogger(Databus.class);
@@ -47,7 +46,7 @@ public class Databus {
 
       List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();
       List<Cluster> mirroredRemoteClusters = new ArrayList<Cluster>();
-      for (DestinationStream cStream : cluster.getConsumeStreams().values()) {
+      for (DestinationStream cStream : cluster.getDestinationStreams().values()) {
         //Start MergedStreamConsumerService instances for this cluster for each cluster
         //from where it has to fetch a partial stream and is hosting a primary stream
         //Start MirroredStreamConsumerService instances for this cluster for each cluster

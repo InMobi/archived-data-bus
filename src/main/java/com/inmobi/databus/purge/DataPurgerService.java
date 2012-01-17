@@ -44,7 +44,7 @@ public class DataPurgerService extends AbstractService {
 
   private void addMergedStreams() {
     Map<String, DestinationStream> consumeStreamMap = cluster
-        .getConsumeStreams();
+        .getDestinationStreams();
     Set<Map.Entry<String, DestinationStream>> entrySet = consumeStreamMap
         .entrySet();
     Iterator it = entrySet.iterator();
