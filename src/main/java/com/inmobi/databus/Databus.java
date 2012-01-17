@@ -1,13 +1,18 @@
 package com.inmobi.databus;
 
-import com.inmobi.databus.DatabusConfig.*;
-import com.inmobi.databus.consume.*;
-import com.inmobi.databus.distcp.*;
-import com.inmobi.databus.purge.*;
-import com.inmobi.databus.zookeeper.*;
-import org.apache.log4j.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
-import java.util.*;
+import org.apache.log4j.Logger;
+
+import com.inmobi.databus.distcp.MergedStreamService;
+import com.inmobi.databus.distcp.MirrorStreamService;
+import com.inmobi.databus.local.LocalStreamService;
+import com.inmobi.databus.purge.DataPurgerService;
+import com.inmobi.databus.zookeeper.CuratorLeaderManager;
 
 public class Databus {
   private static Logger LOG = Logger.getLogger(Databus.class);
@@ -18,7 +23,7 @@ public class Databus {
   }
 
   private final Set<String> clustersToProcess;
-  private final List<AbstractCopier> copiers = new ArrayList<AbstractCopier>();
+  private final List<AbstractService> copiers = new ArrayList<AbstractService>();
 
 
   public Databus(DatabusConfig config, Set<String> clustersToProcess) {
@@ -37,24 +42,24 @@ public class Databus {
       }
       //Start LocalStreamConsumerService for this cluster if it's the source of any stream
       if (cluster.getSourceStreams().size() > 0) {
-        copiers.add(new LocalStreamConsumerService(config, cluster));
+        copiers.add(new LocalStreamService(config, cluster));
       }
 
       List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();
       List<Cluster> mirroredRemoteClusters = new ArrayList<Cluster>();
-      for (ConsumeStream cStream : cluster.getConsumeStreams().values()) {
+      for (DestinationStream cStream : cluster.getConsumeStreams().values()) {
         //Start MergedStreamConsumerService instances for this cluster for each cluster
         //from where it has to fetch a partial stream and is hosting a primary stream
         //Start MirroredStreamConsumerService instances for this cluster for each cluster
         //from where it has to mirror mergedStreams
 
-        for (String cName : config.getStreams().get(cStream.getName())
+        for (String cName : config.getSourceStreams().get(cStream.getName())
                 .getSourceClusters()) {
           if (cStream.isPrimary())
             mergedStreamRemoteClusters.add(config.getClusters().get(cName));
         }
         if (!cStream.isPrimary())  {
-          Cluster primaryCluster = config.getPrimaryClusterForConsumeStream(cStream.getName());
+          Cluster primaryCluster = config.getPrimaryClusterForDestinationStream(cStream.getName());
           if (primaryCluster != null)
             mirroredRemoteClusters.add(primaryCluster);
         }
@@ -62,10 +67,10 @@ public class Databus {
 
 
       for (Cluster remote : mergedStreamRemoteClusters) {
-        copiers.add(new MergedStreamConsumerService(config, remote, cluster));
+        copiers.add(new MergedStreamService(config, remote, cluster));
       }
       for (Cluster remote : mirroredRemoteClusters) {
-        copiers.add(new MirrorStreamConsumerService(config, remote, cluster));
+        copiers.add(new MirrorStreamService(config, remote, cluster));
       }
     }
 
@@ -81,16 +86,16 @@ public class Databus {
   }
 
   public synchronized void start() {
-    for (AbstractCopier copier : copiers) {
+    for (AbstractService copier : copiers) {
       copier.start();
     }
   }
 
   public synchronized void stop() {
-    for (AbstractCopier copier : copiers) {
+    for (AbstractService copier : copiers) {
       copier.stop();
     }
-    for (AbstractCopier copier : copiers) {
+    for (AbstractService copier : copiers) {
       copier.join();
     }
   }
@@ -99,7 +104,7 @@ public class Databus {
     startDatabus();
     //Block this method to avoid losing leadership
     //of current work
-    for (AbstractCopier copier : copiers) {
+    for (AbstractService copier : copiers) {
       copier.join();
     }
   }
@@ -124,10 +129,7 @@ public class Databus {
       }
       DatabusConfigParser configParser =
               new DatabusConfigParser(databusconfigFile);
-      Map<String, Cluster> clusterMap = configParser.getClusterMap();
-      DatabusConfig config = new DatabusConfig(configParser.getRetentionInDays(), configParser.getRootDir(),
-              configParser.getZkConnectString(),
-              configParser.getStreamMap(), clusterMap);
+      DatabusConfig config = configParser.getConfig();
 
       Set<String> clustersToProcess = new HashSet<String>();
       if (clusters.length == 1 && "ALL".equalsIgnoreCase(clusters[0])) {

@@ -1,31 +1,69 @@
 package com.inmobi.databus.distcp;
 
 
-import com.inmobi.databus.*;
-import org.apache.commons.logging.*;
-import org.apache.hadoop.fs.*;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.net.URI;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringTokenizer;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
-public abstract  class DistcpBaseService extends AbstractCopier{
-  protected FileSystem srcFs;
-  protected FileSystem destFs;
+import com.inmobi.databus.AbstractService;
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.DatabusConfig;
+
+public abstract  class DistcpBaseService extends AbstractService {
+
+  private final Cluster srcCluster;
+  private final Cluster destCluster;
+  private final FileSystem srcFs;
+  private final FileSystem destFs;
   protected static final int DISTCP_SUCCESS = 0;
 
-  protected static final Log LOG = LogFactory.getLog(MergedStreamConsumerService.class);
+  protected static final Log LOG = LogFactory.getLog(MergedStreamService.class);
 
-  public DistcpBaseService(DatabusConfig config, DatabusConfig.Cluster srcCluster, DatabusConfig.Cluster destCluster)
-          throws Exception {
-    super(config, srcCluster, destCluster);
-    srcFs = FileSystem.get(new URI(getSrcCluster().getHdfsUrl()),
-            getSrcCluster().getHadoopConf());
+  public DistcpBaseService(DatabusConfig config, String name, 
+      Cluster srcCluster,
+      Cluster destCluster) throws Exception {
+    super(name + "_" +
+        srcCluster.getName() + "_" + destCluster.getName(), config);
+    this.srcCluster = srcCluster;
+    this.destCluster = destCluster;
+    srcFs = FileSystem.get(new URI(srcCluster.getHdfsUrl()),
+            srcCluster.getHadoopConf());
     destFs = FileSystem.get(
-            new URI(getDestCluster().getHdfsUrl()),
-            getDestCluster().getHadoopConf());
+            new URI(destCluster.getHdfsUrl()), destCluster.getHadoopConf());
   }
 
+  protected Cluster getSrcCluster() {
+    return srcCluster;
+  }
+
+
+  protected Cluster getDestCluster() {
+    return destCluster;
+  }
+
+
+  protected FileSystem getSrcFs() {
+    return srcFs;
+  }
+
+
+  protected FileSystem getDestFs() {
+    return destFs;
+  }
+ 
   /*
    * return remote Path from where this consumer can consume
    * eg: MergedStreamConsumerService - Path eg: hdfs://remoteCluster/databus/system/consumers/<consumerName>
@@ -80,7 +118,7 @@ public abstract  class DistcpBaseService extends AbstractCopier{
           }
           fsDataInputStream.close();
         }
-        Path tmpPath = new Path(tmp, getSrcCluster().getName() + new Long(System
+        Path tmpPath = new Path(tmp, srcCluster.getName() + new Long(System
                 .currentTimeMillis()).toString());
         FSDataOutputStream out = destFs.create(tmpPath);
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));

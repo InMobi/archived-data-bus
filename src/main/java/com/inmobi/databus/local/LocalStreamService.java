@@ -1,52 +1,52 @@
-package com.inmobi.databus.consume;
+package com.inmobi.databus.local;
 
-import com.inmobi.databus.AbstractCopier;
-import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.DatabusConfig.Cluster;
-import com.inmobi.databus.DatabusConfig.Stream;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
+import com.inmobi.databus.AbstractService;
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.DestinationStream;
+import com.inmobi.databus.DatabusConfig;
 
 /*
  * Handles Local Streams for a Cluster
  * Assumptions
- * (i) One LocalStreamConsumerService per Cluster
+ * (i) One LocalStreamService per Cluster
  */
 
-public class LocalStreamConsumerService extends AbstractCopier {
+public class LocalStreamService extends AbstractService {
 
-  private static final Log LOG = LogFactory.getLog(LocalStreamConsumerService.class);
+  private static final Log LOG = LogFactory.getLog(LocalStreamService.class);
+  
+  private final Cluster cluster;
   private Path tmpPath;
   private Path tmpJobInputPath;
   private Path tmpJobOutputPath;
 
-  public LocalStreamConsumerService(DatabusConfig config, Cluster cluster) {
-    super(config, cluster, cluster);
+  public LocalStreamService(DatabusConfig config, Cluster cluster) {
+    super(LocalStreamService.class.getName(), config);
+    this.cluster = cluster;
     this.tmpPath = new Path(cluster.getTmpPath(), getName());
     this.tmpJobInputPath = new Path(tmpPath, "jobIn");
     this.tmpJobOutputPath = new Path(tmpPath, "jobOut");
-  }
-
-  protected void addStreamsToFetch() {
-    for (Stream s : getConfig().getStreams().values()) {
-      if (s.getSourceClusters().contains(getSrcCluster())) {
-        streamsToFetch.add(s);
-      }
-    }
-  }
-
-  @Override
-  protected long getRunIntervalInmsec() {
-    return 60000; //1 min
   }
 
   private void cleanUpTmp(FileSystem fs) throws  Exception{
@@ -61,9 +61,9 @@ public class LocalStreamConsumerService extends AbstractCopier {
   }
 
   @Override
-  protected void fetch() throws Exception {
+  protected void execute() throws Exception {
 
-    FileSystem fs = FileSystem.get(getSrcCluster().getHadoopConf());
+    FileSystem fs = FileSystem.get(cluster.getHadoopConf());
     //Cleanup tmpPath before everyRun to avoid
     //any old data being used in this run if the old run was aborted
     cleanUpTmp(fs);
@@ -77,24 +77,22 @@ public class LocalStreamConsumerService extends AbstractCopier {
     Job job = createJob(tmpJobInputPath);
     job.waitForCompletion(true);
     if (job.isSuccessful()) {
-      synchronized (getDestCluster()) {
-        long commitTime = getDestCluster().getCommitTime();
-        Map<Path, Path> commitPaths = prepareForCommit(commitTime, fileListing);
-        commit(commitPaths);
-        LOG.info("Committed successfully for " + commitTime);
-      }
+      long commitTime = cluster.getCommitTime();
+      Map<Path, Path> commitPaths = prepareForCommit(commitTime, fileListing);
+      commit(commitPaths);
+      LOG.info("Committed successfully for " + commitTime);
     }
   }
 
   private Map<Path, Path> prepareForCommit(long commitTime,
                                            Map<FileStatus, String> fileListing) throws IOException {
-    FileSystem fs = FileSystem.get(getSrcCluster().getHadoopConf());
+    FileSystem fs = FileSystem.get(cluster.getHadoopConf());
 
     // find final destination paths
     Map<Path, Path> mvPaths = new LinkedHashMap<Path, Path>();
     FileStatus[] categories = fs.listStatus(tmpJobOutputPath);
     for (FileStatus categoryDir : categories) {
-      Path destDir = new Path(getSrcCluster().getLocalDestDir(
+      Path destDir = new Path(cluster.getLocalDestDir(
               categoryDir.getPath().getName(), commitTime));
       FileStatus[] files = fs.listStatus(categoryDir.getPath());
       for (FileStatus file : files) {
@@ -109,8 +107,8 @@ public class LocalStreamConsumerService extends AbstractCopier {
       Set<String> consumeStreams = cluster.getConsumeStreams().keySet();
       boolean consumeCluster = false;
       for(String stream : consumeStreams) {
-        DatabusConfig.ConsumeStream consumeStream = cluster.getConsumeStreams().get(stream);
-        if (consumeStream.isPrimary() && getSrcCluster().getSourceStreams().contains(stream)){
+        DestinationStream consumeStream = cluster.getConsumeStreams().get(stream);
+        if (consumeStream.isPrimary() && cluster.getSourceStreams().contains(stream)){
           consumeCluster = true;
           break;
         }
@@ -126,7 +124,7 @@ public class LocalStreamConsumerService extends AbstractCopier {
           }
         }
         out.close();
-        Path finalConsumerPath = new Path(getSrcCluster().getConsumePath(
+        Path finalConsumerPath = new Path(cluster.getConsumePath(
                 cluster),
                 Long.toString(commitTime));
         consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
@@ -135,7 +133,7 @@ public class LocalStreamConsumerService extends AbstractCopier {
 
     // find trash paths
     Map<Path, Path> trashPaths = new LinkedHashMap<Path, Path>();
-    Path trash = getSrcCluster().getTrashPathWithDate();
+    Path trash = cluster.getTrashPathWithDate();
     for (FileStatus src : fileListing.keySet()) {
       String category = getCategoryFromSrcPath(src.getPath());
       Path target = null;
@@ -157,7 +155,7 @@ public class LocalStreamConsumerService extends AbstractCopier {
 
   private void commit(Map<Path, Path> commitPaths) throws IOException {
     LOG.info("Committing " + commitPaths.size() + " paths.");
-    FileSystem fs = FileSystem.get(getSrcCluster().getHadoopConf());
+    FileSystem fs = FileSystem.get(cluster.getHadoopConf());
     for (Map.Entry<Path, Path> entry : commitPaths.entrySet()) {
       LOG.info("Renaming " + entry.getKey() + " to " + entry.getValue());
       fs.mkdirs(entry.getValue().getParent());
@@ -168,9 +166,9 @@ public class LocalStreamConsumerService extends AbstractCopier {
 
   private void createMRInput(Path inputPath, Map<FileStatus, String> fileListing)
           throws IOException {
-    FileSystem fs = FileSystem.get(getSrcCluster().getHadoopConf());
+    FileSystem fs = FileSystem.get(cluster.getHadoopConf());
 
-    createListing(fs, fs.getFileStatus(getSrcCluster().getDataDir()), fileListing,
+    createListing(fs, fs.getFileStatus(cluster.getDataDir()), fileListing,
             new HashSet<String>());
 
     FSDataOutputStream out = fs.create(inputPath);
@@ -226,7 +224,7 @@ public class LocalStreamConsumerService extends AbstractCopier {
 
   private Job createJob(Path inputPath) throws IOException {
     String jobName = "consumer";
-    Configuration conf = getSrcCluster().getHadoopConf();
+    Configuration conf = cluster.getHadoopConf();
     Job job = new Job(conf);
     job.setJobName(jobName);
     KeyValueTextInputFormat.setInputPaths(job, inputPath);

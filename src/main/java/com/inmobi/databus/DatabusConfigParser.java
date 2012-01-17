@@ -1,66 +1,47 @@
 package com.inmobi.databus;
 
-import com.inmobi.databus.DatabusConfig.*;
-import org.apache.log4j.*;
-import org.w3c.dom.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import javax.xml.parsers.*;
-import java.util.*;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.apache.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 public class DatabusConfigParser {
 
-  static Logger logger = Logger.getLogger(DatabusConfigParser.class);
-  Document dom;
-  Map<String, Stream> streamMap = new HashMap<String, Stream>();
-  Map<String, Cluster> clusterMap = new HashMap<String, Cluster>();
-  Map<String, List<ConsumeStream>> clusterConsumeStreams = new HashMap<String, List<ConsumeStream>>();
+  private static Logger logger = Logger.getLogger(DatabusConfigParser.class);
+  private Document dom;
+  private Map<String, SourceStream> streamMap = new HashMap<String, SourceStream>();
+  private Map<String, Cluster> clusterMap = new HashMap<String, Cluster>();
+  private Map<String, List<DestinationStream>> clusterConsumeStreams =
+      new HashMap<String, List<DestinationStream>>();
 
-  String inputDir;
-  String publishDir;
-  String fileName;
-  String zkConnectString;
-  String rootDir;
-  String retentionInDays;
-
-  public int getRetentionInDays() {
-    return new Integer(retentionInDays).intValue();
-  }
-
-  public void setRetentionInDays(String retentionInDays) {
-    this.retentionInDays = retentionInDays;
-  }
-
-  public String getZkConnectString() {
-    return zkConnectString;
-  }
-
-  public Map<String, Stream> getStreamMap() {
-    return streamMap;
-  }
-
-  public String getRootDir() {
-
-    return rootDir;
-  }
-
-  public String getInputDir() {
-    return inputDir;
-  }
-
-  public String getPublishDir() {
-    return publishDir;
-  }
-
-  public Map<String, DatabusConfig.Cluster> getClusterMap() {
-    return clusterMap;
-  }
+  private String inputDir;
+  private String publishDir;
+  private String defaultZkConnectString;
+  private String rootDir;
+  private int defaultRetentionInDays = 2;
 
   public DatabusConfigParser(String fileName) throws Exception {
-    this.fileName = fileName;
-    parseXmlFile();
+    parseXmlFile(fileName);
   }
 
-  public void parseXmlFile() throws Exception {
+  public DatabusConfig getConfig() {
+    DatabusConfig config = new DatabusConfig(defaultZkConnectString, streamMap,
+        clusterMap);
+    return config;
+  }
+
+  private void parseXmlFile(String fileName) throws Exception {
     DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
     DocumentBuilder db = dbf.newDocumentBuilder();
     if (fileName == null)
@@ -90,11 +71,18 @@ public class DatabusConfigParser {
       rootDir = getTextValue((Element) configList.item(0), "rootdir");
       inputDir = getTextValue((Element) configList.item(0), "inputdir");
       publishDir = getTextValue((Element) configList.item(0), "publishdir");
-      zkConnectString =  getTextValue((Element) configList.item(0), "zookeeperconnectstring");
-      retentionInDays =  getTextValue((Element) configList.item(0), "retentionindays");
+      defaultZkConnectString = getTextValue((Element) configList.item(0),
+          "zookeeperconnectstring");
+      String retention = getTextValue((Element) configList.item(0),
+          "retentionindays");
+      if (retention != null) {
+        defaultRetentionInDays = Integer.parseInt(retention);
+      }
 
       logger.debug("rootDir = " + rootDir + " inputDir " + inputDir
-              + " publishDir " + publishDir + " zkConnectString " + zkConnectString + " global retentionInDays " + retentionInDays);
+          + " publishDir " + publishDir + " zkConnectString "
+          + defaultZkConnectString + " global retentionInDays "
+          + defaultRetentionInDays);
     }
   }
 
@@ -114,35 +102,36 @@ public class DatabusConfigParser {
     String clusterName = el.getAttribute("name");
     String hdfsURL = el.getAttribute("hdfsurl");
     String jtURL = el.getAttribute("jturl");
-    logger.info("clusterName " + clusterName + " hdfsURL " + hdfsURL + " jtUrl" + jtURL);
+    logger.info("clusterName " + clusterName + " hdfsURL " + hdfsURL + " jtUrl"
+        + jtURL);
     String cRootDir = rootDir;
     NodeList list = el.getElementsByTagName("rootdir");
     if (list != null && list.getLength() == 1) {
       Element elem = (Element) list.item(0);
       cRootDir = elem.getTextContent();
     }
-    String zkConnectString = getZKConnectStringForCluster(el.getElementsByTagName("zookeeper"));
+    String zkConnectString = getZKConnectStringForCluster(el
+        .getElementsByTagName("zookeeper"));
     logger.info("zkConnectString [" + zkConnectString + "]");
-    Map<String, ConsumeStream> consumeStreams
-            = new HashMap<String, ConsumeStream>();
-    logger.debug("getting consume streams for CLuster ::" + clusterName );
-    List<ConsumeStream> consumeStreamList = getConsumeStreams(clusterName);
+    Map<String, DestinationStream> consumeStreams = new HashMap<String, DestinationStream>();
+    logger.debug("getting consume streams for CLuster ::" + clusterName);
+    List<DestinationStream> consumeStreamList = getConsumeStreams(clusterName);
     if (consumeStreamList != null && consumeStreamList.size() > 0) {
-      for(ConsumeStream consumeStream : consumeStreamList) {
+      for (DestinationStream consumeStream : consumeStreamList) {
         consumeStreams.put(consumeStream.getName(), consumeStream);
       }
     }
     if (cRootDir == null)
-      cRootDir = getRootDir();
-
+      cRootDir = rootDir;
 
     return new Cluster(clusterName, cRootDir, hdfsURL, jtURL, consumeStreams,
-            getSourceStreams(clusterName), zkConnectString);
+        getSourceStreams(clusterName), zkConnectString);
   }
 
   private String getZKConnectStringForCluster(NodeList zkConnectionStringList) {
     String zkConnectString = null;
-    if (zkConnectionStringList != null && zkConnectionStringList.getLength() == 1) {
+    if (zkConnectionStringList != null
+        && zkConnectionStringList.getLength() == 1) {
       Element elem = (Element) zkConnectionStringList.item(0);
       zkConnectString = getTextValue(elem, "connectionstring");
       logger.debug("getZKConnectStringForCluster [" + zkConnectString + "]");
@@ -152,13 +141,13 @@ public class DatabusConfigParser {
 
   private Set<String> getSourceStreams(String clusterName) {
     Set<String> srcStreams = new HashSet<String>();
-    Set<Map.Entry<String, DatabusConfig.Stream>> entrySet  = streamMap.entrySet();
+    Set<Map.Entry<String, SourceStream>> entrySet = streamMap.entrySet();
     Iterator it = entrySet.iterator();
     while (it.hasNext()) {
       Map.Entry entry = (Map.Entry) it.next();
       String streamName = (String) entry.getKey();
-      DatabusConfig.Stream streamDetails = (DatabusConfig.Stream) entry.getValue();
-      if(streamDetails.getSourceClusters().contains(clusterName)) {
+      SourceStream streamDetails = (SourceStream) entry.getValue();
+      if (streamDetails.getSourceClusters().contains(clusterName)) {
         srcStreams.add(streamName);
       }
 
@@ -172,15 +161,15 @@ public class DatabusConfigParser {
       for (int i = 0; i < tmpstreamList.getLength(); i++) {
         // for each stream
         Element el = (Element) tmpstreamList.item(i);
-        DatabusConfig.Stream stream = getStream(el);
+        SourceStream stream = getStream(el);
         streamMap.put(stream.getName(), stream);
       }
     }
 
   }
 
-  private DatabusConfig.Stream getStream(Element el) {
-    Map<String, Integer> sourceStreams = new HashMap();
+  private SourceStream getStream(Element el) {
+    Map<String, Integer> sourceStreams = new HashMap<String, Integer>();
     // get sources for each stream
     String streamName = el.getAttribute("name");
     NodeList sourceList = el.getElementsByTagName("source");
@@ -188,15 +177,15 @@ public class DatabusConfigParser {
       Element source = (Element) sourceList.item(i);
       // for each source
       String clusterName = getTextValue(source, "name");
-      int rententionInDays = getIntValue(source, "retentionindays");
-      logger.debug(" StreamSource :: streamname " + streamName + " retentionindays " + rententionInDays + " " +
-              "clusterName " +
-              clusterName);
+      int rententionInDays = getRetention(source, "retentionindays");
+      logger.debug(" StreamSource :: streamname " + streamName
+          + " retentionindays " + rententionInDays + " " + "clusterName "
+          + clusterName);
       sourceStreams.put(clusterName, new Integer(rententionInDays));
     }
-    //get all destinations for this stream
+    // get all destinations for this stream
     readConsumeStreams(streamName, el);
-    return new DatabusConfig.Stream(streamName, sourceStreams);
+    return new SourceStream(streamName, sourceStreams);
   }
 
   private void readConsumeStreams(String streamName, Element el) {
@@ -205,32 +194,33 @@ public class DatabusConfigParser {
       Element replicatedConsumeStream = (Element) consumeStreamNodeList.item(i);
       // for each source
       String clusterName = getTextValue(replicatedConsumeStream, "name");
-      int retentionInDays = getIntValue(replicatedConsumeStream,
-              "retentionindays");
+      int retentionInDays = getRetention(replicatedConsumeStream,
+          "retentionindays");
       String isPrimaryVal = getTextValue(replicatedConsumeStream, "primary");
       Boolean isPrimary;
       if (isPrimaryVal != null && isPrimaryVal.equalsIgnoreCase("true"))
         isPrimary = new Boolean(true);
       else
         isPrimary = new Boolean(false);
-      logger.info("Reading Stream Destination Details :: Stream Name " + streamName +
-              " cluster " + clusterName + " retentionInDays " + retentionInDays + " isPrimary " + isPrimary);
-      ConsumeStream consumeStream = new ConsumeStream(streamName,
-              retentionInDays, isPrimary);
+      logger.info("Reading Stream Destination Details :: Stream Name "
+          + streamName + " cluster " + clusterName + " retentionInDays "
+          + retentionInDays + " isPrimary " + isPrimary);
+      DestinationStream consumeStream = new DestinationStream(streamName,
+          retentionInDays, isPrimary);
       if (clusterConsumeStreams.get(clusterName) == null) {
-        List<ConsumeStream> consumeStreamList = new ArrayList<ConsumeStream>();
+        List<DestinationStream> consumeStreamList = new ArrayList<DestinationStream>();
         consumeStreamList.add(consumeStream);
-        clusterConsumeStreams.put(clusterName,consumeStreamList);
-      }
-      else {
-        List<ConsumeStream> consumeStreamList = clusterConsumeStreams.get(clusterName);
+        clusterConsumeStreams.put(clusterName, consumeStreamList);
+      } else {
+        List<DestinationStream> consumeStreamList = clusterConsumeStreams
+            .get(clusterName);
         consumeStreamList.add(consumeStream);
         clusterConsumeStreams.put(clusterName, consumeStreamList);
       }
     }
   }
 
-  private List<ConsumeStream> getConsumeStreams(String clusterName) {
+  private List<DestinationStream> getConsumeStreams(String clusterName) {
     return clusterConsumeStreams.get(clusterName);
   }
 
@@ -247,9 +237,12 @@ public class DatabusConfigParser {
   /**
    * Calls getTextValue and returns a int value
    */
-  private Integer getIntValue(Element ele, String tagName) {
-    // in production application you would catch the exception
-    return Integer.parseInt(getTextValue(ele, tagName));
+  private int getRetention(Element ele, String tagName) {
+    String ob = getTextValue(ele, tagName);
+    if (ob == null) {
+      return defaultRetentionInDays;
+    }
+    return Integer.parseInt(ob);
   }
 
   public static void main(String[] args) {
