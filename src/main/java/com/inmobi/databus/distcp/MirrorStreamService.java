@@ -1,5 +1,14 @@
 package com.inmobi.databus.distcp;
 
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.DatabusConfig;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.tools.DistCp;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -8,16 +17,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.tools.DistCp;
-
-import com.inmobi.databus.Cluster;
-import com.inmobi.databus.DatabusConfig;
 
 /* Assumption - Mirror is always of a merged Stream.There is only 1 instance of a merged Stream
  * (i)   1 Mirror Thread per src DatabusConfig.Cluster from where streams need to be mirrored on destCluster
@@ -84,10 +83,8 @@ public class MirrorStreamService extends DistcpBaseService {
         if (exitCode != DISTCP_SUCCESS)
           skipCommit = true;
       } catch (Throwable e) {
-        LOG.warn(e.getMessage());
-        e.printStackTrace();
-        LOG.warn("Problem in Mirrored distcp..skipping commit for this run");
-        getDestFs().delete(tmpOut, true);
+        LOG.warn("Problem in Mirrored distcp..skipping commit for this run",
+                e);
         skipCommit = true;
       }
       if (!skipCommit) {
@@ -99,9 +96,8 @@ public class MirrorStreamService extends DistcpBaseService {
       LOG.debug("Cleanup [" + tmpOut + "]");
     } catch (Exception e) {
       LOG.warn(e);
-      LOG.warn(e.getMessage());
-      e.printStackTrace();
-    }
+      LOG.warn("Error in MirrorStream Service..skipping RUN ", e);
+     }
   }
 
   void doLocalCommit(Map<Path, Path> commitPaths) throws Exception {

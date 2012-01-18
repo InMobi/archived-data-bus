@@ -143,12 +143,13 @@ public class Databus implements Service {
       }
       Databus databus = new Databus(config, clustersToProcess);
       LOG.info("Starting CuratorLeaderManager for eleader election ");
-      CuratorLeaderManager curatorLeaderManager =  
-          new CuratorLeaderManager(databus, databusClusterId.toString(), 
-              zkConnectString);
+      CuratorLeaderManager curatorLeaderManager =
+              new CuratorLeaderManager(databus, databusClusterId.toString(),
+                      zkConnectString);
       curatorLeaderManager.start();
-
-    }
+      Runtime.getRuntime().addShutdownHook(new Thread(new DatabusShutdownHook
+              (databus)));
+     }
     catch (Exception e) {
       LOG.warn("Error in starting Databus daemon", e);
       throw new Exception(e);

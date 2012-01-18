@@ -1,5 +1,15 @@
 package com.inmobi.databus.distcp;
 
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.DatabusConfig;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.tools.DistCp;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -10,17 +20,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.tools.DistCp;
-
-import com.inmobi.databus.Cluster;
-import com.inmobi.databus.DatabusConfig;
 
 /*
  * Handles MergedStreams for a Cluster
@@ -76,10 +75,8 @@ public class MergedStreamService extends DistcpBaseService {
         if (exitCode != DISTCP_SUCCESS)
           skipCommit = true;
       } catch (Throwable e) {
-        LOG.warn(e.getMessage());
-        e.printStackTrace();
+        LOG.warn("Error in distcp", e);
         LOG.warn("Problem in MergedStream distcp PULL..skipping commit for this run");
-        getDestFs().delete(tmpOut, true);
         skipCommit = true;
       }
       Map<String, Set<Path>> committedPaths;
