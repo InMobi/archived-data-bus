@@ -1,10 +1,5 @@
 package com.inmobi.databus.zookeeper;
 
-import java.net.InetAddress;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import com.inmobi.databus.Service;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
@@ -12,6 +7,10 @@ import com.netflix.curator.framework.recipes.leader.LeaderSelector;
 import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.framework.state.ConnectionState;
 import com.netflix.curator.retry.RetryOneTime;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.net.InetAddress;
 
 public class CuratorLeaderManager implements LeaderSelectorListener {
   private static final Log LOG = LogFactory.getLog(CuratorLeaderManager.class);
@@ -33,13 +32,13 @@ public class CuratorLeaderManager implements LeaderSelectorListener {
     this.client = CuratorFrameworkFactory.newClient(zkConnectString,
         new RetryOneTime(3));
     this.leaderSelector = new LeaderSelector(client, zkPath, this);
-    leaderSelector.setId(InetAddress.getLocalHost().getHostName());
     connect();
   }
 
   private void connect() throws Exception {
     client.start();// connect to ZK
     LOG.info("becomeLeader :: connect to ZK [" + zkConnectString + "]");
+    leaderSelector.setId(InetAddress.getLocalHost().getHostName());
     leaderSelector.start();
     LOG.info("started the LeaderSelector");
   }

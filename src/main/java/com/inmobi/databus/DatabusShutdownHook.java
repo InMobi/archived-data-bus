@@ -6,8 +6,8 @@ import org.apache.log4j.Logger;
 public class DatabusShutdownHook implements Runnable {
   private static Logger LOG = Logger.getLogger(Databus.class);
 
-  final Databus databus;
-  public DatabusShutdownHook(Databus databus) {
+  final Service databus;
+  public DatabusShutdownHook(Service databus) {
     this.databus = databus;
   }
 

@@ -1,24 +1,23 @@
 package com.inmobi.databus.purge;
 
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-
+import com.inmobi.databus.AbstractService;
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.DatabusConfig;
+import com.inmobi.databus.DestinationStream;
+import com.inmobi.databus.SourceStream;
+import com.inmobi.databus.utils.CalendarHelper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
-import com.inmobi.databus.AbstractService;
-import com.inmobi.databus.Cluster;
-import com.inmobi.databus.DestinationStream;
-import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.SourceStream;
-import com.inmobi.databus.utils.CalendarHelper;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
 /*
  * Assumptions
@@ -32,8 +31,6 @@ public class DataPurgerService extends AbstractService {
   private final FileSystem fs;
   private Map<String, Integer> streamRetention;
   private Set<Path> streamsToPurge;
-  private Map<String, Path> mergedStreamsInClusterPathMap;
-  private Map<String, Path> localStreamsInClusterPathMap;
 
   public DataPurgerService(DatabusConfig databusConfig, Cluster cluster)
       throws Exception {
@@ -43,9 +40,9 @@ public class DataPurgerService extends AbstractService {
   }
 
   private void addMergedStreams() {
-    Map<String, DestinationStream> consumeStreamMap = cluster
+    Map<String, DestinationStream> destinationStreamMapStreamMap = cluster
         .getDestinationStreams();
-    Set<Map.Entry<String, DestinationStream>> entrySet = consumeStreamMap
+    Set<Map.Entry<String, DestinationStream>> entrySet = destinationStreamMapStreamMap
         .entrySet();
     Iterator it = entrySet.iterator();
     while (it.hasNext()) {
@@ -94,13 +91,13 @@ public class DataPurgerService extends AbstractService {
   }
 
   private Integer getDefaultStreamRetentionInDays() {
-    return new Integer(2); // retentionperiod is 1 day, setting to 2 to avoid
-                           // overlap
+    // retentionperiod is 1 day, setting to 2 to avoid overlap
+    return new Integer(2);
   }
 
   private Integer getTrashPathRetentionInDays() {
-    return new Integer(2); // retentionperiod is 1 day, setting to 2 to avoid
-                           // overlap
+    // retentionperiod is 1 day, setting to 2 to avoid overlap
+    return new Integer(2);
   }
 
   private Integer getRetentionPeriod(String streamName) {
@@ -128,9 +125,10 @@ public class DataPurgerService extends AbstractService {
       // Merged streams at this cluster - retention period config
       addMergedStreams();
       String mergedStreamRoot = cluster.getFinalDestDirRoot();
-      mergedStreamsInClusterPathMap = getStreamsInCluster(mergedStreamRoot);
+      Map<String, Path>  mergedStreamsInClusterPathMap = getStreamsInCluster(mergedStreamRoot);
       String localStreamRoot = cluster.getLocalFinalDestDirRoot();
-      localStreamsInClusterPathMap = getStreamsInCluster(localStreamRoot);
+      Map<String, Path> localStreamsInClusterPathMap = getStreamsInCluster
+              (localStreamRoot);
       getPathsToPurge(mergedStreamsInClusterPathMap,
           localStreamsInClusterPathMap);
       purge();
@@ -225,7 +223,15 @@ public class DataPurgerService extends AbstractService {
                   }
                 } // each day
               }
+              else {
+                //No day found in month. Purge month
+                streamsToPurge.add(month.getPath().makeQualified(fs));
+              }
             }// each month
+          }
+          else {
+            //no months found in year. Purge Year.
+            streamsToPurge.add(year.getPath().makeQualified(fs));
           }
         }// each year
       }
@@ -233,11 +239,7 @@ public class DataPurgerService extends AbstractService {
   }
 
   private boolean isPurge(Calendar streamDate, Integer retentionPeriodinDays) {
-    streamDate.add(Calendar.DAY_OF_MONTH, retentionPeriodinDays + 1); // 1 to
-                                                                      // avoid
-                                                                      // last
-                                                                      // day
-                                                                      // data
+    streamDate.add(Calendar.DAY_OF_MONTH, retentionPeriodinDays + 1);
     Calendar nowTime = CalendarHelper.getNowTime();
     LOG.info("streamDate ::" + streamDate.getTimeInMillis() + " nowTime ::"
         + nowTime.getTimeInMillis());
