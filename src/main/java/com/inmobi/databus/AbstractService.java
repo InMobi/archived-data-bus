@@ -7,7 +7,7 @@ public abstract class AbstractService implements Service, Runnable {
 
   private static final Log LOG = LogFactory.getLog(AbstractService.class);
   private static final long DEFAULT_RUN_INTERVAL = 60000;
-  
+
   private final String name;
   private final DatabusConfig config;
   private final long runIntervalInMsec;
@@ -18,8 +18,8 @@ public abstract class AbstractService implements Service, Runnable {
     this(name, config, DEFAULT_RUN_INTERVAL);
   }
 
-  public AbstractService(String name, DatabusConfig config, 
-      long runIntervalInMsec) {
+  public AbstractService(String name, DatabusConfig config,
+                         long runIntervalInMsec) {
     this.config = config;
     this.name = name;
     this.runIntervalInMsec = runIntervalInMsec;
@@ -37,10 +37,12 @@ public abstract class AbstractService implements Service, Runnable {
 
   @Override
   public void run() {
-    while (!stopped && !thread.isInterrupted()) {
+    while (!stopped) {
       long startTime = System.currentTimeMillis();
       try {
         execute();
+        if (stopped)
+          return;
       } catch (Exception e) {
         LOG.warn(e);
       }
@@ -49,8 +51,9 @@ public abstract class AbstractService implements Service, Runnable {
       if (elapsedTime < runIntervalInMsec) {
         try {
           long sleep = runIntervalInMsec - elapsedTime;
-          LOG.info("Sleeping for " + sleep);
-          Thread.sleep(sleep);
+            LOG.info("Sleeping for " + sleep);
+            Thread.sleep(sleep);
+
         } catch (InterruptedException e) {
           LOG.warn("thread interrupted " + thread.getName(), e);
           return;
@@ -69,7 +72,6 @@ public abstract class AbstractService implements Service, Runnable {
   @Override
   public synchronized void stop() {
     stopped = true;
-    thread.interrupt();
   }
 
   @Override

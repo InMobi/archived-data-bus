@@ -34,7 +34,7 @@ public class DataPurgerService extends AbstractService {
 
   public DataPurgerService(DatabusConfig databusConfig, Cluster cluster)
       throws Exception {
-    super(DataPurgerService.class.getName(), databusConfig, 60000 * 60 * 24);
+    super(DataPurgerService.class.getName(), databusConfig, 60000 * 60);
     this.cluster = cluster;
     fs = FileSystem.get(cluster.getHadoopConf());
   }
