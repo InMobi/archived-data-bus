@@ -6,7 +6,9 @@ import com.inmobi.databus.local.LocalStreamService;
 import com.inmobi.databus.purge.DataPurgerService;
 import com.inmobi.databus.zookeeper.CuratorLeaderManager;
 import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -117,6 +119,11 @@ public class Databus implements Service {
         LOG.warn("Usage: com.inmobi.databus.Databus <clustersToProcess> <configFile> <zkconnectstring>");
         return;
       }
+      String log4jFile = System.getProperty("databus.log4j.properties.file");
+      if (log4jFile != null && new File(log4jFile).exists()) {
+        PropertyConfigurator.configureAndWatch(log4jFile);
+        LOG.info("Log4j Property File [" + log4jFile + "]");
+      }
       String clustersStr = args[0].trim();
       String[] clusters = clustersStr.split(",");
       String databusconfigFile = args[1].trim();
@@ -149,7 +156,7 @@ public class Databus implements Service {
       curatorLeaderManager.start();
       Runtime.getRuntime().addShutdownHook(new Thread(new DatabusShutdownHook
               (databus)));
-     }
+    }
     catch (Exception e) {
       LOG.warn("Error in starting Databus daemon", e);
       throw new Exception(e);
