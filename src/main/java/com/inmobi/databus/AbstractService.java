@@ -11,8 +11,8 @@ public abstract class AbstractService implements Service, Runnable {
   private final String name;
   private final DatabusConfig config;
   private final long runIntervalInMsec;
-  private Thread thread;
-  private volatile boolean stopped = false;
+  protected Thread thread;
+  protected volatile boolean stopped = false;
 
   public AbstractService(String name, DatabusConfig config) {
     this(name, config, DEFAULT_RUN_INTERVAL);
@@ -37,22 +37,24 @@ public abstract class AbstractService implements Service, Runnable {
 
   @Override
   public void run() {
-    while (!stopped) {
+    while (!stopped && !thread.isInterrupted()) {
       long startTime = System.currentTimeMillis();
       try {
+        LOG.info("Starting the run");
         execute();
-        if (stopped)
+        if (stopped || thread.isInterrupted())
           return;
       } catch (Exception e) {
-        LOG.warn(e);
+        LOG.warn("Error in run", e);
+        return;
       }
       long finishTime = System.currentTimeMillis();
       long elapsedTime = finishTime - startTime;
       if (elapsedTime < runIntervalInMsec) {
         try {
           long sleep = runIntervalInMsec - elapsedTime;
-            LOG.info("Sleeping for " + sleep);
-            Thread.sleep(sleep);
+          LOG.info("Sleeping for " + sleep);
+          Thread.sleep(sleep);
 
         } catch (InterruptedException e) {
           LOG.warn("thread interrupted " + thread.getName(), e);
@@ -70,12 +72,13 @@ public abstract class AbstractService implements Service, Runnable {
   }
 
   @Override
-  public synchronized void stop() {
+  public void stop() {
     stopped = true;
+    LOG.info(Thread.currentThread().getName() + " stopped [" + stopped + "]");
   }
 
   @Override
-  public synchronized void join() {
+  public void join() {
     try {
       thread.join();
     } catch (InterruptedException e) {

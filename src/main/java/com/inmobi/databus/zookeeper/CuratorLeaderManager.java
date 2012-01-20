@@ -20,7 +20,7 @@ public class CuratorLeaderManager implements LeaderSelectorListener {
   private CuratorFramework client;
   private LeaderSelector leaderSelector;
 
-  public CuratorLeaderManager(Service databus, String databusClusterId, 
+  public CuratorLeaderManager(Service databus, String databusClusterId,
       String zkConnectString){
     this.databus = databus;
     this.databusClusterId = databusClusterId;

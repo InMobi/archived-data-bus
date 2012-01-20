@@ -39,6 +39,16 @@ public class DataPurgerService extends AbstractService {
     fs = FileSystem.get(cluster.getHadoopConf());
   }
 
+  @Override
+  public void stop() {
+    stopped = true;
+    /*
+     * Pruger can sleep for an hour so it needs to be interuppted
+     */
+    thread.interrupt();
+    LOG.info(Thread.currentThread().getName() + " stopped [" + stopped + "]");
+  }
+
   private void addMergedStreams() {
     Map<String, DestinationStream> destinationStreamMapStreamMap = cluster
         .getDestinationStreams();

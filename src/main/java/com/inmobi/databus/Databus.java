@@ -7,6 +7,8 @@ import com.inmobi.databus.purge.DataPurgerService;
 import com.inmobi.databus.zookeeper.CuratorLeaderManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -87,30 +89,33 @@ public class Databus implements Service {
   }
 
   @Override
-  public synchronized void stop() throws Exception {
+  public void stop() throws Exception {
     for (AbstractService service : services) {
+      LOG.info("Stopping [" + service.getName() + "]");
       service.stop();
-    }
+      }
+    LOG.info("Databus Shutdown complete..");
   }
 
   @Override
-  public synchronized void join() throws Exception {
+  public void join() throws Exception {
     for (AbstractService service : services) {
+      LOG.info("Waiting for [" + service.getName() + "] to finish");
       service.join();
     }
   }
 
   @Override
-  public synchronized void start() throws Exception {
+  public void start() throws Exception {
     init();
     for (AbstractService service : services) {
       service.start();
     }
     //Block this method to avoid losing leadership
     //of current work
-    for (AbstractService service : services) {
-      service.join();
-    }
+    join();
+    //If all threads are finished release leadership
+    System.exit(0);
   }
 
   public static void main(String[] args) throws Exception {
@@ -148,14 +153,24 @@ public class Databus implements Service {
           databusClusterId.append("_");
         }
       }
-      Databus databus = new Databus(config, clustersToProcess);
+      final Databus databus = new Databus(config, clustersToProcess);
       LOG.info("Starting CuratorLeaderManager for eleader election ");
       CuratorLeaderManager curatorLeaderManager =
               new CuratorLeaderManager(databus, databusClusterId.toString(),
                       zkConnectString);
       curatorLeaderManager.start();
-      Runtime.getRuntime().addShutdownHook(new Thread(new DatabusShutdownHook
-              (databus)));
+      Signal.handle(new Signal("INT"), new SignalHandler() {
+        @Override
+        public void handle(Signal signal) {
+          try {
+            LOG.info("Starting to stop databus...");
+            databus.stop();
+          }
+          catch (Exception e) {
+            LOG.warn("Error in shutting down databus", e);
+          }
+        }
+      });
     }
     catch (Exception e) {
       LOG.warn("Error in starting Databus daemon", e);
