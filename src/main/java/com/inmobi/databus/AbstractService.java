@@ -78,7 +78,7 @@ public abstract class AbstractService implements Service, Runnable {
   }
 
   @Override
-  public synchronized void join() {
+  public void join() {
     try {
       thread.join();
     } catch (InterruptedException e) {
