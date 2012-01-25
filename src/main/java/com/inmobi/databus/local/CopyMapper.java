@@ -1,3 +1,4 @@
+package com.inmobi.databus.local;
 /*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -11,12 +12,6 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-package com.inmobi.databus.local;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -29,6 +24,10 @@ import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.util.ReflectionUtils;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 
 public class CopyMapper extends Mapper<Text, Text, Text, Text> {
 
