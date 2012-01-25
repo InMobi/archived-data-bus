@@ -7,20 +7,20 @@
   <!-- A stream can have only one primary and multiple mirrors as destinations
     -->
   <streams>
-    <stream name="metric_billing">
+    <stream name="rtbi_metrics">
       <sources>
         <source>
-          <name>uj1</name>
+          <name>ua2</name>
           <retentionindays>2</retentionindays>
         </source>
         <source>
-          <name>uj2</name>
+          <name>uj1</name>
           <retentionindays>2</retentionindays>
         </source>
       </sources>
       <destinations>
         <destination>
-          <name>ua1</name>
+          <name>ua2</name>
           <retentionindays>1</retentionindays>
           <primary>true</primary>
         </destination>
@@ -33,13 +33,13 @@
   </streams>
 
   <clusters>
-    <cluster name="uj1" hdfsurl="hdfs://gs1104.grid.corp.inmobi.com:8020/" jturl="gs1104.grid.corp.inmobi.com:8021">
+    <cluster name="ua2" hdfsurl="hdfs://gs1138.red.ua2.inmobi.com:54310/"
+             jturl="gs1139.red.ua2.inmobi.com:54311">
     </cluster>
 
-    <cluster name="uj2" hdfsurl="hdfs://gs1103.grid.corp.inmobi.com:8020/" jturl="gs1103.grid.corp.inmobi.com:19023">
+    <cluster name="uj1" hdfsurl="hdfs://gs3103.red.uj1.inmobi.com:54310"
+             jturl="gs3104.red.uj1.inmobi.com:54311">
     </cluster>
 
-    <cluster name="ua1" hdfsurl="hdfs://localhost:8020/" jturl="localhost:8021">
-    </cluster>
   </clusters>
 </databus>
