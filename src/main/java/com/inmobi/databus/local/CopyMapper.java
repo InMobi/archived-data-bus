@@ -21,6 +21,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -48,7 +49,8 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text> {
     FSDataOutputStream out = fs.create(target);
     GzipCodec gzipCodec = (GzipCodec) ReflectionUtils.newInstance(
             GzipCodec.class, context.getConfiguration());
-    OutputStream compressedOut = gzipCodec.createOutputStream(out);
+    OutputStream compressedOut = gzipCodec.createOutputStream(out,
+            CodecPool.getCompressor(gzipCodec));
     FSDataInputStream in = fs.open(src);
     try {
       IOUtils.copyBytes(in, compressedOut, context.getConfiguration());

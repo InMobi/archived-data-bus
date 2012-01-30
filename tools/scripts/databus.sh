@@ -20,19 +20,27 @@
 
 usage="Usage: databus.sh [start/stop] [<conf-file>]"
 
+#echo $#
 # if no args specified, show usage
-if [ $# -ne 2 ]; then
+if [ $# -gt 3 ]; then
   echo $usage
   exit 1
 fi
 
-
 # get arguments
-startStop=$1
+var1=$1
 shift
-configFile=$1
+var2=$1
+shift
+var3=$1
 shift
 
+startStop=$var1
+configFile=$var2
+
+
+if [ "$var1" == "start" ] || [ "$var1" == "stop" ]
+then
 #check config existence
 if ! [ -r $configFile ]; then
    echo $confgFile " not found."
@@ -65,6 +73,8 @@ fi
 if [ -z $LOG4J_PROPERTIES ]; then
   echo "LOG4J_PROPERTIES not defined in " $configFile
   exit 1
+fi
+
 fi
 
 #set classpath
@@ -129,11 +139,20 @@ case $startStop in
     fi
     ;;
 
+  (collapse)
+
+     export TEST_CLASSPATH=$CLASSPATH:jars/com.inmobi.databus-1.0-tests.jar
+     hdfsName=$var2
+     dir=$var3
+     java -cp "$TEST_CLASSPATH" com.inmobi.databus.CollapseFilesInDir $hdfsName $dir
+     ;;
+
   (*)
     echo $usage
     exit 1
     ;;
 
 esac
+
 
 
