@@ -60,13 +60,9 @@ public class LocalStreamService extends AbstractService {
   }
 
   private void cleanUpTmp(FileSystem fs) throws Exception {
-    if (fs.exists(tmpJobInputPath)) {
-      LOG.info("Deleting tmpPath recursively [" + tmpJobInputPath + "]");
-      fs.delete(tmpJobInputPath, true);
-    }
-    if (fs.exists(tmpJobOutputPath)) {
-      LOG.info("Deleting tmpPath recursively [" + tmpJobOutputPath + "]");
-      fs.delete(tmpJobInputPath, true);
+    if (fs.exists(tmpPath)) {
+      LOG.info("Deleting tmpPath recursively [" + tmpPath + "]");
+      fs.delete(tmpPath, true);
     }
   }
 
@@ -243,9 +239,10 @@ public class LocalStreamService extends AbstractService {
   }
 
   private Job createJob(Path inputPath) throws IOException {
-    String jobName = "consumer";
+    String jobName = "localstream";
     Configuration conf = cluster.getHadoopConf();
     Job job = new Job(conf);
+    job.getConfiguration().set("localstream.tmp.path", tmpPath.toString());
     job.setJobName(jobName);
     KeyValueTextInputFormat.setInputPaths(job, inputPath);
     job.setInputFormatClass(KeyValueTextInputFormat.class);

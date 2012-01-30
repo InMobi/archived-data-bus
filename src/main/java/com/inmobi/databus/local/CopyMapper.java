@@ -76,15 +76,15 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text> {
     return tempPath;
   }
 
-  public static Path getTaskAttemptTmpDir(Context context) {
+  private Path getTaskAttemptTmpDir(Context context) {
     TaskAttemptID attemptId = context.getTaskAttemptID();
     return new Path(getJobTmpDir(context, attemptId.getJobID()),
             attemptId.toString());
   }
 
-  public static Path getJobTmpDir(Context context, JobID jobId) {
+  private Path getJobTmpDir(Context context, JobID jobId) {
     return new Path(
-            new Path(context.getConfiguration().get("databus.tmp.path")),
+            new Path(context.getConfiguration().get("localstream.tmp.path")),
             jobId.toString());
   }
 }
