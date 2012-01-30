@@ -113,13 +113,11 @@ public class DataPurgerService extends AbstractService {
   }
 
   private Integer getDefaultStreamRetentionInDays() {
-    // retentionperiod is 1 day, setting to 2 to avoid overlap
-    return new Integer(2);
+    return new Integer(1);
   }
 
   private Integer getTrashPathRetentionInDays() {
-    // retentionperiod is 1 day, setting to 2 to avoid overlap
-    return new Integer(2);
+    return new Integer(1);
   }
 
   private Integer getRetentionPeriod(String streamName) {

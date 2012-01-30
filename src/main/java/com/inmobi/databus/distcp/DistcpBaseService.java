@@ -128,6 +128,7 @@ public abstract class DistcpBaseService extends AbstractService {
             String fileName = fsDataInputStream.readLine();
             if (fileName != null) {
               fileName = fileName.trim();
+              LOG.debug("Adding [" + fileName + "] to pull");
               sourceFiles.add(fileName);
             }
           }

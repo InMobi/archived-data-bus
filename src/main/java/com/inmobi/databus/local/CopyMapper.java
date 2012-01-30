@@ -12,12 +12,14 @@ package com.inmobi.databus.local;
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapreduce.JobID;
@@ -35,7 +37,7 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text> {
 
   @Override
   public void map(Text key, Text value, Context context) throws IOException,
-      InterruptedException {
+          InterruptedException {
     Path src = new Path(key.toString());
     String dest = value.toString();
     String collector = src.getParent().getName();
@@ -45,41 +47,42 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text> {
     Path target = getTempPath(context, src, category, collector);
     FSDataOutputStream out = fs.create(target);
     GzipCodec gzipCodec = (GzipCodec) ReflectionUtils.newInstance(
-        GzipCodec.class, context.getConfiguration());
+            GzipCodec.class, context.getConfiguration());
     OutputStream compressedOut = gzipCodec.createOutputStream(out);
     FSDataInputStream in = fs.open(src);
-    byte[] bytes = new byte[256];
-    while (in.read(bytes) != -1) {
-      compressedOut.write(bytes);
+    try {
+      IOUtils.copyBytes(in, compressedOut, context.getConfiguration());
+    } catch (Exception e) {
+      LOG.error("Error in compressing ", e);
+    } finally {
+      in.close();
+      compressedOut.close();
     }
-    in.close();
-    compressedOut.close();
-
     // move to final destination
     fs.mkdirs(new Path(dest).makeQualified(fs));
     Path destPath = new Path(dest + File.separator + collector + "-"
-        + src.getName() + ".gz");
+            + src.getName() + ".gz");
     LOG.info("Renaming file " + target + " to " + destPath);
     fs.rename(target, destPath);
 
   }
 
   private Path getTempPath(Context context, Path src, String category,
-      String collector) {
+                           String collector) {
     Path tempPath = new Path(getTaskAttemptTmpDir(context), category + "-"
-        + collector + "-" + src.getName() + ".gz");
+            + collector + "-" + src.getName() + ".gz");
     return tempPath;
   }
 
   public static Path getTaskAttemptTmpDir(Context context) {
     TaskAttemptID attemptId = context.getTaskAttemptID();
     return new Path(getJobTmpDir(context, attemptId.getJobID()),
-        attemptId.toString());
+            attemptId.toString());
   }
 
   public static Path getJobTmpDir(Context context, JobID jobId) {
     return new Path(
-        new Path(context.getConfiguration().get("databus.tmp.path")),
-        jobId.toString());
+            new Path(context.getConfiguration().get("databus.tmp.path")),
+            jobId.toString());
   }
 }
