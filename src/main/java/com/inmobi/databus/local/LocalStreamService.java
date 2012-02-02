@@ -12,6 +12,7 @@ package com.inmobi.databus.local;
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
+
 import com.inmobi.databus.AbstractService;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
@@ -29,7 +30,6 @@ import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -183,8 +183,7 @@ public class LocalStreamService extends AbstractService {
           throws IOException {
     FileSystem fs = FileSystem.get(cluster.getHadoopConf());
 
-    createListing(fs, fs.getFileStatus(cluster.getDataDir()), fileListing,
-            new HashSet<String>());
+    createListing(fs, fs.getFileStatus(cluster.getDataDir()), fileListing);
 
     FSDataOutputStream out = fs.create(inputPath);
     Iterator<Entry<FileStatus, String>> it = fileListing.entrySet().iterator();
@@ -199,30 +198,40 @@ public class LocalStreamService extends AbstractService {
   }
 
   private void createListing(FileSystem fs, FileStatus fileStatus,
-                             Map<FileStatus, String> results,
-                             Set<String> excludes) throws IOException {
-
-    if (fileStatus.isDir()) {
-      for (FileStatus stat : fs.listStatus(fileStatus.getPath())) {
-        createListing(fs, stat, results, excludes);
-      }
-    } else {
-      String fileName = fileStatus.getPath().getName();
-      if (fileName.endsWith("current")) {
-        FSDataInputStream in = fs.open(fileStatus.getPath());
-        String currentFileName = in.readLine();
-        in.close();
-        excludes.add(currentFileName);
-      } else if ("scribe_stats".equalsIgnoreCase(fileName.trim())) {
-        excludes.add(fileName);
-      } else if (!excludes.contains(fileName)) {
-        Path src = fileStatus.getPath().makeQualified(fs);
-        String category = getCategoryFromSrcPath(src);
-        String destDir = getCategoryJobOutTmpPath(category).toString();
-        // String destDir = getConfig().getDestDir(category);
-        results.put(fileStatus, destDir);
+                             Map<FileStatus, String> results
+  ) throws IOException {
+    FileStatus[] streams = fs.listStatus(fileStatus.getPath());
+    for (FileStatus stream : streams) {
+      FileStatus[] collectors = fs.listStatus(stream.getPath());
+      for (FileStatus collector : collectors) {
+        FileStatus[] files = fs.listStatus(collector.getPath());
+        String currentFile = getCurrentFile(fs, files);
+        for (FileStatus file : files) {
+          String fileName = file.getPath().getName();
+          if (fileName != null) {
+            if (!fileName.endsWith("current") && !fileName.equalsIgnoreCase
+                    (currentFile) && !fileName.equalsIgnoreCase("scribe_stats")) {
+              Path src = file.getPath().makeQualified(fs);
+              String category = getCategoryFromSrcPath(src);
+              String destDir = getCategoryJobOutTmpPath(category).toString();
+              results.put(file, destDir);
+            }
+          }
+        }
       }
     }
+  }
+
+  private String getCurrentFile(FileSystem fs, FileStatus[] files) throws IOException{
+    for (FileStatus fileStatus : files) {
+      if (fileStatus.getPath().getName().endsWith("current")) {
+        FSDataInputStream in = fs.open(fileStatus.getPath());
+        String currentFileName = in.readLine().trim();
+        in.close();
+        return currentFileName;
+      }
+    }
+    return null;
   }
 
   private String getCategoryFromSrcPath(Path src) {
