@@ -211,10 +211,17 @@ public class LocalStreamService extends AbstractService {
           if (fileName != null) {
             if (!fileName.endsWith("current") && !fileName.equalsIgnoreCase
                     (currentFile) && !fileName.equalsIgnoreCase("scribe_stats")) {
+              if (file.getLen() > 0) {
               Path src = file.getPath().makeQualified(fs);
               String category = getCategoryFromSrcPath(src);
               String destDir = getCategoryJobOutTmpPath(category).toString();
               results.put(file, destDir);
+              }
+              else {
+                LOG.info("File [" + file.getPath().getName() + "] of size 0 " +
+                        "bytes found. Deleting it");
+                fs.delete(file.getPath());
+              }
             }
           }
         }

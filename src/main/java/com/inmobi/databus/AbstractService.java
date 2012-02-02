@@ -58,8 +58,7 @@ public abstract class AbstractService implements Service, Runnable {
           return;
       } catch (Exception e) {
         LOG.warn("Error in run", e);
-        return;
-      }
+       }
       long finishTime = System.currentTimeMillis();
       long elapsedTime = finishTime - startTime;
       if (elapsedTime < runIntervalInMsec) {

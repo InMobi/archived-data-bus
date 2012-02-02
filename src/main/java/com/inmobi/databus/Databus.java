@@ -105,7 +105,7 @@ public class Databus implements Service {
     for (AbstractService service : services) {
       LOG.info("Stopping [" + service.getName() + "]");
       service.stop();
-      }
+    }
     LOG.info("Databus Shutdown complete..");
   }
 
@@ -118,10 +118,15 @@ public class Databus implements Service {
   }
 
   @Override
-  public void start() throws Exception {
-    init();
-    for (AbstractService service : services) {
-      service.start();
+  public void start() throws Exception{
+    try {
+      init();
+      for (AbstractService service : services) {
+        service.start();
+      }
+    }
+    catch (Exception e) {
+      LOG.warn("Error is starting service", e);
     }
     //Block this method to avoid losing leadership
     //of current work
