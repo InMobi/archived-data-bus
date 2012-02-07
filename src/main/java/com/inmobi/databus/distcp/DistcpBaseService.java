@@ -23,8 +23,10 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.util.HashSet;
@@ -103,7 +105,7 @@ public abstract class DistcpBaseService extends AbstractService {
       FileSystem fileSystem = consumePathEntry.getValue();
       Path consumePath = consumePathEntry.getKey();
       fileSystem.delete(consumePath);
-      LOG.debug("Deleting [" + consumePath + "]");
+      LOG.debug("Deleting/Commiting [" + consumePath + "]");
     }
 
   }
@@ -124,15 +126,16 @@ public abstract class DistcpBaseService extends AbstractService {
           Path consumeFilePath = fileList[i].getPath().makeQualified(srcFs);
           consumePaths.put(consumeFilePath, srcFs);
           FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
-          while (fsDataInputStream.available() > 0) {
-            String fileName = fsDataInputStream.readLine();
-            if (fileName != null) {
-              fileName = fileName.trim();
-              LOG.debug("Adding [" + fileName + "] to pull");
-              sourceFiles.add(fileName);
-            }
+          BufferedReader reader = new BufferedReader(new InputStreamReader
+                  (fsDataInputStream));
+          String fileName = reader.readLine();
+          while (fileName != null) {
+            fileName = fileName.trim();
+            LOG.debug("Adding [" + fileName + "] to pull");
+            sourceFiles.add(fileName);
+            fileName = reader.readLine();
           }
-          fsDataInputStream.close();
+          reader.close();
         }
         Path tmpPath = new Path(tmp, srcCluster.getName() + new Long(System
                 .currentTimeMillis()).toString());
@@ -151,6 +154,17 @@ public abstract class DistcpBaseService extends AbstractService {
         return tmpPath.makeQualified(destFs);
       } else if (fileList.length == 1) {
         Path consumePath = fileList[0].getPath().makeQualified(srcFs);
+        if (LOG.isDebugEnabled()) {
+          FSDataInputStream fsDataInputStream = srcFs.open(consumePath);
+          BufferedReader reader = new BufferedReader(new InputStreamReader
+                  (fsDataInputStream));
+          String file = reader.readLine();
+          while (file != null) {
+            LOG.debug("Adding File[" + file + "] to be pulled");
+            file = reader.readLine();
+          }
+          reader.close();
+        }
         consumePaths.put(consumePath, srcFs);
         return consumePath;
       } else {

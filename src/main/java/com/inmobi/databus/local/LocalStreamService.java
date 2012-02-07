@@ -19,7 +19,6 @@ import com.inmobi.databus.DatabusConfig;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -28,7 +27,11 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -130,17 +133,24 @@ public class LocalStreamService extends AbstractService {
       if (consumeCluster) {
         Path tmpConsumerPath = new Path(tmpPath, clusterEntry.getName());
         FSDataOutputStream out = fs.create(tmpConsumerPath);
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter
+                (out));
         for (Path destPath : mvPaths.values()) {
           String category = getCategoryFromDestPath(destPath);
           if (clusterEntry.getDestinationStreams().containsKey(category)) {
             out.writeBytes(destPath.toString());
+            LOG.debug("Adding [" + destPath + "]  for consumer [" +
+                    clusterEntry.getName() + "] to commit Paths in [" +
+                    tmpConsumerPath + "]");
             out.writeBytes("\n");
           }
         }
         out.close();
         Path finalConsumerPath = new Path(cluster.getConsumePath(
                 clusterEntry),
-                Long.toString(commitTime));
+                Long.toString(System.currentTimeMillis()));
+        LOG.debug("Moving [" + tmpConsumerPath + "] to [ " + finalConsumerPath
+        +"]");
         consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
       }
     }
@@ -161,7 +171,6 @@ public class LocalStreamService extends AbstractService {
     if (mvPaths.size() == trashPaths.size()) {// validate the no of files
       commitPaths.putAll(mvPaths);
       commitPaths.putAll(consumerCommitPaths);
-      LOG.debug("Adding trash paths for commit");
       commitPaths.putAll(trashPaths);
     }
     return commitPaths;
@@ -232,7 +241,9 @@ public class LocalStreamService extends AbstractService {
   private String getCurrentFile(FileSystem fs, FileStatus[] files) throws IOException{
     for (FileStatus fileStatus : files) {
       if (fileStatus.getPath().getName().endsWith("current")) {
-        FSDataInputStream in = fs.open(fileStatus.getPath());
+        BufferedReader in = new BufferedReader(new InputStreamReader(fs.open
+                (fileStatus
+                .getPath())));
         String currentFileName = in.readLine().trim();
         in.close();
         return currentFileName;
