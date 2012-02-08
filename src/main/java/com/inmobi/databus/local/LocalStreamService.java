@@ -94,7 +94,8 @@ public class LocalStreamService extends AbstractService {
         LOG.info("Committed successfully for " + commitTime);
       }
     } catch (Exception e) {
-      LOG.warn("Error in running LocalStreamService", e);
+      LOG.warn("Error in running LocalStreamService ["+ e.getMessage() + "]",
+              e);
       throw new Exception(e);
     }
   }
@@ -150,7 +151,7 @@ public class LocalStreamService extends AbstractService {
                 clusterEntry),
                 Long.toString(System.currentTimeMillis()));
         LOG.debug("Moving [" + tmpConsumerPath + "] to [ " + finalConsumerPath
-        +"]");
+                +"]");
         consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
       }
     }
@@ -176,13 +177,19 @@ public class LocalStreamService extends AbstractService {
     return commitPaths;
   }
 
-  private void commit(Map<Path, Path> commitPaths) throws IOException {
+  private void commit(Map<Path, Path> commitPaths) throws Exception {
     LOG.info("Committing " + commitPaths.size() + " paths.");
     FileSystem fs = FileSystem.get(cluster.getHadoopConf());
     for (Map.Entry<Path, Path> entry : commitPaths.entrySet()) {
       LOG.info("Renaming " + entry.getKey() + " to " + entry.getValue());
       fs.mkdirs(entry.getValue().getParent());
-      fs.rename(entry.getKey(), entry.getValue());
+      if (fs.rename(entry.getKey(), entry.getValue()) == false)
+      {
+        LOG.warn("Rename failed, aborting transaction COMMIT to avoid " +
+                "dataloss. Partial data replay could happen in next run");
+        throw new Exception("Abort transaction Commit. Rename failed from ["
+                + entry.getKey() + "] to [" + entry.getValue() + "]");
+      }
     }
 
   }
@@ -221,10 +228,10 @@ public class LocalStreamService extends AbstractService {
             if (!fileName.endsWith("current") && !fileName.equalsIgnoreCase
                     (currentFile) && !fileName.equalsIgnoreCase("scribe_stats")) {
               if (file.getLen() > 0) {
-              Path src = file.getPath().makeQualified(fs);
-              String category = getCategoryFromSrcPath(src);
-              String destDir = getCategoryJobOutTmpPath(category).toString();
-              results.put(file, destDir);
+                Path src = file.getPath().makeQualified(fs);
+                String category = getCategoryFromSrcPath(src);
+                String destDir = getCategoryJobOutTmpPath(category).toString();
+                results.put(file, destDir);
               }
               else {
                 LOG.info("File [" + file.getPath().getName() + "] of size 0 " +
@@ -243,7 +250,7 @@ public class LocalStreamService extends AbstractService {
       if (fileStatus.getPath().getName().endsWith("current")) {
         BufferedReader in = new BufferedReader(new InputStreamReader(fs.open
                 (fileStatus
-                .getPath())));
+                        .getPath())));
         String currentFileName = in.readLine().trim();
         in.close();
         return currentFileName;
