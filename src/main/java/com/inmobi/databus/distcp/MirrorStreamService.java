@@ -41,9 +41,9 @@ public class MirrorStreamService extends DistcpBaseService {
   private static final Log LOG = LogFactory.getLog(MirrorStreamService.class);
 
   public MirrorStreamService(DatabusConfig config, Cluster srcCluster,
-      Cluster destinationCluster) throws Exception {
+                             Cluster destinationCluster) throws Exception {
     super(config, MirrorStreamService.class.getName(), srcCluster,
-        destinationCluster);
+            destinationCluster);
   }
 
   @Override
@@ -59,8 +59,8 @@ public class MirrorStreamService extends DistcpBaseService {
       Map<Path, FileSystem> consumePaths = new HashMap<Path, FileSystem>();
 
       Path tmpOut = new Path(getDestCluster().getTmpPath(), "distcp_mirror_"
-          + getSrcCluster().getName() + "_" + getDestCluster().getName())
-          .makeQualified(getDestFs());
+              + getSrcCluster().getName() + "_" + getDestCluster().getName())
+              .makeQualified(getDestFs());
       // CleanuptmpOut before every run
       if (getDestFs().exists(tmpOut))
         getDestFs().delete(tmpOut, true);
@@ -77,19 +77,19 @@ public class MirrorStreamService extends DistcpBaseService {
       Path inputFilePath = getInputFilePath(consumePaths, tmp);
       if (inputFilePath == null) {
         LOG.warn("No data to pull from " + "Cluster ["
-            + getSrcCluster().getHdfsUrl() + "]" + " to Cluster ["
-            + getDestCluster().getHdfsUrl() + "]");
+                + getSrcCluster().getHdfsUrl() + "]" + " to Cluster ["
+                + getDestCluster().getHdfsUrl() + "]");
         return;
       }
 
       LOG.warn("Starting a Mirrored distcp pull from ["
-          + inputFilePath.toString() + "] " + "Cluster ["
-          + getSrcCluster().getHdfsUrl() + "]" + " to Cluster ["
-          + getDestCluster().getHdfsUrl() + "] " + " Path ["
-          + tmpOut.toString() + "]");
+              + inputFilePath.toString() + "] " + "Cluster ["
+              + getSrcCluster().getHdfsUrl() + "]" + " to Cluster ["
+              + getDestCluster().getHdfsUrl() + "] " + " Path ["
+              + tmpOut.toString() + "]");
 
       String[] args = { "-preserveSrcPath", "-f", inputFilePath.toString(),
-          tmpOut.toString() };
+              tmpOut.toString() };
       try {
         int exitCode = DistCp.runDistCp(args, getDestCluster().getHadoopConf());
         if (exitCode != DISTCP_SUCCESS)
@@ -109,15 +109,21 @@ public class MirrorStreamService extends DistcpBaseService {
     } catch (Exception e) {
       LOG.warn(e);
       LOG.warn("Error in MirrorStream Service..skipping RUN ", e);
-     }
+    }
   }
 
   void doLocalCommit(Map<Path, Path> commitPaths) throws Exception {
     LOG.info("Committing " + commitPaths.size() + " paths.");
     for (Map.Entry<Path, Path> entry : commitPaths.entrySet()) {
-      LOG.info("Renaming " + entry.getKey() + " to " + entry.getValue());
+      LOG.info("Renaming [" + entry.getKey() + "] to [" + entry.getValue()
+              +"]");
       getDestFs().mkdirs(entry.getValue().getParent());
-      getDestFs().rename(entry.getKey(), entry.getValue());
+      if (getDestFs().rename(entry.getKey(), entry.getValue()) == false) {
+        LOG.warn("Failed to rename.Aborting transaction COMMIT to avoid " +
+                "data loss. Partial data replay could happen in next run");
+        throw new Exception("Rename failed from [" + entry.getKey() +"] to " +
+                "["+entry.getValue() +"]");
+      }
     }
   }
 
@@ -137,7 +143,7 @@ public class MirrorStreamService extends DistcpBaseService {
      * tmpStreamRoot eg: /databus/system/distcp_mirror_ua1_uj1/databus/streams/
      */
     Path tmpStreamRoot = new Path(tmpOut.makeQualified(getDestFs()).toString()
-        + File.separator + getSrcCluster().getUnqaulifiedFinalDestDirRoot());
+            + File.separator + getSrcCluster().getUnqaulifiedFinalDestDirRoot());
     LOG.debug("tmpStreamRoot [" + tmpStreamRoot + "]");
     // tmpStreamRoot eg -
     // /databus/system/tmp/distcp_mirror_ua1_uj1/databus/streams/
@@ -211,7 +217,7 @@ public class MirrorStreamService extends DistcpBaseService {
   }
 
   private void createCommitPaths(Map<Path, Path> commitPaths,
-      List<FileStatus> streamPaths) {
+                                 List<FileStatus> streamPaths) {
     // Path eg in streamPaths -
     // /databus/system/distcp_mirror_ua1_uj1/databus/streams/metric_billing/2012/1/13/15/7
     // gs1104.grid.corp.inmobi.com-metric_billing-2012-01-16-07-21_00000.gz
@@ -226,9 +232,9 @@ public class MirrorStreamService extends DistcpBaseService {
       String year = path[path.length - 6];
       String streamName = path[path.length - 7];
       String finalPath = getDestCluster().getFinalDestDirRoot()
-          + File.separator + streamName + File.separator + year
-          + File.separator + month + File.separator + day + File.separator + hr
-          + File.separator + min + File.separator + fileName;
+              + File.separator + streamName + File.separator + year
+              + File.separator + month + File.separator + day + File.separator + hr
+              + File.separator + min + File.separator + fileName;
       commitPaths.put(fileStatus.getPath(), new Path(finalPath));
     }
 
@@ -240,14 +246,14 @@ public class MirrorStreamService extends DistcpBaseService {
   }
 
   private void createListing(FileSystem fs, FileStatus fileStatus,
-      List<FileStatus> results) throws IOException {
+                             List<FileStatus> results) throws IOException {
     if (fileStatus.isDir()) {
       for (FileStatus stat : fs.listStatus(fileStatus.getPath())) {
         createListing(fs, stat, results);
       }
     } else {
       LOG.debug("createListing :: Adding [" + fileStatus.getPath().toString()
-          + "]");
+              + "]");
       results.add(fileStatus);
     }
   }
