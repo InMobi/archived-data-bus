@@ -23,6 +23,7 @@
 
 #include "common.h"
 #include "scribe_server.h"
+#include <signal.h>
 
 using namespace apache::thrift::concurrency;
 
@@ -44,6 +45,16 @@ shared_ptr<scribeHandler> g_Handler;
 
 static string overall_category = "scribe_overall";
 static string log_separator = ":";
+
+void sig_handler(int sig) {
+    LOG_OPER("Terminating gracefully...");
+    g_Handler->shutdown();
+    exit(0);
+}
+
+void hup_handler(int sig) {
+    g_Handler->reinitialize();
+}
 
 void print_usage(const char* program_name) {
   cout << "Usage: " << program_name << " [-p port] [-c config_file]" << endl;
@@ -67,6 +78,10 @@ void scribeHandler::incCounter(string counter, long amount) {
 }
 
 int main(int argc, char **argv) {
+
+    void (*old_siginth)(int) = NULL;
+    void (*old_sigtermh)(int) = NULL;
+    void (*old_sighuph)(int) = NULL;
 
   try {
     /* Increase number of fds */
@@ -112,11 +127,18 @@ int main(int argc, char **argv) {
     g_Handler = shared_ptr<scribeHandler>(new scribeHandler(port, config_file));
     g_Handler->initialize();
 
+    old_siginth = signal(SIGINT, sig_handler);
+    old_sigtermh = signal(SIGTERM, sig_handler);
+    old_sighuph = signal(SIGHUP, hup_handler);
     scribe::startServer(); // never returns
 
   } catch(const std::exception& e) {
     LOG_OPER("Exception in main: %s", e.what());
   }
+
+  if (old_siginth) { signal(SIGINT, old_siginth); }
+  if (old_sigtermh) { signal(SIGTERM, old_sigtermh); }
+  if (old_sighuph) { signal(SIGHUP, old_sighuph); }
 
   LOG_OPER("scribe server exiting");
   return 0;
