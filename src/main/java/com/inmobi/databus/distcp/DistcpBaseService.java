@@ -42,7 +42,7 @@ public abstract class DistcpBaseService extends AbstractService {
   private final FileSystem destFs;
   protected static final int DISTCP_SUCCESS = 0;
 
-  protected static final Log LOG = LogFactory.getLog(MergedStreamService
+  protected static final Log LOG = LogFactory.getLog(DistcpBaseService
           .class);
 
   public DistcpBaseService(DatabusConfig config, String name,
