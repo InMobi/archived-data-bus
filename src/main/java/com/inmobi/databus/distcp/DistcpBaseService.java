@@ -42,7 +42,7 @@ public abstract class DistcpBaseService extends AbstractService {
   private final FileSystem destFs;
   protected static final int DISTCP_SUCCESS = 0;
 
-  protected static final Log LOG = LogFactory.getLog(MergedStreamService
+  protected static final Log LOG = LogFactory.getLog(DistcpBaseService
           .class);
 
   public DistcpBaseService(DatabusConfig config, String name,
@@ -114,6 +114,7 @@ public abstract class DistcpBaseService extends AbstractService {
   protected Path getInputFilePath(Map<Path, FileSystem> consumePaths,
                                   Path tmp) throws IOException {
     Path input = getInputPath();
+    LOG.debug("getInputPath [" + input + "]");
     if (!srcFs.exists(input))
       return null;
     FileStatus[] fileList = srcFs.listStatus(input);
