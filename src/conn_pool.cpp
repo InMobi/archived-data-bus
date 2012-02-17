@@ -278,6 +278,7 @@ void scribeConn::close() {
 int
 scribeConn::send(boost::shared_ptr<logentry_vector_t> messages) {
   bool fatal;
+  int fatal_code = CONN_FATAL;
   int size = messages->size();
   if (!isOpen()) {
     if (!open()) {
@@ -313,6 +314,10 @@ scribeConn::send(boost::shared_ptr<logentry_vector_t> messages) {
     fatal = true;
     LOG_OPER("Failed to send <%d> messages to remote scribe server %s "
         "error <%s>", size, connectionString().c_str(), ttx.what());
+    if (ttx.getType() == TTransportException::END_OF_FILE)
+        fatal_code = CONN_EOF;
+    if (ttx.getType() == TTransportException::TIMED_OUT)
+        fatal_code = CONN_TIMEDOUT;
   } catch (...) {
     fatal = true;
     LOG_OPER("Unknown exception sending <%d> messages to remote scribe "
@@ -326,7 +331,7 @@ scribeConn::send(boost::shared_ptr<logentry_vector_t> messages) {
    */
   if (serviceBased || fatal) {
     close();
-    return (CONN_FATAL);
+    return (fatal_code);
   }
   return (CONN_TRANSIENT);
 }

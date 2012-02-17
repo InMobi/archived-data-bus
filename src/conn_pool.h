@@ -25,6 +25,8 @@
 #include "common.h"
 
 /* return codes for ScribeConn and ConnPool */
+#define CONN_EOF          (-3) /* fatal error. EOF found on read/recv, close everything */
+#define CONN_TIMEDOUT     (-2) /* fatal error. read/recv timed out, close everything */
 #define CONN_FATAL        (-1) /* fatal error. close everything */
 #define CONN_OK           (0)  /* success */
 #define CONN_TRANSIENT    (1)  /* transient error */

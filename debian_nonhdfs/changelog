@@ -1,0 +1,17 @@
+scribe-server-orig (0.2.2-1) lucid; urgency=low
+
+  * added metrics to capture per category timesouts and eofs for the network store
+
+ -- Pradeep Jindal <praddy@ubuntu>  Fri, 17 Feb 2012 17:57:45 +0530
+
+scribe-server-orig (0.2.1-1) lucid; urgency=low
+
+  * added signal handlers for graceful terminates, sending HUP reinitializes the stores
+
+ -- Pradeep Jindal <praddy@ubuntu>  Fri, 17 Feb 2012 17:57:03 +0530
+
+scribe-server-orig (0.2.0-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Pradeep Jindal <praddy@ubuntu>  Fri, 17 Feb 2012 17:54:00 +0530

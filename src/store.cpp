@@ -2026,7 +2026,11 @@ NetworkStore::handleMessages(boost::shared_ptr<logentry_vector_t> messages) {
     LOG_OPER("[%s] Logic error: NetworkStore::handleMessages unpooledConn "
         "is NULL", categoryHandled.c_str());
   }
-  if (ret == CONN_FATAL) {
+  if (ret <= CONN_FATAL) {
+    if (ret == CONN_TIMEDOUT)
+        g_Handler->incCounter(categoryHandled, "timeouts");
+    if (ret == CONN_EOF)
+        g_Handler->incCounter(categoryHandled, "eofs");
     close();
   }
   return (ret == CONN_OK);
