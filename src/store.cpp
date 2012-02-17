@@ -2028,7 +2028,7 @@ NetworkStore::handleMessages(boost::shared_ptr<logentry_vector_t> messages) {
   }
   if (ret <= CONN_FATAL) {
     if (ret == CONN_TIMEDOUT)
-        g_Handler->incCounter(categoryHandled, "timeouts");
+        g_Handler->incCounter(categoryHandled, "read_timeouts");
     if (ret == CONN_EOF)
         g_Handler->incCounter(categoryHandled, "eofs");
     close();
