@@ -36,6 +36,10 @@
   * Merged Stream - Global view of all minute files generated in different
   clusters for same stream
   * Mirrored Stream - Copy of Merged Stream with paths being preserved.
+                    
+# Databus High Level Architecture
+![diagram](https://github.com/InMobi/data-bus/blob/master/doc/Databus-HighLevel-Arch.png)                     
+                    
 
 # How to use data bus
   * Download the package from guthub which has all the required JARS
@@ -43,6 +47,9 @@
   * configure databus.cfg
   * Starting - databus.sh start databus.cfg
   * Stopping - databus.sh stop databus.cfg
+             
+
+            
 
 
 
