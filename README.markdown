@@ -1,4 +1,4 @@
-  # What is Databus?
+# What is Databus?
   Yet another streaming data transport system
 
 # Why do we need when scribe, kafka, flume and other system exist?
