@@ -38,7 +38,7 @@
   * Mirrored Stream - Copy of Merged Stream with paths being preserved.
                     
 # Databus High Level Architecture
-![diagram](https://github.com/InMobi/data-bus/blob/master/doc/Databus-HighLevel-Arch.png)                     
+![diagram](https://github.com/InMobi/data-bus/blob/master/doc/Databus-HighLevel-Arch.png?raw=true)   
                     
 
 # How to use data bus
