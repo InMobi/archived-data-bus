@@ -46,7 +46,7 @@
 
 # State Machines for various services of Databus
 ## LocalStreamService
-  ![LocalStreamService](http://github
+  ![diagram](http://github
   .com/InMobi/data-bus/blob/master/doc/LocalStreamService-StateMachine
   .png?raw=true)
 
