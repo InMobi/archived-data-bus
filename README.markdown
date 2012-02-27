@@ -44,10 +44,5 @@
   * Starting - databus.sh start databus.cfg
   * Stopping - databus.sh stop databus.cfg
 
-# State Machines for various services of Databus
-## LocalStreamService
-  ![diagram](http://github
-  .com/InMobi/data-bus/blob/master/doc/LocalStreamService-StateMachine
-  .png?raw=true)
 
 
