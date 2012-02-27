@@ -1,4 +1,4 @@
-# What is Databus?
+  # What is Databus?
   Yet another streaming data transport system
 
 # Why do we need when scribe, kafka, flume and other system exist?
@@ -37,7 +37,7 @@
   clusters for same stream
   * Mirrored Stream - Copy of Merged Stream with paths being preserved.
                     
-# Databus High Level Architecture
+# Databus from 1000ft
 ![diagram](https://github.com/InMobi/data-bus/blob/master/doc/Databus-HighLevel-Arch.png?raw=true)   
                     
 
