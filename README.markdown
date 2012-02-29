@@ -45,8 +45,8 @@
   * Download the package from guthub which has all the required JARS
   * configure databus.xml
   * configure databus.cfg
-  * Starting - databus.sh start databus.cfg
-  * Stopping - databus.sh stop databus.cfg
+  * Starting - . databus.sh start databus.cfg
+  * Stopping - . databus.sh stop databus.cfg
              
 
             
