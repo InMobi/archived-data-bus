@@ -22,6 +22,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CodecPool;
+import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -44,13 +45,15 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text> {
     String collector = src.getParent().getName();
     String category = src.getParent().getParent().getName();
 
+
     FileSystem fs = FileSystem.get(context.getConfiguration());
     Path target = getTempPath(context, src, category, collector);
     FSDataOutputStream out = fs.create(target);
     GzipCodec gzipCodec = (GzipCodec) ReflectionUtils.newInstance(
             GzipCodec.class, context.getConfiguration());
+    Compressor gzipCompressor = CodecPool.getCompressor(gzipCodec);
     OutputStream compressedOut = gzipCodec.createOutputStream(out,
-            CodecPool.getCompressor(gzipCodec));
+            gzipCompressor);
     FSDataInputStream in = fs.open(src);
     try {
       IOUtils.copyBytes(in, compressedOut, context.getConfiguration());
@@ -58,6 +61,7 @@ public class CopyMapper extends Mapper<Text, Text, Text, Text> {
       LOG.error("Error in compressing ", e);
     } finally {
       in.close();
+      CodecPool.returnCompressor(gzipCompressor);
       compressedOut.close();
     }
     // move to final destination
