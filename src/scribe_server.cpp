@@ -48,8 +48,8 @@ static string log_separator = ":";
 
 void sig_handler(int sig) {
     LOG_OPER("Terminating gracefully...");
+    /// notify shutdown
     g_Handler->shutdown();
-    exit(0);
 }
 
 void hup_handler(int sig) {
@@ -536,7 +536,10 @@ void scribeHandler::shutdown() {
   stopStores();
   // calling stop to allow thrift to clean up client states and exit
   server->stop();
-  scribe::stopServer();
+  // commenting stopServer() because server->stop() will eventually
+  // break the event loop and we will fall off the main function
+  // hence exiting.
+  // scribe::stopServer();
 }
 
 void scribeHandler::reinitialize() {
