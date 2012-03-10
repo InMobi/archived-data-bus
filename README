@@ -57,7 +57,8 @@ Requirements
 
 [libevent] Event Notification library
 [boost] Boost C++ library (version 1.36 or later)
-[thrift] Thrift framework (version 0.5.0 or later)
+[thrift] Thrift framework (version 0.4.0 or later) 
+    (use thrift with TNonBlockingServer graceful shutdown patch from here: https://github.com/praddy/thrift)
 [fb303] Facebook Bassline (included in thrift/contrib/fb303/)
    fb303 r697294 or later is required.
 [hadoop] optional. version 0.19.1 or higher (http://hadoop.apache.org)
