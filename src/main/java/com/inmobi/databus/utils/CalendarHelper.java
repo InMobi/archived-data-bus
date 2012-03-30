@@ -22,23 +22,6 @@ public class CalendarHelper {
 
   // TODO - all date/time should be returned in a common time zone GMT
 
-  public static String getCurrentDayTimeAsPath() {
-    Calendar calendar;
-    calendar = new GregorianCalendar();
-    String year = Integer.toString(calendar.get(Calendar.YEAR));
-    String month = Integer.toString(calendar.get(Calendar.MONTH) + 1);
-    String day = Integer.toString(calendar.get(Calendar.DAY_OF_MONTH));
-    String hour = Integer.toString(calendar.get(Calendar.HOUR_OF_DAY));
-    String minute = Integer.toString(calendar.get(Calendar.MINUTE));
-    String pathInYYMMDDHRMNFormat = year + "/" + month + "/" + day + "/" + hour
-        + "/" + minute + "/";
-
-    logger.debug("getCurrentDayTimeAsPath :: Path [" + pathInYYMMDDHRMNFormat
-        + "]");
-    return pathInYYMMDDHRMNFormat;
-
-  }
-
   public static Calendar getDate(String year, String month, String day) {
     return new GregorianCalendar(new Integer(year).intValue(), new Integer(
         month).intValue() - 1, new Integer(day).intValue());
