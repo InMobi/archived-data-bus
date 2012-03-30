@@ -39,7 +39,7 @@ public class Cluster {
 
   Cluster(String name, String rootDir,
           String hdfsUrl, String jtUrl, Map<String,
-          DestinationStream> consumeStreams, Set<String> sourceStreams) {
+  DestinationStream> consumeStreams, Set<String> sourceStreams) {
     this.name = name;
     this.hdfsUrl = hdfsUrl;
     this.rootDir = rootDir;
@@ -58,22 +58,22 @@ public class Cluster {
 
   public String getLocalFinalDestDirRoot() {
     String dest = hdfsUrl + File.separator + rootDir + File.separator + "streams_local"
-            + File.separator;
+    + File.separator;
     return dest;
   }
 
   public String getLocalDestDir(String category, long commitTime)
-          throws IOException {
+  throws IOException {
     Date date = new Date(commitTime);
     Calendar calendar = new GregorianCalendar();
     calendar.setTime(date);
     String dest = hdfsUrl + File.separator + rootDir + File.separator
-            + "streams_local" + File.separator + category + File.separator
-            + calendar.get(Calendar.YEAR) + File.separator
-            + (calendar.get(Calendar.MONTH) + 1) + File.separator
-            + calendar.get(Calendar.DAY_OF_MONTH) + File.separator
-            + calendar.get(Calendar.HOUR_OF_DAY) + File.separator
-            + calendar.get(Calendar.MINUTE);
+    + "streams_local" + File.separator + category + File.separator
+    + padZero(calendar.get(Calendar.YEAR)) + File.separator
+    + padZero((calendar.get(Calendar.MONTH) + 1)) + File.separator
+    + padZero(calendar.get(Calendar.DAY_OF_MONTH)) + File.separator
+    + padZero(calendar.get(Calendar.HOUR_OF_DAY)) + File.separator
+    + padZero(calendar.get(Calendar.MINUTE));
     return dest;
   }
 
@@ -104,7 +104,7 @@ public class Cluster {
 
   public String getFinalDestDirRoot() {
     String dest = hdfsUrl + File.separator + rootDir + File.separator + "streams"
-            + File.separator;
+    + File.separator;
     return dest;
   }
 
@@ -113,47 +113,56 @@ public class Cluster {
     Calendar calendar = new GregorianCalendar();
     calendar.setTime(date);
     String dest = category + File.separator
-            + calendar.get(Calendar.YEAR) + File.separator
-            + (calendar.get(Calendar.MONTH) + 1) + File.separator
-            + calendar.get(Calendar.DAY_OF_MONTH) + File.separator
-            + calendar.get(Calendar.HOUR_OF_DAY) + File.separator
-            + calendar.get(Calendar.MINUTE);
+    + padZero(calendar.get(Calendar.YEAR)) + File.separator
+    + padZero((calendar.get(Calendar.MONTH) + 1)) + File.separator
+    + padZero(calendar.get(Calendar.DAY_OF_MONTH)) + File.separator
+    + padZero(calendar.get(Calendar.HOUR_OF_DAY)) + File.separator
+    + padZero(calendar.get(Calendar.MINUTE));
     return dest;
   }
 
 
   public String getFinalDestDir(String category, long commitTime)
-          throws IOException {
+  throws IOException {
     Date date = new Date(commitTime);
     Calendar calendar = new GregorianCalendar();
     calendar.setTime(date);
     String dest = hdfsUrl + File.separator +
-            rootDir + File.separator + "streams"
-            + File.separator + category + File.separator
-            + calendar.get(Calendar.YEAR) + File.separator
-            + (calendar.get(Calendar.MONTH) + 1) + File.separator
-            + calendar.get(Calendar.DAY_OF_MONTH) + File.separator
-            + calendar.get(Calendar.HOUR_OF_DAY) + File.separator
-            + calendar.get(Calendar.MINUTE);
+    rootDir + File.separator + "streams"
+    + File.separator + category + File.separator
+    + padZero(calendar.get(Calendar.YEAR)) + File.separator
+    + padZero((calendar.get(Calendar.MONTH) + 1)) + File.separator
+    + padZero(calendar.get(Calendar.DAY_OF_MONTH)) + File.separator
+    + padZero(calendar.get(Calendar.HOUR_OF_DAY)) + File.separator
+    + padZero(calendar.get(Calendar.MINUTE));
     return dest;
   }
 
   public String getFinalDestDirTillHour(String category, long commitTime)
-          throws IOException {
+  throws IOException {
     Date date = new Date(commitTime);
     Calendar calendar = new GregorianCalendar();
     calendar.setTime(date);
     String dest = hdfsUrl + File.separator +
-            rootDir + File.separator + "streams"
-            + File.separator + category + File.separator
-            + calendar.get(Calendar.YEAR) + File.separator
-            + (calendar.get(Calendar.MONTH) + 1) + File.separator
-            + calendar.get(Calendar.DAY_OF_MONTH) + File.separator
-            + calendar.get(Calendar.HOUR_OF_DAY) + File.separator;
+    rootDir + File.separator + "streams"
+    + File.separator + category + File.separator
+    + padZero(calendar.get(Calendar.YEAR)) + File.separator
+    + padZero((calendar.get(Calendar.MONTH) + 1)) + File.separator
+    + padZero(calendar.get(Calendar.DAY_OF_MONTH)) + File.separator
+    + padZero(calendar.get(Calendar.HOUR_OF_DAY)) + File.separator;
 
     return dest;
   }
 
+  private String padZero(int val){
+    if (val < 10 ) {
+      //pad 0, make it two digit and return
+      return  "0" + new Integer(val).toString();
+    }
+    else {
+      return new Integer(val).toString();
+    }
+  }
 
   public Map<String, DestinationStream> getDestinationStreams() {
     return consumeStreams;
@@ -184,7 +193,7 @@ public class Cluster {
 
   public Path getTrashPath() {
     return new Path(getSystemDir() + File.separator +
-            "trash");
+    "trash");
   }
 
   public Path getTrashPathWithDate() {
@@ -193,30 +202,30 @@ public class Cluster {
 
   public Path getDataDir() {
     return new Path(hdfsUrl + File.separator +
-            rootDir + File.separator +
-            "data");
+    rootDir + File.separator +
+    "data");
   }
 
   public Path getConsumePath(Cluster consumeCluster) {
     return new Path(getSystemDir()
-            + File.separator + "consumers" + File.separator +
-            consumeCluster.name);
+    + File.separator + "consumers" + File.separator +
+    consumeCluster.name);
   }
 
   public Path getMirrorConsumePath(Cluster consumeCluster) {
     return new Path(getSystemDir()
-            + File.separator + "mirrors" + File.separator +
-            consumeCluster.name);
+    + File.separator + "mirrors" + File.separator +
+    consumeCluster.name);
   }
 
   public Path getTmpPath() {
     return new Path(getSystemDir() + File.separator +
-            "tmp");
+    "tmp");
   }
 
   private String getSystemDir() {
     return hdfsUrl + File.separator +
-            rootDir + File.separator +
-            "system";
+    rootDir + File.separator +
+    "system";
   }
 }

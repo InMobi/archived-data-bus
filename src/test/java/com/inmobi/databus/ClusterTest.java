@@ -22,9 +22,11 @@ import org.testng.annotations.Test;
 @Test
 public class ClusterTest {
   private static Logger LOG = Logger.getLogger(ClusterTest.class);
+
   public void getLocalDestDir() {
     Cluster cluster = buildCluster();
     try {
+      LOG.debug("getLocalDestDir ::");
       String expectedPath = "hdfs://localhost:8020/databus/streams_local" +
       "/testCategory/1970/02/07/18/18";
       String path = cluster.getLocalDestDir("testCategory", 3242890100L);
@@ -32,11 +34,13 @@ public class ClusterTest {
       LOG.debug("Path [" + path + "]");
       assert expectedPath.equals(path);
     } catch (IOException e) {
+      e.printStackTrace();
       assert false;
     }
   }
 
   public void getDateTimeDestDir() {
+    LOG.debug("getDateTimeDestDir ::");
     Cluster cluster = buildCluster();
     String expectedPath = "testCategory/1970/09/05/16/43";
     String path = cluster.getDateTimeDestDir("testCategory", 21381231232L);
@@ -46,6 +50,7 @@ public class ClusterTest {
   }
 
   public void getFinalDestDir() {
+    LOG.debug("getFinalDestDir ::");
     Cluster cluster = buildCluster();
     String path = null;
     try {
@@ -57,11 +62,13 @@ public class ClusterTest {
       assert expectedPath.equals(path);
 
     } catch (IOException e) {
+      e.printStackTrace();
       assert false;
     }
   }
 
   public void getFinalDestDirTillHour() {
+    LOG.debug("getFinalDestDirTillHour ::");
     Cluster cluster = buildCluster();
     String path = null;
     try {
