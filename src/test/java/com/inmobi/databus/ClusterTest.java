@@ -19,10 +19,9 @@ import org.apache.log4j.Logger;
 import org.testng.*;
 import org.testng.annotations.Test;
 
+@Test
 public class ClusterTest {
   private static Logger LOG = Logger.getLogger(ClusterTest.class);
-
-  @Test
   public void getLocalDestDir() {
     Cluster cluster = buildCluster();
     try {
@@ -33,6 +32,47 @@ public class ClusterTest {
       LOG.debug("Path [" + path + "]");
       assert expectedPath.equals(path);
     } catch (IOException e) {
+      assert false;
+    }
+  }
+
+  public void getDateTimeDestDir() {
+    Cluster cluster = buildCluster();
+    String expectedPath = "testCategory/1970/09/05/16/43";
+    String path = cluster.getDateTimeDestDir("testCategory", 21381231232L);
+    LOG.debug("Path [" + path + "]");
+    LOG.debug("Expected Path [" + expectedPath + "]");
+    assert expectedPath.equals(path);
+  }
+
+  public void getFinalDestDir() {
+    Cluster cluster = buildCluster();
+    String path = null;
+    try {
+      String expectedPath =
+      "hdfs://localhost:8020/databus/streams/testCategory/1970/09/05/16/43";
+      path = cluster.getFinalDestDir("testCategory", 21381231232L);
+      LOG.debug("Path [" + path + "]");
+      LOG.debug("Expected Path [" + expectedPath + "]");
+      assert expectedPath.equals(path);
+
+    } catch (IOException e) {
+      assert false;
+    }
+  }
+
+  public void getFinalDestDirTillHour() {
+    Cluster cluster = buildCluster();
+    String path = null;
+    try {
+      String expectedPath =
+      "hdfs://localhost:8020/databus/streams/testCategory/1970/09/05/16/";
+      path = cluster.getFinalDestDirTillHour("testCategory", 21381231232L);
+      LOG.debug("Path [" + path + "]");
+      LOG.debug("Expected Path [" + expectedPath + "]");
+      assert expectedPath.equals(path);
+    } catch (IOException e) {
+      e.printStackTrace();
       assert false;
     }
   }
