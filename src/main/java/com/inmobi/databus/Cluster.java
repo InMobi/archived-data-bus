@@ -18,6 +18,8 @@ import org.apache.hadoop.fs.Path;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -62,18 +64,26 @@ public class Cluster {
     return dest;
   }
 
+  public String getDateAsYYYYMMDDHHMNPath(long commitTime) {
+    Date date = new Date(commitTime);
+    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator +
+    "MM" + File.separator + "dd" + File.separator + "HH" + File.separator +
+    "mm" + File.separator);
+    return dateFormat.format(date);
+  }
+
+  private String getDateAsYYYYMMDDHHPath(long commitTime) {
+    Date date = new Date(commitTime);
+    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator +
+    "MM" + File.separator + "dd" + File.separator + "HH" + File.separator);
+    return dateFormat.format(date);
+  }
+
   public String getLocalDestDir(String category, long commitTime)
   throws IOException {
-    Date date = new Date(commitTime);
-    Calendar calendar = new GregorianCalendar();
-    calendar.setTime(date);
     String dest = hdfsUrl + File.separator + rootDir + File.separator
-    + "streams_local" + File.separator + category + File.separator
-    + padZero(calendar.get(Calendar.YEAR)) + File.separator
-    + padZero((calendar.get(Calendar.MONTH) + 1)) + File.separator
-    + padZero(calendar.get(Calendar.DAY_OF_MONTH)) + File.separator
-    + padZero(calendar.get(Calendar.HOUR_OF_DAY)) + File.separator
-    + padZero(calendar.get(Calendar.MINUTE));
+    + "streams_local" + File.separator + category + File.separator +
+    getDateAsYYYYMMDDHHMNPath(commitTime);
     return dest;
   }
 
@@ -109,60 +119,30 @@ public class Cluster {
   }
 
   public String getDateTimeDestDir(String category, long commitTime) {
-    Date date = new Date(commitTime);
-    Calendar calendar = new GregorianCalendar();
-    calendar.setTime(date);
-    String dest = category + File.separator
-    + padZero(calendar.get(Calendar.YEAR)) + File.separator
-    + padZero((calendar.get(Calendar.MONTH) + 1)) + File.separator
-    + padZero(calendar.get(Calendar.DAY_OF_MONTH)) + File.separator
-    + padZero(calendar.get(Calendar.HOUR_OF_DAY)) + File.separator
-    + padZero(calendar.get(Calendar.MINUTE));
+    String dest = category + File.separator + getDateAsYYYYMMDDHHMNPath
+    (commitTime);
     return dest;
   }
 
 
   public String getFinalDestDir(String category, long commitTime)
   throws IOException {
-    Date date = new Date(commitTime);
-    Calendar calendar = new GregorianCalendar();
-    calendar.setTime(date);
     String dest = hdfsUrl + File.separator +
     rootDir + File.separator + "streams"
-    + File.separator + category + File.separator
-    + padZero(calendar.get(Calendar.YEAR)) + File.separator
-    + padZero((calendar.get(Calendar.MONTH) + 1)) + File.separator
-    + padZero(calendar.get(Calendar.DAY_OF_MONTH)) + File.separator
-    + padZero(calendar.get(Calendar.HOUR_OF_DAY)) + File.separator
-    + padZero(calendar.get(Calendar.MINUTE));
+    + File.separator + category + File.separator + getDateAsYYYYMMDDHHMNPath
+    (commitTime);
     return dest;
   }
 
   public String getFinalDestDirTillHour(String category, long commitTime)
   throws IOException {
-    Date date = new Date(commitTime);
-    Calendar calendar = new GregorianCalendar();
-    calendar.setTime(date);
     String dest = hdfsUrl + File.separator +
     rootDir + File.separator + "streams"
-    + File.separator + category + File.separator
-    + padZero(calendar.get(Calendar.YEAR)) + File.separator
-    + padZero((calendar.get(Calendar.MONTH) + 1)) + File.separator
-    + padZero(calendar.get(Calendar.DAY_OF_MONTH)) + File.separator
-    + padZero(calendar.get(Calendar.HOUR_OF_DAY)) + File.separator;
-
+    + File.separator + category + File.separator + getDateAsYYYYMMDDHHPath
+    (commitTime);
     return dest;
   }
 
-  private String padZero(int val){
-    if (val < 10 ) {
-      //pad 0, make it two digit and return
-      return  "0" + new Integer(val).toString();
-    }
-    else {
-      return new Integer(val).toString();
-    }
-  }
 
   public Map<String, DestinationStream> getDestinationStreams() {
     return consumeStreams;

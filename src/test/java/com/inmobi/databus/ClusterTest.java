@@ -28,7 +28,7 @@ public class ClusterTest {
     try {
       LOG.debug("getLocalDestDir ::");
       String expectedPath = "hdfs://localhost:8020/databus/streams_local" +
-      "/testCategory/1970/02/07/18/18";
+      "/testCategory/1970/02/07/18/18/";
       String path = cluster.getLocalDestDir("testCategory", 3242890100L);
       LOG.debug("Expected Path [" + expectedPath + "]");
       LOG.debug("Path [" + path + "]");
@@ -42,7 +42,7 @@ public class ClusterTest {
   public void getDateTimeDestDir() {
     LOG.debug("getDateTimeDestDir ::");
     Cluster cluster = buildCluster();
-    String expectedPath = "testCategory/1970/09/05/16/43";
+    String expectedPath = "testCategory/1970/09/05/16/43/";
     String path = cluster.getDateTimeDestDir("testCategory", 21381231232L);
     LOG.debug("Path [" + path + "]");
     LOG.debug("Expected Path [" + expectedPath + "]");
@@ -55,7 +55,7 @@ public class ClusterTest {
     String path = null;
     try {
       String expectedPath =
-      "hdfs://localhost:8020/databus/streams/testCategory/1970/09/05/16/43";
+      "hdfs://localhost:8020/databus/streams/testCategory/1970/09/05/16/43/";
       path = cluster.getFinalDestDir("testCategory", 21381231232L);
       LOG.debug("Path [" + path + "]");
       LOG.debug("Expected Path [" + expectedPath + "]");
@@ -83,6 +83,8 @@ public class ClusterTest {
       assert false;
     }
   }
+
+
 
   private Cluster buildCluster() {
     return new Cluster("testCluster", "databus", "hdfs://localhost:8020", "http://localhost:8025", null, null);
