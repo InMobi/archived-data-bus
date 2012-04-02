@@ -39,6 +39,13 @@ public class Cluster {
   // first time starting time
   private long lastCommitTime = System.currentTimeMillis();
 
+  private static final DateFormat MIN_DATE_FORMAT = new SimpleDateFormat("yyyy"
+  + File.separator + "MM" + File.separator + "dd" + File.separator + "HH" +
+  File.separator + "mm" + File.separator);
+  private static final DateFormat HR_DATE_FORMAT = new SimpleDateFormat
+  ("yyyy" + File.separator + "MM" + File.separator + "dd" + File.separator + "HH" + File.separator);
+
+
   Cluster(String name, String rootDir,
           String hdfsUrl, String jtUrl, Map<String,
   DestinationStream> consumeStreams, Set<String> sourceStreams) {
@@ -53,7 +60,6 @@ public class Cluster {
     this.hadoopConf.set("fs.default.name", hdfsUrl);
   }
 
-
   public String getRootDir() {
     return hdfsUrl + File.separator + rootDir + File.separator;
   }
@@ -66,17 +72,12 @@ public class Cluster {
 
   public String getDateAsYYYYMMDDHHMNPath(long commitTime) {
     Date date = new Date(commitTime);
-    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator +
-    "MM" + File.separator + "dd" + File.separator + "HH" + File.separator +
-    "mm" + File.separator);
-    return dateFormat.format(date);
+    return MIN_DATE_FORMAT.format(date);
   }
 
   private String getDateAsYYYYMMDDHHPath(long commitTime) {
     Date date = new Date(commitTime);
-    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator +
-    "MM" + File.separator + "dd" + File.separator + "HH" + File.separator);
-    return dateFormat.format(date);
+    return HR_DATE_FORMAT.format(date);
   }
 
   public String getLocalDestDir(String category, long commitTime)
@@ -123,7 +124,6 @@ public class Cluster {
     (commitTime);
     return dest;
   }
-
 
   public String getFinalDestDir(String category, long commitTime)
   throws IOException {
