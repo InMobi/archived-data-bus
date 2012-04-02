@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+<suite name="Databus" verbose="1">
+  <test name="Cluster">
+    <classes>
+      <class name="com.inmobi.databus.ClusterTest" />
+    </classes>
+  </test>
+</suite>
