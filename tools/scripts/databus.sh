@@ -78,7 +78,7 @@ fi
 fi
 
 #set classpath
-export CLASSPATH=jars/commons-httpclient-1.0.jar:jars/jackson-core-asl-1.5.5.jar:jars/jackson-mapper-asl-0.9.7.jar:jars/commons-cli-1.1.jar:jars/hadoop-distcp-0.1-SNAPSHOT.jar:jars/databus-1.0.jar:jars/commons-logging-1.1.1.jar:jars/hadoop-core-0.20.2-cdh3u0.jar:jars/log4j-1.2.16.jar:jars/zookeeper-recipes-lock.jar:jars/zookeeper-3.3.3.jar:jars/curator-client-0.6.1.jar:jars/curator-framework-0.6.1.jar:jars/curator-recipes-0.6.1.jar:jars/guava-r09.jar
+export CLASSPATH=lib/commons-httpclient-1.0.jar:lib/jackson-core-asl-1.5.5.jar:lib/jackson-mapper-asl-0.9.7.jar:lib/commons-cli-1.1.jar:lib/hadoop-distcp-0.1-SNAPSHOT.jar:lib/databus-worker-1.1.0.jar:lib/commons-logging-1.1.1.jar:lib/hadoop-core-0.20.2-cdh3u0.jar:lib/log4j-1.2.16.jar:lib/zookeeper-3.3.3.jar:lib/curator-client-1.1.0.jar:lib/curator-framework-1.1.0.jar:lib/curator-recipes-1.1.0.jar:lib/guava-10.0.1.jar
 #echo setting classPath to $CLASSPATH
 
 case $startStop in
@@ -141,10 +141,10 @@ case $startStop in
 
   (collapse)
 
-     export TEST_CLASSPATH=$CLASSPATH:jars/databus-1.0-tests.jar
+     export TEST_CLASSPATH=$CLASSPATH:lib/databus-worker-1.1.0.jar
      hdfsName=$var2
      dir=$var3
-     java -cp "$TEST_CLASSPATH" com.inmobi.databus.CollapseFilesInDir $hdfsName $dir
+     java -cp "$TEST_CLASSPATH" com.inmobi.databus.utils.CollapseFilesInDir $hdfsName $dir
      ;;
 
   (*)

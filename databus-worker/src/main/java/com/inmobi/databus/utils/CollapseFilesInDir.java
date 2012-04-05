@@ -1,4 +1,4 @@
-package com.inmobi.databus;
+package com.inmobi.databus.utils;
 
 
 import org.apache.hadoop.conf.Configuration;

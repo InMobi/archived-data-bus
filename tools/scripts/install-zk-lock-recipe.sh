@@ -1,1 +1,0 @@
-mvn install:install-file -Dfile=/Users/inderbir.singh/databus-optlock-distcpfix/zookeeper-recipes-lock.jar -DgroupId=org.apache.zookeeper-recipes  -DartifactId=zookeeper-recipes  -Dversion=3.3.3 -Dpackaging=jar -DlocalRepositoryPath=/Users/inderbir.singh/.m2/repository/
