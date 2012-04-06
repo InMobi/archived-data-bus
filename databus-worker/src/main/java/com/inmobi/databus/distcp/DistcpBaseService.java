@@ -1,4 +1,3 @@
-package com.inmobi.databus.distcp;
 /*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -12,6 +11,8 @@ package com.inmobi.databus.distcp;
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
+package com.inmobi.databus.distcp;
+
 import com.inmobi.databus.AbstractService;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;

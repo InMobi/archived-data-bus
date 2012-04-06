@@ -141,10 +141,9 @@ case $startStop in
 
   (collapse)
 
-     export TEST_CLASSPATH=$CLASSPATH:lib/databus-worker-1.1.0.jar
      hdfsName=$var2
      dir=$var3
-     java -cp "$TEST_CLASSPATH" com.inmobi.databus.utils.CollapseFilesInDir $hdfsName $dir
+     java -cp "$CLASSPATH" com.inmobi.databus.utils.CollapseFilesInDir $hdfsName $dir
      ;;
 
   (*)

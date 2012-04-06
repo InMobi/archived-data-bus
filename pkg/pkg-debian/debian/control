@@ -1,9 +1,0 @@
-Package: databus
-Version: 0.1
-Architecture: all
-Essential: no
-Section: web
-Priority: high
-Depends: 
-Maintainer: Inmobi Platform Team
-Description: Databus is a distributed data transport system. More details can be found at https://github.com/InMobi/data-bus.

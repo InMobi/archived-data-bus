@@ -1,0 +1,9 @@
+Package: [databus]
+Version: [1.1.0]
+Section:  misc
+Priority: high
+Architecture: all
+Depends: jdk (>= 1.5)
+Maintainer: Inmobi (data-pipeline@inmobi.com)
+Description: Databus is a distributed, highly available log processing platform
+Distribution: aplha

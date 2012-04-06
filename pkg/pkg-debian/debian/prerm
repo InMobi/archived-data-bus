@@ -1,2 +1,0 @@
-#!/bin/sh
-rm -rf /etc/init.d/service-databus/

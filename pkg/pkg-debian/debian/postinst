@@ -1,2 +1,0 @@
-#!/bin/sh
-tar xvzf /etc/init.d/service-databus.tgz
