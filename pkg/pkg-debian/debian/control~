@@ -1,9 +1,0 @@
-Package: databus
-Version: 0.1-aplha
-Architecture: all
-Essential: no
-Section: web
-Priority: normal
-Depends: 
-Maintainer: Inmobi Platform Team
-Description: https://github.com/InMobi/data-bus
