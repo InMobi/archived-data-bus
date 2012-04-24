@@ -120,12 +120,15 @@ bool HdfsFile::write(const std::string& data) {
   tSize bytesWritten = hdfsWrite(fileSys, hfile, data.data(),
                                  (tSize) data.length());
   bool retVal = (bytesWritten == (tSize) data.length()) ? true : false;
+  if (retVal) {
+    hdfsHFlush(fileSys, hfile);
+  }
   return retVal;
 }
 
 void HdfsFile::flush() {
   if (hfile) {
-    hdfsFlush(fileSys, hfile);
+    hdfsHFlush(fileSys, hfile);
   }
 }
 
