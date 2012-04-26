@@ -259,7 +259,7 @@ public class DataPurgerService extends AbstractService {
     }// each stream
   }
 
-  private boolean isPurge(Calendar streamDate, Integer retentionPeriodinDays) {
+  public boolean isPurge(Calendar streamDate, Integer retentionPeriodinDays) {
     streamDate.add(Calendar.DAY_OF_MONTH, retentionPeriodinDays + 1);
     Calendar nowTime = CalendarHelper.getNowTime();
     LOG.info("streamDate ::" + streamDate.getTimeInMillis() + " nowTime ::"

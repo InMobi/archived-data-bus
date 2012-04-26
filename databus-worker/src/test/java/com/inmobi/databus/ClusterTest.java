@@ -86,7 +86,7 @@ public class ClusterTest {
 
 
 
-  private Cluster buildCluster() {
+  private static Cluster buildCluster() {
     return new Cluster("testCluster", "databus", "hdfs://localhost:8020", "http://localhost:8025", null, null);
   }
 }

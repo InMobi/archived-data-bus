@@ -1,8 +1,10 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
-<suite name="Databus" verbose="1">
-  <test name="Cluster">
+<suite name="Databus" verbose="10" object-factory="org.powermock.modules.testng.PowerMockObjectFactory">
+  <test name="DatabusTests">
     <classes>
       <class name="com.inmobi.databus.ClusterTest" />
+      <class name="com.inmobi.databus.CompressedFileReaderTest"/>
+      <class name="com.inmobi.databus.DataPurgerServiceTest"/>
     </classes>
   </test>
 </suite>

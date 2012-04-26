@@ -204,6 +204,7 @@ public class LocalStreamService extends AbstractService {
 
     FSDataOutputStream out = fs.create(inputPath);
     Iterator<Entry<FileStatus, String>> it = fileListing.entrySet().iterator();
+
     while (it.hasNext()) {
       Entry<FileStatus, String> entry = it.next();
       out.writeBytes(entry.getKey().getPath().toString());

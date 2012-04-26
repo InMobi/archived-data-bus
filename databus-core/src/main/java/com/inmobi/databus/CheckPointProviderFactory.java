@@ -13,24 +13,10 @@
 */
 package com.inmobi.databus;
 
-/*
- * Interface to store and retrieve checkpoints.
- */
-public interface CheckpointProvider {
+public interface CheckpointProviderFactory {
 
-  /*
-   * Read the checkpoint for the given key. If no checkpoint is found, null
-   * is returned.
-   */
-  byte[] read(String key);
+  public CheckpointProvider create() throws Exception;
 
-  /*
-   * Stores the checkpoint for the given key.
-   */
-  void checkpoint(String key, byte[] checkpoint);
+  public CheckpointProvider create(String config) throws Exception;
 
-  /*
-   * Closes the provider.
-   */
-  void close();
 }
