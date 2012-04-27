@@ -13,42 +13,83 @@
 */
 package com.inmobi.databus;
 
-import javax.annotation.PreDestroy;
-
-import static org.mockito.Mockito.*;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
-
 import com.inmobi.databus.purge.DataPurgerService;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.log4j.Logger;
 import org.testng.annotations.Test;
-import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.apache.log4j.Logger;
+
 
 @Test
-@RunWith(PowerMockRunner.class)
 public class DataPurgerServiceTest {
   private static Logger LOG = Logger.getLogger(DataPurgerServiceTest.class);
+  DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm");
 
-  public void isPurge() {
-
+  public void isPurgeTest1() {
     DataPurgerService service = buildPurgerService();
-      Calendar date = new GregorianCalendar();
-      date.add(Calendar.DAY_OF_MONTH, -1);
-      LOG.info("Retain stream [" + service.isPurge(date,new Integer(1)) + "]");
+    Calendar date = new GregorianCalendar();
+    date.add(Calendar.DAY_OF_MONTH, -1);
+
+    boolean status = service.isPurge(date, new Integer(1));
+    LOG.info("isPurgeTest1 streamDate [" + dateFormat.format(date.getTime())+
+    "] shouldPurge [" + status + "]" );
+    assert  status == true;
+  }
 
 
-}
+  public void isPurgeTest2() {
+    DataPurgerService service = buildPurgerService();
+    Calendar date = new GregorianCalendar();
+    date.add(Calendar.DAY_OF_MONTH, -3);
+    boolean status = service.isPurge(date,new Integer(1));
+    LOG.info("isPurgeTest2 streamDate [" + dateFormat.format(date.getTime())
+    + "] shouldPurge [" + status + "]" );
+    assert  status == true;
+  }
+
+
+  public void isPurgeTest3() {
+    DataPurgerService service = buildPurgerService();
+    Calendar date = new GregorianCalendar();
+    boolean status =  service.isPurge(date,new Integer(1));
+    LOG.info("isPurgeTest3 streamDate [" + dateFormat.format(date.getTime())
+    + "] shouldPurge [" + status + "]" );
+    assert status  == false;
+  }
+
+  public void isPurgeTest4() {
+    DataPurgerService service = buildPurgerService();
+    Calendar date = new GregorianCalendar();
+    date.add(Calendar.DAY_OF_MONTH, -2);
+    boolean status =  service.isPurge(date,new Integer(3));
+    LOG.info("isPurgeTest4 streamDate [" + dateFormat.format(date.getTime())
+    + "] shouldPurge [" + status + "]" );
+    assert status  == false;
+  }
+
+  public void isPurgeTest5() {
+    DataPurgerService service = buildPurgerService();
+    Calendar date = new GregorianCalendar();
+    date.add(Calendar.DAY_OF_MONTH, -3);
+    boolean status =  service.isPurge(date,new Integer(3));
+    LOG.info("isPurgeTest5 streamDate [" + dateFormat.format(date.getTime())
+    + "] shouldPurge [" + status + "]" );
+    assert status  == true;
+  }
+
+
+
 
   private DataPurgerService buildPurgerService() {
     DataPurgerService service;
-    Cluster cluster = mock(Cluster.class);
-
     try {
-    service = new DataPurgerService(null, cluster);
+      service = new DataPurgerService(null, ClusterTest.buildLocalCluster());
     }
     catch (Exception e) {
-        LOG.error("Error in creating DataPurgerService", e);
+      LOG.error("Error in creating DataPurgerService", e);
       return null;
     }
     return service;

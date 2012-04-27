@@ -33,6 +33,9 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -68,6 +71,15 @@ public class LocalStreamService extends AbstractService {
       LOG.info("Deleting tmpPath recursively [" + tmpPath + "]");
       fs.delete(tmpPath, true);
     }
+  }
+
+  @Override
+  public long getMSecondsTillNextRun(long currentTime) {
+    long runIntervalInSec = (DEFAULT_RUN_INTERVAL/1000);
+    Calendar calendar = new GregorianCalendar();
+    calendar.setTime(new Date(currentTime));
+    long currentSec = calendar.get(Calendar.SECOND);
+    return (runIntervalInSec - currentSec) * 1000;
   }
 
   @Override

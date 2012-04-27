@@ -84,9 +84,12 @@ public class ClusterTest {
     }
   }
 
-
-
-  private static Cluster buildCluster() {
+  public static Cluster buildCluster() {
     return new Cluster("testCluster", "databus", "hdfs://localhost:8020", "http://localhost:8025", null, null);
+  }
+
+  public static Cluster buildLocalCluster() {
+    return new Cluster("localCluster", "databus", "file://tmp/",
+    "http://localhost:1822", null, null);
   }
 }

@@ -23,11 +23,11 @@ import org.apache.commons.logging.LogFactory;
 public abstract class AbstractService implements Service, Runnable {
 
   private static final Log LOG = LogFactory.getLog(AbstractService.class);
-  private static final long DEFAULT_RUN_INTERVAL = 60000;
+  protected static final long DEFAULT_RUN_INTERVAL = 60000;
 
   private final String name;
   private final DatabusConfig config;
-  private final long runIntervalInMsec;
+  protected final long runIntervalInMsec;
   protected Thread thread;
   protected volatile boolean stopped = false;
 
@@ -50,22 +50,17 @@ public abstract class AbstractService implements Service, Runnable {
     return name;
   }
 
-  public static final long getMSecondsTillNextMin(long currentTime) {
-    Calendar calendar = new GregorianCalendar();
-    Date date = new Date(currentTime);
-    calendar.setTime(date);
-    long sec = calendar.get(Calendar.SECOND);
-    return (60 - sec) * 1000;
-  }
+  public abstract long getMSecondsTillNextRun(long currentTime);
 
   protected abstract void execute() throws Exception;
 
   @Override
   public void run() {
+    LOG.info("Starting Service [" + Thread.currentThread().getName() + "]");
     while (!stopped && !thread.isInterrupted()) {
       long startTime = System.currentTimeMillis();
       try {
-        LOG.info("Starting the run");
+        LOG.info("Starting a run...");
         execute();
         if (stopped || thread.isInterrupted())
           return;
@@ -73,18 +68,23 @@ public abstract class AbstractService implements Service, Runnable {
         LOG.warn("Error in run", e);
       }
       long finishTime = System.currentTimeMillis();
-      try {
-        long sleep = getMSecondsTillNextMin(finishTime);
-        if (sleep > 0) {
-          LOG.info("Sleeping for " + sleep);
-          Thread.sleep(sleep);
+      long elapsedTime = finishTime - startTime;
+      if (elapsedTime >= runIntervalInMsec)
+        continue;
+      else {
+        try {
+          long sleepTime = getMSecondsTillNextRun(finishTime);
+          if (sleepTime > 0) {
+            LOG.info("Sleeping for " + sleepTime);
+            Thread.sleep(sleepTime);
+          }
+        } catch (InterruptedException e) {
+          LOG.warn("thread interrupted " + thread.getName(), e);
+          return;
         }
-      } catch (InterruptedException e) {
-        LOG.warn("thread interrupted " + thread.getName(), e);
-        return;
       }
     }
-}
+  }
 
   @Override
   public synchronized void start() {

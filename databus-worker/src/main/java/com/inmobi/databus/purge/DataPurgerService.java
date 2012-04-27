@@ -25,7 +25,11 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -44,6 +48,7 @@ public class DataPurgerService extends AbstractService {
   private final FileSystem fs;
   private Map<String, Integer> streamRetention;
   private Set<Path> streamsToPurge;
+  DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm");
 
   public DataPurgerService(DatabusConfig databusConfig, Cluster cluster)
       throws Exception {
@@ -60,6 +65,12 @@ public class DataPurgerService extends AbstractService {
      */
     thread.interrupt();
     LOG.info(Thread.currentThread().getName() + " stopped [" + stopped + "]");
+  }
+
+
+  @Override
+  public long getMSecondsTillNextRun(long currentTime) {
+   return runIntervalInMsec;
   }
 
   private void addMergedStreams() {
@@ -260,15 +271,19 @@ public class DataPurgerService extends AbstractService {
   }
 
   public boolean isPurge(Calendar streamDate, Integer retentionPeriodinDays) {
-    streamDate.add(Calendar.DAY_OF_MONTH, retentionPeriodinDays + 1);
+    int streamDay = streamDate.get(Calendar.DAY_OF_MONTH);
     Calendar nowTime = CalendarHelper.getNowTime();
-    LOG.info("streamDate ::" + streamDate.getTimeInMillis() + " nowTime ::"
-        + nowTime.getTimeInMillis());
-    if (streamDate.before(nowTime))
-      return true;
+    int currentDay = nowTime.get(Calendar.DAY_OF_MONTH);
+    LOG.info("streamDate [" + dateFormat.format(new Date(streamDate
+    .getTimeInMillis())) +  "] currentDate : [" + dateFormat.format(new Date
+    (nowTime.getTimeInMillis())) + "] against retention [" +
+    retentionPeriodinDays + "] days");
+
+    if (Math.abs(currentDay - streamDay) >= retentionPeriodinDays)
+       return true;
     else
       return false;
-  }
+ }
 
   private void purge() throws Exception {
     Iterator it = streamsToPurge.iterator();

@@ -16,6 +16,9 @@ package com.inmobi.databus;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import com.inmobi.databus.distcp.DistcpBaseService;
+import com.inmobi.databus.local.LocalStreamService;
+import org.apache.hadoop.tools.DistCp;
 import org.apache.log4j.Logger;
 import org.testng.annotations.Test;
 
@@ -24,11 +27,15 @@ public class AbstractServiceTest {
 
   private static Logger LOG = Logger.getLogger(ClusterTest.class);
 
-  public void getSecondsTillNextRun() {
+  public void getMSecondsTillNextRun() {
+
     Date date = new Date(12819279812l);
     SimpleDateFormat format = new SimpleDateFormat("yyyy:MM:dd:HH:mm:s");
     LOG.info("Test Date [" + format.format(date) +"]");
-    long mSecondsTillNextMin = AbstractService.getMSecondsTillNextMin(date.getTime());
+    LocalStreamService service = new LocalStreamService(null, ClusterTest.buildLocalCluster());
+
+    long mSecondsTillNextMin = service.getMSecondsTillNextRun(date
+    .getTime());
     LOG.info("mSecondsTillNextMin = [" + mSecondsTillNextMin + "]");
     Date roundedDate = new Date(date.getTime() + mSecondsTillNextMin);
     LOG.info("Rounded Date to next MIN [" + format.format(roundedDate) + "]");
