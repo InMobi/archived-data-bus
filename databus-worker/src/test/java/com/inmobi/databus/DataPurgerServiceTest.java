@@ -80,6 +80,16 @@ public class DataPurgerServiceTest {
     assert status  == true;
   }
 
+  public void isPurgeTest6() {
+    DataPurgerService service = buildPurgerService();
+    Calendar date = new GregorianCalendar();
+    date.add(Calendar.DAY_OF_MONTH, -3);
+    boolean status =  service.isPurge(date,new Integer(2));
+    LOG.info("isPurgeTest6 streamDate [" + dateFormat.format(date.getTime())
+    + "] shouldPurge [" + status + "]" );
+    assert status  == true;
+  }
+
 
 
 
