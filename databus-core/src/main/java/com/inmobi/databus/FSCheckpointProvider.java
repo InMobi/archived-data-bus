@@ -23,6 +23,9 @@ public class FSCheckpointProvider implements CheckpointProvider {
     this.baseDir = new Path(dir);
     try {
       fs = baseDir.getFileSystem(new Configuration());
+      if (!fs.exists(baseDir)) {
+        fs.mkdirs(baseDir);
+      }
     } catch (IOException e) {
       LOG.warn("Could not initialize checkpoint provider", e);
       throw new RuntimeException(e);
@@ -80,11 +83,6 @@ public class FSCheckpointProvider implements CheckpointProvider {
 
   @Override
   public void close() {
-    try {
-      fs.close();
-    } catch (IOException e) {
-      LOG.warn("Could not close ", e);
-    }
   }
 
 }
