@@ -48,7 +48,9 @@ public class DataPurgerService extends AbstractService {
   private final FileSystem fs;
   private Map<String, Integer> streamRetention;
   private Set<Path> streamsToPurge;
-  DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm");
+  private DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm");
+  private static long MILISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
 
   public DataPurgerService(DatabusConfig databusConfig, Cluster cluster)
       throws Exception {
@@ -270,20 +272,30 @@ public class DataPurgerService extends AbstractService {
     }// each stream
   }
 
-  public boolean isPurge(Calendar streamDate, Integer retentionPeriodinDays) {
-    int streamDay = streamDate.get(Calendar.DAY_OF_MONTH);
-    Calendar nowTime = CalendarHelper.getNowTime();
-    int currentDay = nowTime.get(Calendar.DAY_OF_MONTH);
-    LOG.info("streamDate [" + dateFormat.format(new Date(streamDate
-    .getTimeInMillis())) +  "] currentDate : [" + dateFormat.format(new Date
-    (nowTime.getTimeInMillis())) + "] against retention [" +
-    retentionPeriodinDays + "] days");
+    public boolean isPurge(Calendar streamDate, Integer retentionPeriodinDays) {
+	//int streamDay = streamDate.get(Calendar.DAY_OF_MONTH);
+	Calendar nowTime = CalendarHelper.getNowTime();
+	String streamDateStr = dateFormat.format(new Date(streamDate
+							  .getTimeInMillis()));
+	String nowTimeStr =  dateFormat.format(new Date
+					       (nowTime.getTimeInMillis()));
 
-    if (Math.abs(currentDay - streamDay) >= retentionPeriodinDays)
-       return true;
-    else
-      return false;
- }
+	LOG.debug("streamDate [" + streamDateStr +  "] currentDate : [" + nowTimeStr +
+		  "] against retention [" + retentionPeriodinDays + "] days");
+
+	LOG.debug("Days between streamDate and nowTime is [" +
+		  getDaysBetweenDates(streamDate, nowTime));
+	if (getDaysBetweenDates(streamDate, nowTime) < retentionPeriodinDays )
+	    return false;
+	else
+	    return true;
+    }
+
+    private int getDaysBetweenDates(Calendar startDate, Calendar endDate) {
+	long diff = endDate.getTimeInMillis() - startDate.getTimeInMillis();
+	int days = (int) Math.floor(diff / MILISECONDS_PER_DAY);
+	return Math.abs(days);
+    }
 
   private void purge() throws Exception {
     Iterator it = streamsToPurge.iterator();
