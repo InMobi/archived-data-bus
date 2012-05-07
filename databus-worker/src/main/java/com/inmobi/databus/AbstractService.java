@@ -30,6 +30,7 @@ public abstract class AbstractService implements Service, Runnable {
   protected final long runIntervalInMsec;
   protected Thread thread;
   protected volatile boolean stopped = false;
+  protected CheckpointProvider checkpointProvider = null;
 
   public AbstractService(String name, DatabusConfig config) {
     this(name, config, DEFAULT_RUN_INTERVAL);
@@ -40,6 +41,12 @@ public abstract class AbstractService implements Service, Runnable {
     this.config = config;
     this.name = name;
     this.runIntervalInMsec = runIntervalInMsec;
+  }
+
+  public AbstractService(String name, DatabusConfig config,
+                         long runIntervalInMsec, CheckpointProvider provider) {
+    this(name, config, runIntervalInMsec);
+    this.checkpointProvider = provider;
   }
 
   public DatabusConfig getConfig() {

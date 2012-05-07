@@ -32,7 +32,8 @@ public class AbstractServiceTest {
     Date date = new Date(12819279812l);
     SimpleDateFormat format = new SimpleDateFormat("yyyy:MM:dd:HH:mm:s");
     LOG.info("Test Date [" + format.format(date) +"]");
-    LocalStreamService service = new LocalStreamService(null, ClusterTest.buildLocalCluster());
+    LocalStreamService service = new LocalStreamService(null,
+    ClusterTest.buildLocalCluster(), null);
 
     long mSecondsTillNextMin = service.getMSecondsTillNextRun(date
     .getTime());

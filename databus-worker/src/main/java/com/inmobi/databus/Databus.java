@@ -58,7 +58,8 @@ public class Databus implements Service {
       }
       //Start LocalStreamConsumerService for this cluster if it's the source of any stream
       if (cluster.getSourceStreams().size() > 0) {
-        services.add(new LocalStreamService(config, cluster));
+        services.add(new LocalStreamService(config, cluster,
+         new FSCheckpointProvider(cluster.getCheckpointDir())));
       }
 
       List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();

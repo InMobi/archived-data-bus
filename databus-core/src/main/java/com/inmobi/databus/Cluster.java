@@ -34,11 +34,13 @@ public class Cluster {
 
   private final String rootDir;
   private final String hdfsUrl;
+  private String checkpointDir;
   private final Map<String, DestinationStream> consumeStreams;
   private final Set<String> sourceStreams;
   private final Configuration hadoopConf;
   // first time starting time
   private long lastCommitTime = System.currentTimeMillis();
+
 
   Cluster(String name, String rootDir,
           String hdfsUrl, String jtUrl, Map<String,
@@ -202,6 +204,10 @@ public class Cluster {
   public Path getTmpPath() {
     return new Path(getSystemDir() + File.separator +
     "tmp");
+  }
+
+  public String getCheckpointDir() {
+    return getSystemDir() + File.separator + "checkpoint";
   }
 
   private String getSystemDir() {

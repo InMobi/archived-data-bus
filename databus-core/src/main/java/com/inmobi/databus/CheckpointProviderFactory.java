@@ -13,10 +13,73 @@
 */
 package com.inmobi.databus;
 
-public interface CheckpointProviderFactory {
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.Constructor;
 
-  public CheckpointProvider create() throws Exception;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-  public CheckpointProvider create(String config) throws Exception;
+public class CheckpointProviderFactory {
+  private static final String DEFAULT_PROVIDER = "com.inmobi.databus" +
+  ".FSCheckpointProvider";
+  private static final String CHECKPOINT_PROVIDER_DIR = "checkpointprovider" +
+  ".dir";
+  private static final String CHECKPOINT_PROVIDER = "checkpointprovider";
+  private static final String DATABUS_CONFIG = "databus.cfg";
+
+  private static final Log LOG = LogFactory.getLog
+  (CheckpointProviderFactory.class);
+
+
+  public static CheckpointProvider create(String config) throws Exception {
+    CheckpointProvider checkPointProvider = null;
+    InputStream in = new FileInputStream(config);
+    if (in != null)
+      checkPointProvider = getProvider(in);
+    return checkPointProvider;
+  }
+
+
+  private static CheckpointProvider getProvider(InputStream in) throws Exception{
+    CheckpointProvider provider = null;
+    BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+    try {
+      String line;
+      String providerName = null;
+      String providerDir = null;
+      do {
+        line = reader.readLine();
+        String[] keyVal = line.split("=");
+        if (keyVal != null && keyVal.length == 2 && keyVal[0].equalsIgnoreCase
+        (CHECKPOINT_PROVIDER)) {
+          //provider = (CheckpointProvider) Class.forName(keyVal[1])
+          //.newInstance();
+          providerName = keyVal[1];
+        }
+        if (keyVal != null && keyVal.length == 2 && keyVal[0].equalsIgnoreCase
+        (CHECKPOINT_PROVIDER_DIR)) {
+          providerDir = keyVal[1];
+        }
+      } while (line != null);
+
+      if (providerName != null && providerDir != null){
+        Class providerClass = Class.forName(providerName);
+        Constructor constructor = providerClass.getConstructor(String.class);
+        provider = (CheckpointProvider) constructor.newInstance(new Object[]
+        {providerDir});
+      }
+    } catch (Exception e) {
+      //return default provider
+      LOG.debug("Error creating CheckPointProvider", e);
+      return null;
+    }
+    return provider;
+  }
+
+
 
 }

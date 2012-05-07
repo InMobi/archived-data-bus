@@ -23,6 +23,9 @@ public class FSCheckpointProvider implements CheckpointProvider {
     this.baseDir = new Path(dir);
     try {
       fs = baseDir.getFileSystem(new Configuration());
+      if (baseDir != null && !fs.exists(baseDir)) {
+        fs.create(baseDir);
+      }
     } catch (IOException e) {
       LOG.warn("Could not initialize checkpoint provider", e);
       throw new RuntimeException(e);
@@ -41,7 +44,7 @@ public class FSCheckpointProvider implements CheckpointProvider {
         return null;
       }
       BufferedInputStream in = new BufferedInputStream(
-          fs.open(currentCheckpoint));
+      fs.open(currentCheckpoint));
       buffer = new byte[in.available()];
       in.read(buffer);
       in.close();
