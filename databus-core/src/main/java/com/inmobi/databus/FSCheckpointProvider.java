@@ -83,11 +83,6 @@ public class FSCheckpointProvider implements CheckpointProvider {
 
   @Override
   public void close() {
-    try {
-      fs.close();
-    } catch (IOException e) {
-      LOG.warn("Could not close ", e);
-    }
   }
 
 }
