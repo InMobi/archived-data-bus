@@ -78,7 +78,7 @@ fi
 fi
 
 #set classpath
-export CLASSPATH=lib/commons-httpclient-1.0.jar:lib/jackson-core-asl-1.5.5.jar:lib/jackson-mapper-asl-0.9.7.jar:lib/commons-cli-1.1.jar:lib/hadoop-distcp-0.1-SNAPSHOT.jar:lib/databus-worker-1.1.0.jar:lib/commons-logging-1.1.1.jar:lib/hadoop-core-0.20.2-cdh3u0.jar:lib/log4j-1.2.16.jar:lib/zookeeper-3.3.3.jar:lib/curator-client-1.1.0.jar:lib/curator-framework-1.1.0.jar:lib/curator-recipes-1.1.0.jar:lib/guava-10.0.1.jar:lib/slf4j-api-1.6.3.jar
+export CLASSPATH=lib/commons-httpclient-1.0.jar:lib/jackson-core-asl-1.5.5.jar:lib/jackson-mapper-asl-1.5.5.jar:lib/commons-cli-1.1.jar:lib/hadoop-distcp-0.1-SNAPSHOT.jar:lib/databus-worker-1.1.0.jar:lib/databus-core-1.1.0.jar:lib/commons-logging-1.1.1.jar:lib/hadoop-core-0.20.2-cdh3u0.jar:lib/log4j-1.2.16.jar:lib/zookeeper-3.3.3.jar:lib/curator-client-1.1.0.jar:lib/curator-framework-1.1.0.jar:lib/curator-recipes-1.1.0.jar:lib/guava-10.0.1.jar:lib/slf4j-api-1.6.3.jar
 #echo setting classPath to $CLASSPATH
 
 case $startStop in
