@@ -43,17 +43,17 @@ import java.util.Set;
 
 public class DataPurgerService extends AbstractService {
   private static final Log LOG = LogFactory.getLog(DataPurgerService.class);
-  private static long MILISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
-
 
   private final Cluster cluster;
   private final FileSystem fs;
   private Map<String, Integer> streamRetention;
   private Set<Path> streamsToPurge;
-  DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm");
+  private DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm");
+  private static long MILISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
 
   public DataPurgerService(DatabusConfig databusConfig, Cluster cluster)
-  throws Exception {
+      throws Exception {
     super(DataPurgerService.class.getName(), databusConfig, 60000 * 60);
     this.cluster = cluster;
     fs = FileSystem.get(cluster.getHadoopConf());
@@ -72,14 +72,14 @@ public class DataPurgerService extends AbstractService {
 
   @Override
   public long getMSecondsTillNextRun(long currentTime) {
-    return runIntervalInMsec;
+   return runIntervalInMsec;
   }
 
   private void addMergedStreams() {
     Map<String, DestinationStream> destinationStreamMapStreamMap = cluster
-    .getDestinationStreams();
+        .getDestinationStreams();
     Set<Map.Entry<String, DestinationStream>> entrySet = destinationStreamMapStreamMap
-    .entrySet();
+        .entrySet();
     Iterator it = entrySet.iterator();
     while (it.hasNext()) {
       Map.Entry entry = (Map.Entry) it.next();
@@ -87,12 +87,12 @@ public class DataPurgerService extends AbstractService {
       DestinationStream consumeStream = (DestinationStream) entry.getValue();
       Integer mergedStreamRetentionInDays = consumeStream.getRetentionInDays();
       LOG.debug("Merged Stream :: streamName [" + streamName
-      + "] mergedStreamRetentionInDays [" + mergedStreamRetentionInDays
-      + "]");
+          + "] mergedStreamRetentionInDays [" + mergedStreamRetentionInDays
+          + "]");
       if (streamRetention.get(streamName) == null) {
         streamRetention.put(streamName, mergedStreamRetentionInDays);
         LOG.debug("Adding Merged Stream [" + streamName + "] retentionInDays ["
-        + mergedStreamRetentionInDays + "]");
+            + mergedStreamRetentionInDays + "]");
       } else {
         // Partial & Merged stream are produced at this cluster
         // choose max retention period
@@ -100,12 +100,12 @@ public class DataPurgerService extends AbstractService {
         if (partialStreamRetentionInDays.compareTo(mergedStreamRetentionInDays) > 0) {
           streamRetention.put(streamName, partialStreamRetentionInDays);
           LOG.debug("Overriding Stream [" + streamName + "] retentionInDays ["
-          + partialStreamRetentionInDays + "]");
+              + partialStreamRetentionInDays + "]");
 
         } else {
           streamRetention.put(streamName, mergedStreamRetentionInDays);
           LOG.debug("Overriding Stream [" + streamName + "] retentionInDays ["
-          + mergedStreamRetentionInDays + "]");
+              + mergedStreamRetentionInDays + "]");
 
         }
 
@@ -118,10 +118,10 @@ public class DataPurgerService extends AbstractService {
       if (s.getSourceClusters().contains(cluster)) {
         String streamName = s.getName();
         Integer retentionInDays = new Integer(s.getRetentionInDays(cluster
-        .getName()));
+            .getName()));
         streamRetention.put(streamName, retentionInDays);
         LOG.debug("Adding Partial Stream [" + streamName
-        + "] with retentionPeriod [" + retentionInDays + "]");
+            + "] with retentionPeriod [" + retentionInDays + "]");
       }
     }
   }
@@ -162,9 +162,9 @@ public class DataPurgerService extends AbstractService {
       Map<String, Path>  mergedStreamsInClusterPathMap = getStreamsInCluster(mergedStreamRoot);
       String localStreamRoot = cluster.getLocalFinalDestDirRoot();
       Map<String, Path> localStreamsInClusterPathMap = getStreamsInCluster
-      (localStreamRoot);
+              (localStreamRoot);
       getPathsToPurge(mergedStreamsInClusterPathMap,
-      localStreamsInClusterPathMap);
+          localStreamsInClusterPathMap);
       purge();
     } catch (Exception e) {
       LOG.warn(e);
@@ -174,7 +174,7 @@ public class DataPurgerService extends AbstractService {
   }
 
   private void getPathsToPurge(Map<String, Path> mergedStreamsInClusterPathMap,
-                               Map<String, Path> localStreamsInClusterPathMap) throws Exception {
+      Map<String, Path> localStreamsInClusterPathMap) throws Exception {
     getStreamsPathToPurge(mergedStreamsInClusterPathMap);
     getStreamsPathToPurge(localStreamsInClusterPathMap);
     getTrashPathsToPurge();
@@ -189,7 +189,7 @@ public class DataPurgerService extends AbstractService {
     if (trashPaths != null && trashPaths.length > 1) {
       for (FileStatus trashPath : trashPaths) {
         Calendar trashPathDate = getDateFromTrashPath(trashPath.getPath()
-        .getName());
+            .getName());
         if (isPurge(trashPathDate, getTrashPathRetentionInDays()))
           streamsToPurge.add(trashPath.getPath().makeQualified(fs));
       }
@@ -214,7 +214,7 @@ public class DataPurgerService extends AbstractService {
     if (paths != null) {
       for (FileStatus fileStatus : paths) {
         streams.put(fileStatus.getPath().getName(), fileStatus.getPath()
-        .makeQualified(fs));
+            .makeQualified(fs));
         LOG.debug("Purger working for stream [" + fileStatus.getPath() + "]");
       }
     } else
@@ -223,7 +223,7 @@ public class DataPurgerService extends AbstractService {
   }
 
   private void getStreamsPathToPurge(Map<String, Path> streamPathMap)
-  throws Exception {
+      throws Exception {
     Set<Map.Entry<String, Path>> streamsToProcess = streamPathMap.entrySet();
     Iterator it = streamsToProcess.iterator();
     while (it.hasNext()) {
@@ -231,7 +231,7 @@ public class DataPurgerService extends AbstractService {
       String streamName = entry.getKey();
       Path streamRootPath = entry.getValue();
       LOG.debug("Find Paths to purge for stream [" + streamName
-      + "] streamRootPath [" + streamRootPath + "]");
+          + "] streamRootPath [" + streamRootPath + "]");
       // For each Stream, all years
       FileStatus[] years = getAllFilesInDir(streamRootPath, fs);
       if (years != null) {
@@ -246,11 +246,11 @@ public class DataPurgerService extends AbstractService {
                 for (FileStatus day : days) {
                   LOG.debug("Working for day [" + day.getPath() + "]");
                   Calendar streamDate = CalendarHelper.getDate(year.getPath()
-                  .getName(), month.getPath().getName(), day.getPath()
-                  .getName());
+                      .getName(), month.getPath().getName(), day.getPath()
+                      .getName());
                   LOG.debug("Validate [" + streamDate.toString()
-                  + "] against retentionDays ["
-                  + getRetentionPeriod(streamName) + "]");
+                      + "] against retentionDays ["
+                      + getRetentionPeriod(streamName) + "]");
                   if (isPurge(streamDate, getRetentionPeriod(streamName))) {
                     LOG.debug("Adding stream to purge [" + day.getPath());
                     streamsToPurge.add(day.getPath().makeQualified(fs));
@@ -272,30 +272,30 @@ public class DataPurgerService extends AbstractService {
     }// each stream
   }
 
-  public boolean isPurge(Calendar streamDate, Integer retentionPeriodinDays) {
-    //int streamDay = streamDate.get(Calendar.DAY_OF_MONTH);
-    Calendar nowTime = CalendarHelper.getNowTime();
-    String streamDateStr = dateFormat.format(new Date(streamDate
-    .getTimeInMillis()));
-    String nowTimeStr =  dateFormat.format(new Date
-    (nowTime.getTimeInMillis()));
+    public boolean isPurge(Calendar streamDate, Integer retentionPeriodinDays) {
+	//int streamDay = streamDate.get(Calendar.DAY_OF_MONTH);
+	Calendar nowTime = CalendarHelper.getNowTime();
+	String streamDateStr = dateFormat.format(new Date(streamDate
+							  .getTimeInMillis()));
+	String nowTimeStr =  dateFormat.format(new Date
+					       (nowTime.getTimeInMillis()));
 
-    LOG.debug("streamDate [" + streamDateStr +  "] currentDate : [" + nowTimeStr +
-    "] against retention [" + retentionPeriodinDays + "] days");
+	LOG.debug("streamDate [" + streamDateStr +  "] currentDate : [" + nowTimeStr +
+		  "] against retention [" + retentionPeriodinDays + "] days");
 
-    LOG.debug("Days between streamDate and nowTime is [" +
-    getDaysBetweenDates(streamDate, nowTime));
-    if (getDaysBetweenDates(streamDate, nowTime) < retentionPeriodinDays )
-      return false;
-    else
-      return true;
-  }
+	LOG.debug("Days between streamDate and nowTime is [" +
+		  getDaysBetweenDates(streamDate, nowTime));
+	if (getDaysBetweenDates(streamDate, nowTime) < retentionPeriodinDays )
+	    return false;
+	else
+	    return true;
+    }
 
-  private int getDaysBetweenDates(Calendar startDate, Calendar endDate) {
-    long diff = endDate.getTimeInMillis() - startDate.getTimeInMillis();
-    int days = (int) Math.floor(diff / MILISECONDS_PER_DAY);
-    return Math.abs(days);
-  }
+    private int getDaysBetweenDates(Calendar startDate, Calendar endDate) {
+	long diff = endDate.getTimeInMillis() - startDate.getTimeInMillis();
+	int days = (int) Math.floor(diff / MILISECONDS_PER_DAY);
+	return Math.abs(days);
+    }
 
   private void purge() throws Exception {
     Iterator it = streamsToPurge.iterator();
@@ -307,7 +307,7 @@ public class DataPurgerService extends AbstractService {
   }
 
   private FileStatus[] getAllFilesInDir(Path dir, FileSystem fs)
-  throws Exception {
+      throws Exception {
     return fs.listStatus(dir);
   }
 }
