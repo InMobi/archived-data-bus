@@ -7,15 +7,15 @@
   <!-- A stream can have only one primary and multiple mirrors as destinations
     -->
   <streams>
-    <stream name="rtbi_metrics">
+    <stream name="">
       <sources>
         <source>
-          <name>ua2</name>
-          <retentionindays>2</retentionindays>
+          <name></name>
+          <retentionindays></retentionindays>
         </source>
         <source>
-          <name>uj1</name>
-          <retentionindays>2</retentionindays>
+          <name></name>
+          <retentionindays></retentionindays>
         </source>
       </sources>
       <destinations>
@@ -24,12 +24,12 @@
   </streams>
 
   <clusters>
-    <cluster name="ua2" hdfsurl="hdfs://gs1138.red.ua2.inmobi.com:54310/"
-             jturl="gs1139.red.ua2.inmobi.com:54311">
+    <cluster name="" hdfsurl=""
+             jturl="">
     </cluster>
 
-    <cluster name="uj1" hdfsurl="hdfs://gs3103.red.uj1.inmobi.com:54310"
-             jturl="gs3104.red.uj1.inmobi.com:54311">
+    <cluster name="" hdfsurl=""
+             jturl="">
     </cluster>
 
   </clusters>
