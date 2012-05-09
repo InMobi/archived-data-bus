@@ -205,7 +205,7 @@ public class LocalStreamService extends AbstractService {
     }
 
     Map<Path, Path> commitPaths = new LinkedHashMap<Path, Path>();
-    if (mvPaths.size() == trashPaths.size()) {// validate the no of files
+    if (mvPaths.size() >= trashPaths.size()) {// validate the no of files
       commitPaths.putAll(mvPaths);
       commitPaths.putAll(consumerCommitPaths);
       commitPaths.putAll(trashPaths);
@@ -271,7 +271,7 @@ public class LocalStreamService extends AbstractService {
         String checkPointValue = null;
         byte[] value = checkpointProvider.read(checkPointKey);
         if (value != null)
-          checkPointValue = value.toString();
+          checkPointValue = new String(value);
         LOG.debug("CheckPoint Key [" + checkPointKey + "] value [ " +
         checkPointValue +"]");
 
