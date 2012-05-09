@@ -16,6 +16,8 @@ package com.inmobi.databus.distcp;
 import com.inmobi.databus.AbstractService;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
+
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -23,6 +25,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.tools.DistCp;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -79,6 +82,19 @@ public abstract class DistcpBaseService extends AbstractService {
 
   protected FileSystem getDestFs() {
     return destFs;
+  }
+  
+  protected Boolean executeDistCp(String[] args) throws Exception
+  {
+	  Boolean distcpExecuteSuccess = false;
+	  //Add Additional Default arguments to the array below which gets merged
+	  //with the arguments as sent in by the Derived Service
+	  String[] defargs = {"-D", "mapred.job.queue.name", this.getDestCluster().getJobQueueName() }; 
+	  if (DistCp.runDistCp((String[])ArrayUtils.addAll(args, defargs),
+			  				destCluster.getHadoopConf())==DISTCP_SUCCESS)
+		  distcpExecuteSuccess = true;
+	  
+	  return distcpExecuteSuccess;
   }
 
   /*

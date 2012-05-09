@@ -382,7 +382,6 @@ public class LocalStreamService extends AbstractService {
     String jobName = "localstream";
     Configuration conf = cluster.getHadoopConf();
     Job job = new Job(conf);
-    job.getConfiguration().set("localstream.tmp.path", tmpPath.toString());
     job.setJobName(jobName);
     KeyValueTextInputFormat.setInputPaths(job, inputPath);
     job.setInputFormatClass(KeyValueTextInputFormat.class);
@@ -393,8 +392,12 @@ public class LocalStreamService extends AbstractService {
 
     job.setOutputFormatClass(NullOutputFormat.class);
     job.getConfiguration().set("mapred.map.tasks.speculative.execution",
-    "false");
-
+    						   "false");
+    job.getConfiguration().set("localstream.tmp.path", 
+    						   tmpPath.toString());
+    job.getConfiguration().set("mapred.job.queue.name", 
+    							cluster.getJobQueueName());
+    
     return job;
   }
 }

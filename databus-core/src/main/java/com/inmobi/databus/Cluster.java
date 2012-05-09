@@ -28,11 +28,9 @@ import java.util.Set;
 
 
 public class Cluster {
-  private final String name;
-
   private final String rootDir;
   private final String hdfsUrl;
-  private String checkpointDir;
+  private final Map<String, String> clusterElementsMap;
   private final Map<String, DestinationStream> consumeStreams;
   private final Set<String> sourceStreams;
   private final Configuration hadoopConf;
@@ -40,14 +38,15 @@ public class Cluster {
   private long lastCommitTime = System.currentTimeMillis();
 
 
-  public Cluster(String name, String rootDir,
-          String hdfsUrl, String jtUrl, Map<String,
-  DestinationStream> consumeStreams, Set<String> sourceStreams) {
-    this.name = name;
-    this.hdfsUrl = hdfsUrl;
+  public Cluster(Map<String, String> clusterElementsMap, 
+		  		 String rootDir,
+          		 Map<String,DestinationStream> consumeStreams, 
+          		 Set<String> sourceStreams) {
+    this.clusterElementsMap = clusterElementsMap;
     this.rootDir = rootDir;
+    this.hdfsUrl = clusterElementsMap.get("hdfsurl");
     this.hadoopConf = new Configuration();
-    this.hadoopConf.set("mapred.job.tracker", jtUrl);
+    this.hadoopConf.set("mapred.job.tracker", clusterElementsMap.get("jturl"));
     this.hadoopConf.set("databus.tmp.path", getTmpPath().toString());
     this.consumeStreams = consumeStreams;
     this.sourceStreams = sourceStreams;
@@ -114,7 +113,7 @@ public class Cluster {
   }
 
   public String getName() {
-    return name;
+    return clusterElementsMap.get("name");
   }
 
   public String getUnqaulifiedFinalDestDirRoot() {
@@ -199,13 +198,13 @@ public class Cluster {
   public Path getConsumePath(Cluster consumeCluster) {
     return new Path(getSystemDir()
     + File.separator + "consumers" + File.separator +
-    consumeCluster.name);
+    consumeCluster.getName());
   }
 
   public Path getMirrorConsumePath(Cluster consumeCluster) {
     return new Path(getSystemDir()
     + File.separator + "mirrors" + File.separator +
-    consumeCluster.name);
+    consumeCluster.getName());
   }
 
   public Path getTmpPath() {
@@ -221,5 +220,9 @@ public class Cluster {
     return hdfsUrl + File.separator +
     rootDir + File.separator +
     "system";
+  }
+  
+  public String getJobQueueName() {
+	  return clusterElementsMap.get("jobqueuename");
   }
 }

@@ -11,38 +11,29 @@ import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
 
-public class TestFSCheckpointProvider {
+public class TestFSCheckpointProvider extends TestMiniClusterUtil{
   private static final Path testDir = new Path("/tmp/fscheckpoint"); 
   private String cpKey ="mykey";
   private String checkpoint = "my Checkpoint";
   FileSystem localFs;
-  FileSystem dfs;
-  MiniDFSCluster dfsCluster;
-  Configuration conf = new Configuration();
-
+  
   @BeforeSuite
-  public void setup() throws IOException {
-    localFs = FileSystem.getLocal(conf);
-    dfsCluster = new MiniDFSCluster(conf, 1, true,null);
-    dfs = dfsCluster.getFileSystem();
-  }
-
-  @AfterSuite
-  public void cleanup() throws IOException {
-    // delete test dir
-    localFs.delete(testDir, true);
-    dfs.delete(testDir, true);
-    dfsCluster.shutdown();
+  public void setup() throws Exception {
+    super.setup();
+    localFs = FileSystem.getLocal(new Configuration());
   }
   
   @Test
   public void testWithLocal() throws IOException {
     testWithFS(localFs);
+    localFs.delete(testDir, true);
   }
   
   @Test
   public void testWithHDFS() throws IOException {
+    FileSystem dfs = GetFileSystem();
     testWithFS(dfs);
+    dfs.delete(testDir, true);
   }
 
   public void testWithFS(FileSystem fs) throws IOException {
