@@ -58,12 +58,14 @@
               <goal>jdeb</goal>
             </goals>
             <configuration>
+	      <installDir>/usr/share/databus</installDir>
               <dataSet>
                 <data>
                   <src>target/databus-dist-${project.version}-pkg/</src>
                   <type>directory</type>
                   <mapper>
                     <type>perm</type>
+		    <prefix>/usr/share/databus</prefix>
                   </mapper>
                 </data>
               </dataSet>
