@@ -14,6 +14,8 @@
 package com.inmobi.databus;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.testng.*;
@@ -85,11 +87,18 @@ public class ClusterTest {
   }
 
   public static Cluster buildCluster() {
-    return new Cluster("testCluster", "databus", "hdfs://localhost:8020", "http://localhost:8025", null, null);
+	Map<String,String> clusterElementsMap = new HashMap<String,String>();
+	clusterElementsMap.put("name", "testCluster");
+	clusterElementsMap.put("hdfsurl", "hdfs://localhost:8020");
+	clusterElementsMap.put("jturl", "http://localhost:8021");
+    return new Cluster(clusterElementsMap, "databus", null, null);
   }
 
   public static Cluster buildLocalCluster() {
-    return new Cluster("localCluster", "databus", "file://tmp/",
-    "http://localhost:1822", null, null);
+	Map<String,String> clusterElementsMap = new HashMap<String,String>();
+	clusterElementsMap.put("name", "localCluster");
+	clusterElementsMap.put("hdfsurl", "file://tmp/");
+	clusterElementsMap.put("jturl", "http://localhost:8021");
+    return new Cluster(clusterElementsMap, "databus",null, null);
   }
 }

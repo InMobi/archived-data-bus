@@ -20,7 +20,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.tools.DistCp;
 
 import java.io.File;
 import java.io.IOException;
@@ -92,8 +91,7 @@ public class MirrorStreamService extends DistcpBaseService {
       String[] args = { "-preserveSrcPath", "-f", inputFilePath.toString(),
               tmpOut.toString() };
       try {
-        int exitCode = DistCp.runDistCp(args, getDestCluster().getHadoopConf());
-        if (exitCode != DISTCP_SUCCESS)
+        if (!executeDistCp(args))
           skipCommit = true;
       } catch (Throwable e) {
         LOG.warn("Problem in Mirrored distcp..skipping commit for this run",

@@ -26,6 +26,8 @@ import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.log4j.Logger;
 
+import com.inmobi.databus.utils.FileUtil;
+
 import java.io.OutputStream;
 
 public class CompressedFileReaderTest {
@@ -60,26 +62,7 @@ public class CompressedFileReaderTest {
   }
 
   private void compress(String fileName) throws Exception{
-    FSDataInputStream in=null;
-    OutputStream compressedOut = null;
-    try {
-      Configuration conf = new Configuration();
-      FileSystem fs;
-      fs = FileSystem.getLocal(conf);
-      FSDataOutputStream out = fs.create(new Path(fileName + ".gz"));
-      GzipCodec gzipCodec = (GzipCodec) ReflectionUtils.newInstance(
-              GzipCodec.class, conf);
-      compressedOut = gzipCodec.createOutputStream(out);
-      in = fs.open(new Path(fileName));
-      IOUtils.copyBytes(in, compressedOut, conf);
-    }
-    catch (Exception e) {
-
-    }
-    finally {
-      in.close();
-      compressedOut.close();
-    }
+    FileUtil.gzip(new Path(fileName), new Path(fileName + ".gz"), new Configuration());
   }
 
   public static void main(String[] args) throws Exception{

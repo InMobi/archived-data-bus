@@ -21,20 +21,16 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 
 public class Cluster {
-  private final String name;
-
   private final String rootDir;
   private final String hdfsUrl;
-  private String checkpointDir;
+  private final Map<String, String> clusterElementsMap;
   private final Map<String, DestinationStream> consumeStreams;
   private final Set<String> sourceStreams;
   private final Configuration hadoopConf;
@@ -42,20 +38,20 @@ public class Cluster {
   private long lastCommitTime = System.currentTimeMillis();
 
 
-  Cluster(String name, String rootDir,
-          String hdfsUrl, String jtUrl, Map<String,
-  DestinationStream> consumeStreams, Set<String> sourceStreams) {
-    this.name = name;
-    this.hdfsUrl = hdfsUrl;
+  public Cluster(Map<String, String> clusterElementsMap, 
+		  		 String rootDir,
+          		 Map<String,DestinationStream> consumeStreams, 
+          		 Set<String> sourceStreams) {
+    this.clusterElementsMap = clusterElementsMap;
     this.rootDir = rootDir;
+    this.hdfsUrl = clusterElementsMap.get("hdfsurl");
     this.hadoopConf = new Configuration();
-    this.hadoopConf.set("mapred.job.tracker", jtUrl);
+    this.hadoopConf.set("mapred.job.tracker", clusterElementsMap.get("jturl"));
     this.hadoopConf.set("databus.tmp.path", getTmpPath().toString());
     this.consumeStreams = consumeStreams;
     this.sourceStreams = sourceStreams;
     this.hadoopConf.set("fs.default.name", hdfsUrl);
   }
-
 
   public String getRootDir() {
     return hdfsUrl + File.separator + rootDir + File.separator;
@@ -69,6 +65,10 @@ public class Cluster {
 
   public String getDateAsYYYYMMDDHHMNPath(long commitTime) {
     Date date = new Date(commitTime);
+    return getDateAsYYYYMMDDHHMNPath(date);
+  }
+
+  public String getDateAsYYYYMMDDHHMNPath(Date date) {
     DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator +
     "MM" + File.separator + "dd" + File.separator + "HH" + File.separator +
     "mm" + File.separator);
@@ -84,9 +84,15 @@ public class Cluster {
 
   public String getLocalDestDir(String category, long commitTime)
   throws IOException {
+    Date date = new Date(commitTime);
+    return getLocalDestDir(category, date);
+  }
+
+  public String getLocalDestDir(String category, Date date)
+  throws IOException {
     String dest = hdfsUrl + File.separator + rootDir + File.separator
     + "streams_local" + File.separator + category + File.separator +
-    getDateAsYYYYMMDDHHMNPath(commitTime);
+    getDateAsYYYYMMDDHHMNPath(date);
     return dest;
   }
 
@@ -107,7 +113,7 @@ public class Cluster {
   }
 
   public String getName() {
-    return name;
+    return clusterElementsMap.get("name");
   }
 
   public String getUnqaulifiedFinalDestDirRoot() {
@@ -192,13 +198,13 @@ public class Cluster {
   public Path getConsumePath(Cluster consumeCluster) {
     return new Path(getSystemDir()
     + File.separator + "consumers" + File.separator +
-    consumeCluster.name);
+    consumeCluster.getName());
   }
 
   public Path getMirrorConsumePath(Cluster consumeCluster) {
     return new Path(getSystemDir()
     + File.separator + "mirrors" + File.separator +
-    consumeCluster.name);
+    consumeCluster.getName());
   }
 
   public Path getTmpPath() {
@@ -214,5 +220,9 @@ public class Cluster {
     return hdfsUrl + File.separator +
     rootDir + File.separator +
     "system";
+  }
+  
+  public String getJobQueueName() {
+	  return clusterElementsMap.get("jobqueuename");
   }
 }

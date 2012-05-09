@@ -14,8 +14,10 @@
 package com.inmobi.databus;
 
 import org.apache.log4j.Logger;
+import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -106,11 +108,14 @@ public class DatabusConfigParser {
   }
 
   private Cluster getCluster(Element el) {
-    String clusterName = el.getAttribute("name");
-    String hdfsURL = el.getAttribute("hdfsurl");
-    String jtURL = el.getAttribute("jturl");
-    logger.info("clusterName " + clusterName + " hdfsURL " + hdfsURL + " jtUrl"
-        + jtURL);
+    NamedNodeMap elementsmap = el.getAttributes();
+    Map<String,String> clusterelementsmap = new HashMap<String,String>(elementsmap.getLength());
+    for (int i=0; i<elementsmap.getLength(); ++i)
+    {
+    	Attr attribute = (Attr)elementsmap.item(i);
+    	logger.info(attribute.getName() + ":" + attribute.getValue());
+    	clusterelementsmap.put(attribute.getName(), attribute.getValue());
+    }
     String cRootDir = rootDir;
     NodeList list = el.getElementsByTagName("rootdir");
     if (list != null && list.getLength() == 1) {
@@ -118,8 +123,8 @@ public class DatabusConfigParser {
       cRootDir = elem.getTextContent();
     }
     Map<String, DestinationStream> consumeStreams = new HashMap<String, DestinationStream>();
-    logger.debug("getting consume streams for CLuster ::" + clusterName);
-    List<DestinationStream> consumeStreamList = getConsumeStreams(clusterName);
+    logger.debug("getting consume streams for CLuster ::" + clusterelementsmap.get("name"));
+    List<DestinationStream> consumeStreamList = getConsumeStreams(clusterelementsmap.get("name"));
     if (consumeStreamList != null && consumeStreamList.size() > 0) {
       for (DestinationStream consumeStream : consumeStreamList) {
         consumeStreams.put(consumeStream.getName(), consumeStream);
@@ -128,8 +133,8 @@ public class DatabusConfigParser {
     if (cRootDir == null)
       cRootDir = rootDir;
 
-    return new Cluster(clusterName, cRootDir, hdfsURL, jtURL, consumeStreams,
-        getSourceStreams(clusterName));
+    return new Cluster(clusterelementsmap, cRootDir, consumeStreams,
+        getSourceStreams(clusterelementsmap.get("name")));
   }
 
   private Set<String> getSourceStreams(String clusterName) {
@@ -245,7 +250,22 @@ public class DatabusConfigParser {
         databusConfigParser = new DatabusConfigParser(args[0]);
       else
         databusConfigParser = new DatabusConfigParser(null);
-
+      
+      DatabusConfig config = databusConfigParser.getConfig();
+      
+      Map<String, Cluster> clustermap = config.getClusters();
+      
+      for(Map.Entry<String, Cluster> clusterentry: clustermap.entrySet())
+      {
+    	Cluster cluster = clusterentry.getValue();
+    	logger.debug("Cluster: " + clusterentry.getKey());
+    	logger.debug("Cluster Name: " + cluster.getName());
+    	logger.debug("HDFS URL: " + cluster.getHdfsUrl());
+    	logger.debug("JT Url: " + cluster.getHadoopConf().get("mapred.job.tracker"));
+    	logger.debug("Job Queue Name: " + cluster.getJobQueueName());
+    	logger.debug("Root Directory: " + cluster.getRootDir());
+      }
+      
       // databusConfigParser.parseXmlFile();
     } catch (Exception e) {
       e.printStackTrace();
