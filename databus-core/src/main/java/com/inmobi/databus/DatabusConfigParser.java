@@ -1,27 +1,19 @@
 /*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.inmobi.databus;
 
-import org.apache.log4j.Logger;
-import org.w3c.dom.Attr;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.NodeList;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,13 +22,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.apache.log4j.Logger;
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.NodeList;
+
 public class DatabusConfigParser {
 
   private static Logger logger = Logger.getLogger(DatabusConfigParser.class);
   private Map<String, SourceStream> streamMap = new HashMap<String, SourceStream>();
   private Map<String, Cluster> clusterMap = new HashMap<String, Cluster>();
-  private Map<String, List<DestinationStream>> clusterConsumeStreams =
-      new HashMap<String, List<DestinationStream>>();
+  private Map<String, List<DestinationStream>> clusterConsumeStreams = new HashMap<String, List<DestinationStream>>();
 
   private String inputDir;
   private String publishDir;
@@ -66,7 +67,7 @@ public class DatabusConfigParser {
       throw new Exception("databus.xml file not found");
   }
 
-  private void parseDocument(Document dom) {
+  private void parseDocument(Document dom) throws Exception {
     Element docEle = dom.getDocumentElement();
     // read configs
     readDefaultPaths(docEle);
@@ -77,10 +78,12 @@ public class DatabusConfigParser {
 
   }
 
-  private void readDefaultPaths(Element docEle) {
+  private void readDefaultPaths(Element docEle) throws Exception {
     NodeList configList = docEle.getElementsByTagName("defaults");
     if (configList != null && configList.getLength() > 0) {
       rootDir = getTextValue((Element) configList.item(0), "rootdir");
+      if (rootDir == null)
+        throw new ParseException("rootdir element not found in defaults", 0);
       inputDir = getTextValue((Element) configList.item(0), "inputdir");
       publishDir = getTextValue((Element) configList.item(0), "publishdir");
       String retention = getTextValue((Element) configList.item(0),
@@ -95,7 +98,7 @@ public class DatabusConfigParser {
     }
   }
 
-  private void readAllClusters(Element docEle) {
+  private void readAllClusters(Element docEle) throws Exception {
     NodeList tmpClusterList = docEle.getElementsByTagName("cluster");
     if (tmpClusterList != null && tmpClusterList.getLength() > 0) {
       for (int i = 0; i < tmpClusterList.getLength(); i++) {
@@ -107,14 +110,14 @@ public class DatabusConfigParser {
 
   }
 
-  private Cluster getCluster(Element el) {
+  private Cluster getCluster(Element el) throws Exception {
     NamedNodeMap elementsmap = el.getAttributes();
-    Map<String,String> clusterelementsmap = new HashMap<String,String>(elementsmap.getLength());
-    for (int i=0; i<elementsmap.getLength(); ++i)
-    {
-    	Attr attribute = (Attr)elementsmap.item(i);
-    	logger.info(attribute.getName() + ":" + attribute.getValue());
-    	clusterelementsmap.put(attribute.getName(), attribute.getValue());
+    Map<String, String> clusterelementsmap = new HashMap<String, String>(
+        elementsmap.getLength());
+    for (int i = 0; i < elementsmap.getLength(); ++i) {
+      Attr attribute = (Attr) elementsmap.item(i);
+      logger.info(attribute.getName() + ":" + attribute.getValue());
+      clusterelementsmap.put(attribute.getName(), attribute.getValue());
     }
     String cRootDir = rootDir;
     NodeList list = el.getElementsByTagName("rootdir");
@@ -123,8 +126,10 @@ public class DatabusConfigParser {
       cRootDir = elem.getTextContent();
     }
     Map<String, DestinationStream> consumeStreams = new HashMap<String, DestinationStream>();
-    logger.debug("getting consume streams for CLuster ::" + clusterelementsmap.get("name"));
-    List<DestinationStream> consumeStreamList = getConsumeStreams(clusterelementsmap.get("name"));
+    logger.debug("getting consume streams for CLuster ::"
+        + clusterelementsmap.get("name"));
+    List<DestinationStream> consumeStreamList = getConsumeStreams(clusterelementsmap
+        .get("name"));
     if (consumeStreamList != null && consumeStreamList.size() > 0) {
       for (DestinationStream consumeStream : consumeStreamList) {
         consumeStreams.put(consumeStream.getName(), consumeStream);
@@ -137,7 +142,7 @@ public class DatabusConfigParser {
         getSourceStreams(clusterelementsmap.get("name")));
   }
 
-  private Set<String> getSourceStreams(String clusterName) {
+  private Set<String> getSourceStreams(String clusterName) throws Exception {
     Set<String> srcStreams = new HashSet<String>();
     Set<Map.Entry<String, SourceStream>> entrySet = streamMap.entrySet();
     Iterator it = entrySet.iterator();
@@ -153,7 +158,7 @@ public class DatabusConfigParser {
     return srcStreams;
   }
 
-  private void readAllStreams(Element docEle) {
+  private void readAllStreams(Element docEle) throws Exception {
     NodeList tmpstreamList = docEle.getElementsByTagName("stream");
     if (tmpstreamList != null && tmpstreamList.getLength() > 0) {
       for (int i = 0; i < tmpstreamList.getLength(); i++) {
@@ -166,7 +171,7 @@ public class DatabusConfigParser {
 
   }
 
-  private SourceStream getStream(Element el) {
+  private SourceStream getStream(Element el) throws Exception {
     Map<String, Integer> sourceStreams = new HashMap<String, Integer>();
     // get sources for each stream
     String streamName = el.getAttribute("name");
@@ -186,7 +191,8 @@ public class DatabusConfigParser {
     return new SourceStream(streamName, sourceStreams);
   }
 
-  private void readConsumeStreams(String streamName, Element el) {
+  private void readConsumeStreams(String streamName, Element el)
+      throws Exception {
     NodeList consumeStreamNodeList = el.getElementsByTagName("destination");
     for (int i = 0; i < consumeStreamNodeList.getLength(); i++) {
       Element replicatedConsumeStream = (Element) consumeStreamNodeList.item(i);
@@ -250,22 +256,22 @@ public class DatabusConfigParser {
         databusConfigParser = new DatabusConfigParser(args[0]);
       else
         databusConfigParser = new DatabusConfigParser(null);
-      
+
       DatabusConfig config = databusConfigParser.getConfig();
-      
+
       Map<String, Cluster> clustermap = config.getClusters();
-      
-      for(Map.Entry<String, Cluster> clusterentry: clustermap.entrySet())
-      {
-    	Cluster cluster = clusterentry.getValue();
-    	logger.debug("Cluster: " + clusterentry.getKey());
-    	logger.debug("Cluster Name: " + cluster.getName());
-    	logger.debug("HDFS URL: " + cluster.getHdfsUrl());
-    	logger.debug("JT Url: " + cluster.getHadoopConf().get("mapred.job.tracker"));
-    	logger.debug("Job Queue Name: " + cluster.getJobQueueName());
-    	logger.debug("Root Directory: " + cluster.getRootDir());
+
+      for (Map.Entry<String, Cluster> clusterentry : clustermap.entrySet()) {
+        Cluster cluster = clusterentry.getValue();
+        logger.debug("Cluster: " + clusterentry.getKey());
+        logger.debug("Cluster Name: " + cluster.getName());
+        logger.debug("HDFS URL: " + cluster.getHdfsUrl());
+        logger.debug("JT Url: "
+            + cluster.getHadoopConf().get("mapred.job.tracker"));
+        logger.debug("Job Queue Name: " + cluster.getJobQueueName());
+        logger.debug("Root Directory: " + cluster.getRootDir());
       }
-      
+
       // databusConfigParser.parseXmlFile();
     } catch (Exception e) {
       e.printStackTrace();

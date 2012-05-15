@@ -8,63 +8,79 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.MiniMRCluster;
-import org.testng.annotations.AfterSuite;
 
 public abstract class TestMiniClusterUtil {
-  
-  private static MiniDFSCluster dfscluster = null;
 
-  private static MiniMRCluster mrcluster = null;
+  private MiniDFSCluster dfscluster = null;
 
-  private static Configuration CONF = new Configuration();
+  private MiniMRCluster mrcluster = null;
+
+  private final Configuration CONF = new Configuration();
 
   // Number of datanodes in the cluster
 
-  private static final int DATANODE_COUNT = 2;
+  private static final int DEFAULT_DATANODE_COUNT = 2;
+  private static final int DEFAULT_TASKTRACKER_COUNT = 1;
+  private static final int DEFAULT_NUM_MR_DIRS = 1;
 
-  private static final int TASKTRACKER_COUNT = 1;
+  public void setup(int datanodecount, int tasktrackercount, int nummrdirs)
+      throws Exception {
+    // Set the Test Directory as MiniClusterUtil so as to have everything in
+    // common place
+    String dataDir = "build/test/" + this.getClass().getName();
+    System.setProperty("test.build.data", dataDir + "/data");
+    System.setProperty("hadoop.log.dir", dataDir + "/test-logs");
 
-  private static final int NUM_MR_DIRS = 1;
+    if (datanodecount < 0)
+      datanodecount = DEFAULT_DATANODE_COUNT;
 
-  public void setup() throws Exception{
-    //Set the Test Directory as MiniClusterUtil so as to have everything in common place
-    System.setProperty("test.build.data", "build/test/data/MiniClusterUtil");
-    System.setProperty("hadoop.log.dir", "build/test/test-logs"); 
-    
-    if (dfscluster == null) {
-      dfscluster = new MiniDFSCluster(CONF, DATANODE_COUNT, true, null);
+    if (tasktrackercount < 0)
+      tasktrackercount = DEFAULT_TASKTRACKER_COUNT;
+
+    if (nummrdirs <= 0)
+      nummrdirs = DEFAULT_NUM_MR_DIRS;
+
+    if ((dfscluster == null) && (datanodecount > 0)) {
+      dfscluster = new MiniDFSCluster(CONF, datanodecount, true, null);
       dfscluster.waitActive();
     }
 
-    if (mrcluster == null) {
-    mrcluster = new MiniMRCluster(TASKTRACKER_COUNT, 
-        dfscluster.getFileSystem().getUri().toString(), 
-        NUM_MR_DIRS);
+    if ((mrcluster == null) && (tasktrackercount > 0)) {
+      mrcluster = new MiniMRCluster(tasktrackercount, dfscluster
+          .getFileSystem().getUri().toString(), nummrdirs);
     }
   }
 
-  @AfterSuite
   public void cleanup() throws Exception {
-    if(dfscluster!=null)
+    if (dfscluster != null) {
+      // MiniDFSCluster.getBaseDir().deleteOnExit();
       dfscluster.shutdown();
-    
-    if(mrcluster!=null)
-      mrcluster.shutdown();	
-    
-    dfscluster=null;
-    mrcluster=null;
+    }
+
+    if (mrcluster != null)
+      mrcluster.shutdown();
+
+    dfscluster = null;
+    mrcluster = null;
   }
-  
+
   public JobConf CreateJobConf() {
-    return mrcluster.createJobConf();
+    if (mrcluster != null)
+      return mrcluster.createJobConf();
+    else
+      return null;
   }
-  
-  public FileSystem GetFileSystem() throws IOException{
-    return dfscluster.getFileSystem();
+
+  public FileSystem GetFileSystem() throws IOException {
+    if (dfscluster != null)
+      return dfscluster.getFileSystem();
+    else
+      return null;
   }
-  
-  public void RunJob(JobConf conf) throws IOException{
-    JobClient.runJob(conf);
+
+  public void RunJob(JobConf conf) throws IOException {
+    if (mrcluster != null)
+      JobClient.runJob(conf);
   }
 
 }
