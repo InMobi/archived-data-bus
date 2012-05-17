@@ -25,11 +25,11 @@
 
   <clusters>
     <cluster name="" hdfsurl=""
-             jturl="">
+             jturl="" jobqueuename="default">
     </cluster>
 
     <cluster name="" hdfsurl=""
-             jturl="">
+             jturl="" jobqueuename="default">
     </cluster>
 
   </clusters>
