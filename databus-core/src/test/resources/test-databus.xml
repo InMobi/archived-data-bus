@@ -1,0 +1,30 @@
+<databus>
+  <defaults>
+    <rootdir>/tmp/databustest2</rootdir>
+    <retentionindays>2</retentionindays>
+  </defaults>
+
+  <!-- A stream can have only one primary and multiple mirrors as destinations
+    -->
+  <streams>
+    <stream name="test2">
+      <sources>
+        <source>
+          <name>testcluster2</name>
+          <retentionindays>2</retentionindays>
+        </source>
+      </sources>
+      <destinations>
+      </destinations>
+    </stream>
+  </streams>
+
+  <clusters>
+    <cluster name="testcluster2" hdfsurl="file:///"
+             jturl="local"
+             jobqueuename="default"
+             >
+    </cluster>
+
+  </clusters>
+</databus>

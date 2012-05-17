@@ -13,6 +13,7 @@
  */
 package com.inmobi.databus;
 
+import java.io.File;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -57,10 +58,16 @@ public class DatabusConfigParser {
     DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
     DocumentBuilder db = dbf.newDocumentBuilder();
     Document dom;
-    if (fileName == null)
-      dom = db.parse(ClassLoader.getSystemResourceAsStream("databus.xml"));
-    else
-      dom = db.parse(fileName);
+    if (fileName == null) {
+      fileName = "databus.xml";
+    }
+    File file = new File(fileName);
+    // see if file exists in cwd or is an absolute path
+    if (file.exists()) {
+      dom = db.parse(file);
+    } else { // load file from classpath
+      dom = db.parse(ClassLoader.getSystemResourceAsStream(fileName));
+    }
     if (dom != null)
       parseDocument(dom);
     else
