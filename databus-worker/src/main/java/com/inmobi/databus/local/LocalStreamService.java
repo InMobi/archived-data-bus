@@ -16,6 +16,7 @@ package com.inmobi.databus.local;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -114,7 +115,9 @@ public class LocalStreamService extends AbstractService {
         checkPoint(checkpointPaths);
         LOG.info("Commiting trashPaths");
         commit(populateTrashCommitPaths(trashSet));
-        LOG.info("Committed successfully for " + commitTime);
+        LOG.info("Committed successfully at "
+            + ((new SimpleDateFormat("yyyy/MM/dd, hh:mm")).format(new Date(
+                commitTime))).toString());
       }
     } catch (Exception e) {
       LOG.warn("Error in running LocalStreamService " + e);

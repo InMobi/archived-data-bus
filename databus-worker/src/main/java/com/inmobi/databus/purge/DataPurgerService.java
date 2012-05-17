@@ -1,17 +1,33 @@
 /*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.inmobi.databus.purge;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
 import com.inmobi.databus.AbstractService;
 import com.inmobi.databus.Cluster;
@@ -19,22 +35,6 @@ import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.DestinationStream;
 import com.inmobi.databus.SourceStream;
 import com.inmobi.databus.utils.CalendarHelper;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
 
 /*
  * Assumptions
@@ -50,7 +50,6 @@ public class DataPurgerService extends AbstractService {
   private Set<Path> streamsToPurge;
   private DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm");
   private static long MILISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
-
 
   public DataPurgerService(DatabusConfig databusConfig, Cluster cluster)
       throws Exception {
@@ -69,10 +68,9 @@ public class DataPurgerService extends AbstractService {
     LOG.info(Thread.currentThread().getName() + " stopped [" + stopped + "]");
   }
 
-
   @Override
   public long getMSecondsTillNextRun(long currentTime) {
-   return runIntervalInMsec;
+    return runIntervalInMsec;
   }
 
   private void addMergedStreams() {
@@ -159,10 +157,9 @@ public class DataPurgerService extends AbstractService {
       // Merged streams at this cluster - retention period config
       addMergedStreams();
       String mergedStreamRoot = cluster.getFinalDestDirRoot();
-      Map<String, Path>  mergedStreamsInClusterPathMap = getStreamsInCluster(mergedStreamRoot);
+      Map<String, Path> mergedStreamsInClusterPathMap = getStreamsInCluster(mergedStreamRoot);
       String localStreamRoot = cluster.getLocalFinalDestDirRoot();
-      Map<String, Path> localStreamsInClusterPathMap = getStreamsInCluster
-              (localStreamRoot);
+      Map<String, Path> localStreamsInClusterPathMap = getStreamsInCluster(localStreamRoot);
       getPathsToPurge(mergedStreamsInClusterPathMap,
           localStreamsInClusterPathMap);
       purge();
@@ -186,7 +183,7 @@ public class DataPurgerService extends AbstractService {
     LOG.debug("Looking for trashPaths in [" + trashRoot + "]");
     FileStatus[] trashPaths = fs.listStatus(trashRoot);
     // For each trashpath
-    if (trashPaths != null && trashPaths.length > 1) {
+    if (trashPaths != null && trashPaths.length >= 1) {
       for (FileStatus trashPath : trashPaths) {
         Calendar trashPathDate = getDateFromTrashPath(trashPath.getPath()
             .getName());
@@ -256,15 +253,13 @@ public class DataPurgerService extends AbstractService {
                     streamsToPurge.add(day.getPath().makeQualified(fs));
                   }
                 } // each day
-              }
-              else {
-                //No day found in month. Purge month
+              } else {
+                // No day found in month. Purge month
                 streamsToPurge.add(month.getPath().makeQualified(fs));
               }
             }// each month
-          }
-          else {
-            //no months found in year. Purge Year.
+          } else {
+            // no months found in year. Purge Year.
             streamsToPurge.add(year.getPath().makeQualified(fs));
           }
         }// each year
@@ -272,30 +267,29 @@ public class DataPurgerService extends AbstractService {
     }// each stream
   }
 
-    public boolean isPurge(Calendar streamDate, Integer retentionPeriodinDays) {
-	//int streamDay = streamDate.get(Calendar.DAY_OF_MONTH);
-	Calendar nowTime = CalendarHelper.getNowTime();
-	String streamDateStr = dateFormat.format(new Date(streamDate
-							  .getTimeInMillis()));
-	String nowTimeStr =  dateFormat.format(new Date
-					       (nowTime.getTimeInMillis()));
+  public boolean isPurge(Calendar streamDate, Integer retentionPeriodinDays) {
+    // int streamDay = streamDate.get(Calendar.DAY_OF_MONTH);
+    Calendar nowTime = CalendarHelper.getNowTime();
+    String streamDateStr = dateFormat.format(new Date(streamDate
+        .getTimeInMillis()));
+    String nowTimeStr = dateFormat.format(new Date(nowTime.getTimeInMillis()));
 
-	LOG.debug("streamDate [" + streamDateStr +  "] currentDate : [" + nowTimeStr +
-		  "] against retention [" + retentionPeriodinDays + "] days");
+    LOG.debug("streamDate [" + streamDateStr + "] currentDate : [" + nowTimeStr
+        + "] against retention [" + retentionPeriodinDays + "] days");
 
-	LOG.debug("Days between streamDate and nowTime is [" +
-		  getDaysBetweenDates(streamDate, nowTime));
-	if (getDaysBetweenDates(streamDate, nowTime) < retentionPeriodinDays )
-	    return false;
-	else
-	    return true;
-    }
+    LOG.debug("Days between streamDate and nowTime is ["
+        + getDaysBetweenDates(streamDate, nowTime));
+    if (getDaysBetweenDates(streamDate, nowTime) < retentionPeriodinDays)
+      return false;
+    else
+      return true;
+  }
 
-    private int getDaysBetweenDates(Calendar startDate, Calendar endDate) {
-	long diff = endDate.getTimeInMillis() - startDate.getTimeInMillis();
-	int days = (int) Math.floor(diff / MILISECONDS_PER_DAY);
-	return Math.abs(days);
-    }
+  private int getDaysBetweenDates(Calendar startDate, Calendar endDate) {
+    long diff = endDate.getTimeInMillis() - startDate.getTimeInMillis();
+    int days = (int) Math.floor(diff / MILISECONDS_PER_DAY);
+    return Math.abs(days);
+  }
 
   private void purge() throws Exception {
     Iterator it = streamsToPurge.iterator();

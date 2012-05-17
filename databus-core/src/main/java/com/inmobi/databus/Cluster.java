@@ -41,8 +41,6 @@ public class Cluster {
   private final Map<String, DestinationStream> consumeStreams;
   private final Set<String> sourceStreams;
   private final Configuration hadoopConf;
-  // first time starting time
-  private long lastCommitTime = System.currentTimeMillis();
 
   public Cluster(Map<String, String> clusterElementsMap, String rootDir,
       Map<String, DestinationStream> consumeStreams, Set<String> sourceStreams)
@@ -118,11 +116,7 @@ public class Cluster {
   }
 
   public synchronized long getCommitTime() {
-    long current = System.currentTimeMillis();
-    if (current - lastCommitTime >= 60000) {
-      lastCommitTime = current;
-    }
-    return lastCommitTime;
+    return (long) System.currentTimeMillis();
   }
 
   public String getHdfsUrl() {
