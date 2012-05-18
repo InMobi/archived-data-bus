@@ -1,7 +1,7 @@
 Source: scribe-server-hdfs-orig
 Section: unknown
 Priority: extra
-Maintainer: Pradeep Jindal <pradeep.jindal@inmobi.com>
+Maintainer: Platform Engineering <platform-engg@inmobi.com>
 Build-Depends: debhelper (>= 7), autotools-dev, libthrift-dev, libfb303, libboost-system-dev, libboost-filesystem-dev, libc6-dev, libstdc++6-4.4-dev, libevent-dev, libhdfs0-dev, thrift-compiler
 Standards-Version: 3.8.3
 Homepage: <insert the upstream URL, if relevant>

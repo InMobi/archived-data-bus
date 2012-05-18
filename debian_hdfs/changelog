@@ -1,3 +1,9 @@
+scribe-server-hdfs-orig (0.2.3-1) lucid; urgency=low
+
+  * change flush to HFlush which calls sync for hadoop to flush all changes to disk at max_write_size intervals
+
+ -- Platform Engineering <platform-engg@inmobi.com>  Fri, 18 May 2012 17:57:45 +0530
+
 scribe-server-hdfs-orig (0.2.2-1) lucid; urgency=low
 
   * added metrics to capture per category timesouts and eofs for the network store
