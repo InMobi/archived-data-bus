@@ -6,12 +6,10 @@
   <parent>
     <artifactId>databus-parent</artifactId>
     <groupId>com.inmobi.databus</groupId>
-    <version>${project.version}</version>
+    <version>1.0.0</version>
   </parent>
 
-  <groupId>com.inmobi.databus</groupId>
   <artifactId>databus-core</artifactId>
-  <version>${project.version}</version>
   <packaging>jar</packaging>
 
   <dependencies>
