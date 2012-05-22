@@ -24,12 +24,10 @@
   </streams>
 
   <clusters>
-    <cluster name="" hdfsurl=""
-             jturl="" jobqueuename="default">
+    <cluster name="" hdfsurl="" jturl="" jobqueuename="default">
     </cluster>
 
-    <cluster name="" hdfsurl=""
-             jturl="" jobqueuename="default">
+    <cluster name="" hdfsurl="" jturl="" jobqueuename="default">
     </cluster>
 
   </clusters>
