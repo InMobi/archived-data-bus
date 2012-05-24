@@ -14,13 +14,13 @@
 package com.inmobi.databus;
 
 public class DestinationStream {
-  private final int retentionInDays;
+  private final int retentionInHours;
   private final String name;
   private final Boolean isPrimary;
 
-  public DestinationStream(String name, int retentionInDays, Boolean isPrimary) {
+  public DestinationStream(String name, int retentionInHours, Boolean isPrimary) {
     this.name = name;
-    this.retentionInDays = retentionInDays;
+    this.retentionInHours = retentionInHours;
     this.isPrimary = isPrimary;
   }
 
@@ -32,7 +32,7 @@ public class DestinationStream {
     return name;
   }
 
-  public int getRetentionInDays() {
-    return retentionInDays;
+  public int getRetentionInHours() {
+    return retentionInHours;
   }
 }

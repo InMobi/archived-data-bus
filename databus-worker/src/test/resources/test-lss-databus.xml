@@ -1,17 +1,18 @@
 <databus>
   <defaults>
-    <rootdir>/tmp/databustest2</rootdir>
-    <retentioninhours>48</retentioninhours>
+    <rootdir>/tmp/databustest1</rootdir>
+    <retentioninhours>24</retentioninhours>
+    <trashretentioninhours>24</trashretentioninhours>
   </defaults>
 
   <!-- A stream can have only one primary and multiple mirrors as destinations
     -->
   <streams>
-    <stream name="test2">
+    <stream name="test1">
       <sources>
         <source>
-          <name>testcluster2</name>
-          <retentioninhours>48</retentioninhours>
+          <name>testcluster1</name>
+          <retentioninhours>24</retentioninhours>
         </source>
       </sources>
       <destinations>
@@ -20,7 +21,7 @@
   </streams>
 
   <clusters>
-    <cluster name="testcluster2" hdfsurl="file:///"
+    <cluster name="testcluster1" hdfsurl="file:///"
              jturl="local"
              jobqueuename="default"
              >

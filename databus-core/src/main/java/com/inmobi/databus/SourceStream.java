@@ -28,7 +28,7 @@ public class SourceStream {
     this.sourceClusters = sourceClusters;
   }
 
-  public int getRetentionInDays(String clusterName) {
+  public int getRetentionInHours(String clusterName) {
     int clusterRetention = sourceClusters.get(clusterName).intValue();
     return clusterRetention;
   }

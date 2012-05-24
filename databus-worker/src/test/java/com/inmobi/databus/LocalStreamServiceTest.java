@@ -23,11 +23,13 @@ import java.io.IOException;
 import java.net.URI;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -45,7 +47,6 @@ import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
 
 import com.inmobi.databus.local.LocalStreamService;
-import com.inmobi.databus.utils.CalendarHelper;
 
 @Test
 public class LocalStreamServiceTest extends TestMiniClusterUtil {
@@ -184,11 +185,14 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
       Map<FileStatus, String> results = new TreeMap<FileStatus, java.lang.String>();
       Set<FileStatus> trashSet = new HashSet<FileStatus>();
       Map<String, FileStatus> checkpointPaths = new HashMap<String, FileStatus>();
+      fs.delete(cluster.getDataDir(), true);
       FileStatus dataDir = new FileStatus(20, false, 3, 23823, 2438232,
           cluster.getDataDir());
+      fs.delete(new Path(cluster.getRootDir() + "/databus-checkpoint"), true);
 
       TestLocalStreamService service = new TestLocalStreamService(null,
-          cluster, new FSCheckpointProvider("/tmp/databus-checkpoint"));
+          cluster, new FSCheckpointProvider(cluster.getRootDir()
+              + "/databus-checkpoint"));
       service.createListing(fs, dataDir, results, trashSet, checkpointPaths);
 
       Set<String> tmpResults = new LinkedHashSet<String>();
@@ -216,6 +220,9 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
             + checkpointPaths.get(key).getPath().getName() + "]");
       }
       validateExpectedOutput(tmpResults, tmpTrashPaths, tmpCheckPointPaths);
+      fs.delete(new Path(cluster.getRootDir() + "/databus-checkpoint"), true);
+      fs.delete(cluster.getDataDir(), true);
+      fs.close();
     } catch (Exception e) {
       LOG.debug("Error in running testCreateListing", e);
       assert false;
@@ -236,13 +243,29 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
   }
 
   private DatabusConfig buildTestDatabusConfig() throws Exception {
+    JobConf conf = super.CreateJobConf();
+    return buildTestDatabusConfig(conf.get("mapred.job.tracker"),
+        "file:///tmp", "databus", "48", "24");
+  }
+
+  public static DatabusConfig buildTestDatabusConfig(String jturl,
+      String hdfsurl,
+      String rootdir, String retentioninhours, String trashretentioninhours)
+      throws Exception {
 
     Map<String, Integer> sourcestreams = new HashMap<String, Integer>();
 
-    sourcestreams.put("cluster1", new Integer(2));
+    sourcestreams.put("cluster1", new Integer(retentioninhours));
 
     Map<String, SourceStream> streamMap = new HashMap<String, SourceStream>();
     streamMap.put("stream1", new SourceStream("stream1", sourcestreams));
+
+    sourcestreams.clear();
+
+    Map<String, DestinationStream> deststreamMap = new HashMap<String, DestinationStream>();
+    deststreamMap.put("stream1",
+        new DestinationStream("stream1", Integer.parseInt(retentioninhours),
+            Boolean.TRUE));
 
     sourcestreams.clear();
 
@@ -251,21 +274,32 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
      * new SourceStream("stream2", sourcestreams));
      */
 
-    JobConf conf = super.CreateJobConf();
-
+    Set<String> sourcestreamnames = new HashSet<String>();
+    
+    for (Map.Entry<String, SourceStream> stream : streamMap.entrySet()) {
+      sourcestreamnames.add(stream.getValue().getName());
+    }
     Map<String, Cluster> clusterMap = new HashMap<String, Cluster>();
 
     clusterMap.put(
         "cluster1",
-        ClusterTest.buildLocalCluster("cluster1", "file:///tmp",
-            conf.get("mapred.job.tracker")));
+ ClusterTest.buildLocalCluster(rootdir,
+        "cluster1", hdfsurl, jturl, sourcestreamnames,
+        deststreamMap));
+
+    Map<String, String> defaults = new HashMap<String, String>();
+    
+    defaults.put(DatabusConfigParser.ROOTDIR, rootdir);
+    defaults.put(DatabusConfigParser.RETENTION_IN_HOURS, retentioninhours);
+    defaults.put(DatabusConfigParser.TRASH_RETENTION_IN_HOURS,
+        trashretentioninhours);
 
     /*
      * clusterMap.put( "cluster2", ClusterTest.buildLocalCluster("cluster2",
      * "file:///tmp", conf.get("mapred.job.tracker")));
      */
 
-    return new DatabusConfig(streamMap, clusterMap);
+    return new DatabusConfig(streamMap, clusterMap, defaults);
   }
 
   private String getDateAsYYYYMMDD(Date date) {
@@ -273,14 +307,20 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     return dateFormat.format(date);
   }
 
-  private String getDateAsYYYYMMDDHHPath(Date date) {
+  public static String getDateAsYYYYMMDDHHPath(Date date) {
     DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator + "MM"
         + File.separator + "dd" + File.separator + "HH" + File.separator);
     return dateFormat.format(date);
   }
 
-  private String getDateAsYYYYMMDDHHMMSS(Date date) {
+  public static String getDateAsYYYYMMDDHHMMSS(Date date) {
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss_SSSSS");
+    return dateFormat.format(date);
+  }
+
+  public static String getDateAsYYYYMMDDHHMMPath(Date date) {
+    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator + "MM"
+        + File.separator + "dd" + File.separator + "HH" + File.separator + "mm");
     return dateFormat.format(date);
   }
 
@@ -288,25 +328,36 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
   public void testMapReduce() throws Exception {
 
     final int NUM_OF_FILES = 35;
+
+    DatabusConfigParser configParser = new DatabusConfigParser(
+        "test-lss-databus.xml");
+    DatabusConfig config = configParser.getConfig();
+    
     FileSystem fs = FileSystem.getLocal(new Configuration());
 
-    fs.delete(new Path("/tmp/databus"), true);
-    DatabusConfig config = buildTestDatabusConfig();
-
-    Set<LocalStreamService> services = new HashSet<LocalStreamService>();
+    List<TestLocalStreamService> services = new ArrayList<TestLocalStreamService>();
 
     for (Map.Entry<String, Cluster> cluster : config.getClusters().entrySet()) {
-      services.add(new LocalStreamService(config, cluster.getValue(),
+      services.add(new TestLocalStreamService(config, cluster.getValue(),
           new FSCheckpointProvider(cluster.getValue().getCheckpointDir())));
     }
 
-    for (int i = 0; i < 1; ++i) {
+    for (Map.Entry<String, SourceStream> sstream : config.getSourceStreams()
+        .entrySet()) {
 
-      String[] files = new String[NUM_OF_FILES];
-      fs.mkdirs(new Path("/tmp/databus/data/stream1/cluster1/"));
+      for (Cluster cluster : config.getClusters().values()) {
+
+        String[] files = new String[NUM_OF_FILES];
+        String testRootDir = cluster.getRootDir();
+
+        fs.delete(new Path(testRootDir), true);
+        Path createPath = new Path(cluster.getDataDir(), sstream.getValue()
+            .getName() + File.separator + cluster.getName() + File.separator);
+        fs.mkdirs(createPath);
       for (int j = 0; j < NUM_OF_FILES; ++j) {
-        files[j] = new String("stream1-" + getDateAsYYYYMMDDHHMMSS(new Date()));
-        Path path = new Path("/tmp/databus/data/stream1/cluster1/" + files[j]);
+          files[j] = new String(sstream.getValue().getName() + "-"
+              + getDateAsYYYYMMDDHHMMSS(new Date()));
+          Path path = new Path(createPath, files[j]);
 
         FSDataOutputStream streamout = fs.create(path);
         streamout.writeBytes("Creating Test data for teststream " + files[j]);
@@ -320,24 +371,18 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
          */
       }
 
-      for (LocalStreamService service : services) {
-        service.start();
+      for (TestLocalStreamService service : services) {
+        service.runOnce();
       }
 
-      // Wait for 15 seconds to make sure atleast one run has been done
-      Thread.sleep(15000);
-
-      for (LocalStreamService service : services) {
-        service.stop();
-      }
       for (int dates = 0; dates < services.size(); ++dates) {
 
         Date todaysdate = new Date();
-        String trashpath = "/tmp/databus/system/trash/"
-            + CalendarHelper.getCurrentDateAsString();
-        String commitpath = "/tmp/databus/streams_local/stream" + (dates + 1)
-            + "/" + getDateAsYYYYMMDDHHPath(todaysdate);
-        String checkpointpath = "/tmp/databus/system/checkpoint/";
+          Path trashpath = cluster.getTrashPathWithDateHour();
+          String commitpath = cluster.getLocalFinalDestDirRoot()
+              + sstream.getValue().getName() + File.separator
+              + getDateAsYYYYMMDDHHPath(todaysdate);
+          String checkpointpath = cluster.getCheckpointDir();
         FileStatus[] mindirs = fs.listStatus(new Path(commitpath));
 
         for (FileStatus mindir : mindirs) {
@@ -345,18 +390,19 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
           try {
             Integer.parseInt(mindir.getPath().getName());
             String streams_local_dir = commitpath + mindir.getPath().getName()
-                + "/cluster" + (dates + 1);
+ + File.separator
+                  + cluster.getName();
 
             LOG.debug("Checking in Path for mapred Output: "
                 + streams_local_dir);
 
             for (int j = 0; j < NUM_OF_FILES; ++j) {
               Assert.assertTrue(fs.exists(new Path(streams_local_dir + "-"
-                  + files[j] + ".gz")));
+                    + files[j] + ".gz")));
             }
 
-            Path checkpointfile = new Path(checkpointpath + "stream"
-                + (dates + 1) + "cluster" + (dates + 1) + ".ck");
+              Path checkpointfile = new Path(checkpointpath + File.separator
+                  + sstream.getValue().getName() + cluster.getName() + ".ck");
 
             LOG.debug("Checking for Checkpoint File: " + checkpointfile);
 
@@ -381,10 +427,11 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
             // Here 6 is the number of files - trash paths which are excluded
             for (int j = 0; j < NUM_OF_FILES - 6; ++j) {
               if (files[j].compareTo(checkpoint) <= 0) {
-                String TrashFile = trashpath + File.separator + "cluster"
-                    + (dates + 1) + "-" + files[j];
-                LOG.debug("Verifying Trash Path " + TrashFile);
-                Assert.assertTrue(fs.exists(new Path(TrashFile)));
+                  String trashfilename = cluster.getName() + "-" + files[j];
+                  LOG.debug("Verifying Trash Path " + trashpath + "File "
+                      + trashfilename);
+                  Assert.assertTrue(fs
+                      .exists(new Path(trashpath, trashfilename)));
               } else
                 break;
             }
@@ -395,20 +442,24 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
           }
         }
       }
-
+        fs.delete(new Path(testRootDir), true);
+      }
     }
 
-    fs.delete(new Path("/tmp/databus"), true);
     fs.close();
   }
 
-  class TestLocalStreamService extends LocalStreamService {
+  private class TestLocalStreamService extends LocalStreamService {
 
     public TestLocalStreamService(DatabusConfig config, Cluster cluster,
         CheckpointProvider provider) {
       super(config, cluster, provider);
     }
 
+    public void runOnce() throws Exception {
+      super.execute();
+    }
+    
     @Override
     protected String getCurrentFile(FileSystem fs, FileStatus[] files)
         throws IOException {

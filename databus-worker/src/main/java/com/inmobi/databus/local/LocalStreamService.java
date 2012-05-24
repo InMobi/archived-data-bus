@@ -197,7 +197,7 @@ public class LocalStreamService extends AbstractService {
   private Map<Path, Path> populateTrashCommitPaths(Set<FileStatus> trashSet) {
     // find trash paths
     Map<Path, Path> trashPaths = new LinkedHashMap<Path, Path>();
-    Path trash = cluster.getTrashPathWithDate();
+    Path trash = cluster.getTrashPathWithDateHour();
     Iterator<FileStatus> it = trashSet.iterator();
     while (it.hasNext()) {
       FileStatus src = it.next();

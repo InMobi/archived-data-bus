@@ -13,8 +13,12 @@
  */
 package com.inmobi.databus;
 
+import java.io.File;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.testng.annotations.Test;
@@ -100,13 +104,14 @@ public class ClusterTest {
     return buildLocalCluster(null, null, null);
   }
 
-  public static Cluster buildLocalCluster(String clusterName, String hdfsUrl,
-      String jtUrl) throws Exception {
+  public static Cluster buildLocalCluster(String rootdir, String clusterName,
+      String hdfsUrl, String jtUrl, Set<String> sourcestreams,
+      Map<String, DestinationStream> consumestreams) throws Exception {
     if (jtUrl == null)
       jtUrl = "http://localhost:8021";
 
     if (hdfsUrl == null)
-      hdfsUrl = "file://tmp/";
+      hdfsUrl = "file:///tmp/" + new Random().nextLong() + File.separator;
 
     if (clusterName == null)
       clusterName = "localCluster";
@@ -116,7 +121,15 @@ public class ClusterTest {
     clusterElementsMap.put("hdfsurl", hdfsUrl);
     clusterElementsMap.put("jturl", jtUrl);
     clusterElementsMap.put("jobqueuename", "default");
-    return new Cluster(clusterElementsMap, "databus",
-        new HashMap<String, DestinationStream>(), null);
+    return new Cluster(clusterElementsMap, rootdir,
+        ((consumestreams == null) ? (new HashMap<String, DestinationStream>())
+            : consumestreams),
+        ((sourcestreams == null) ? (new HashSet<String>())
+            : sourcestreams));
+  }
+
+  public static Cluster buildLocalCluster(String clusterName, String hdfsUrl,
+      String jtUrl) throws Exception {
+    return buildLocalCluster("databus", clusterName, hdfsUrl, jtUrl, null, null);
   }
 }
