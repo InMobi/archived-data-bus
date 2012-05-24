@@ -4,12 +4,12 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <project.version>1.0.0</project.version>
+    <project.version>1.1.0-SNAPSHOT</project.version>
   </properties>
 
   <groupId>com.inmobi.databus</groupId>
   <artifactId>databus-parent</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0-SNAPSHOT</version>
   <name>Databus</name>
   <packaging>pom</packaging>
 
