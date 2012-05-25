@@ -14,6 +14,8 @@
 package com.inmobi.databus;
 
 import java.io.File;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -33,7 +35,12 @@ public class ClusterTest {
       LOG.debug("getLocalDestDir ::");
       String expectedPath = "hdfs://localhost:8020/databus/streams_local"
           + "/testCategory/1970/02/07/18/18/";
-      String path = cluster.getLocalDestDir("testCategory", 3242890100L);
+      Calendar calendar = new GregorianCalendar(1970, 1, 7, 18, 18); // month
+                                                                     // starts
+                                                                     // from 0
+                                                                     // :P
+      String path = cluster.getLocalDestDir("testCategory",
+ calendar.getTime());
       LOG.debug("Expected Path [" + expectedPath + "]");
       LOG.debug("Path [" + path + "]");
       assert expectedPath.equals(path);
@@ -48,7 +55,9 @@ public class ClusterTest {
     try {
       Cluster cluster = buildCluster();
       String expectedPath = "testCategory/1970/09/05/16/43/";
-      String path = cluster.getDateTimeDestDir("testCategory", 21381231232L);
+      Calendar calendar = new GregorianCalendar(1970, 8, 5, 16, 43);
+      String path = cluster.getDateTimeDestDir("testCategory",
+          calendar.getTimeInMillis());
       LOG.debug("Path [" + path + "]");
       LOG.debug("Expected Path [" + expectedPath + "]");
       assert expectedPath.equals(path);
@@ -64,7 +73,9 @@ public class ClusterTest {
       Cluster cluster = buildCluster();
       String path = null;
       String expectedPath = "hdfs://localhost:8020/databus/streams/testCategory/1970/09/05/16/43/";
-      path = cluster.getFinalDestDir("testCategory", 21381231232L);
+      Calendar calendar = new GregorianCalendar(1970, 8, 5, 16, 43);
+      path = cluster
+          .getFinalDestDir("testCategory", calendar.getTimeInMillis());
       LOG.debug("Path [" + path + "]");
       LOG.debug("Expected Path [" + expectedPath + "]");
       assert expectedPath.equals(path);
@@ -81,7 +92,9 @@ public class ClusterTest {
       Cluster cluster = buildCluster();
       String path = null;
       String expectedPath = "hdfs://localhost:8020/databus/streams/testCategory/1970/09/05/16/";
-      path = cluster.getFinalDestDirTillHour("testCategory", 21381231232L);
+      Calendar calendar = new GregorianCalendar(1970, 8, 5, 16, 0);
+      path = cluster.getFinalDestDirTillHour("testCategory",
+          calendar.getTimeInMillis());
       LOG.debug("Path [" + path + "]");
       LOG.debug("Expected Path [" + expectedPath + "]");
       assert expectedPath.equals(path);
