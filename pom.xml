@@ -5,6 +5,7 @@
 
   <properties>
     <project.version>1.1.0-SNAPSHOT</project.version>
+    <excluded.testng.groups>integration</excluded.testng.groups>
   </properties>
 
   <groupId>com.inmobi.databus</groupId>
@@ -138,7 +139,7 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <version>2.12</version>
             <configuration>
-                <excludedGroups>integration</excludedGroups>
+		<excludedGroups>${excluded.testng.groups}</excludedGroups>
             </configuration>
         </plugin>
     </plugins>
