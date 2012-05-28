@@ -54,31 +54,11 @@ if [ "$DATABUS_PID_DIR" = "" ]; then
 fi
 export _DATABUS_DAEMON_PIDFILE=$DATABUS_PID_DIR/databus.pid
 
-#read the configFile
-. $configFile
-
-#config file values basic validation
-if [ -z $CLUSTERS_TO_PROCESS ]; then
-  echo "CLUSTERS_TO_PROCESS not defined in " $configFile
-  exit 1
-fi
-if [ -z $DATABUS_CFG ]; then
-  echo "DATABUS_CFG not defined in " $configFile
-  exit 1
-fi
-if [ -z $ZK_CONNECT_STRING ]; then
-  echo "ZK_CONNECT_STRING not defined in " $configFile
-  exit 1
-fi
-if [ -z $LOG4J_PROPERTIES ]; then
-  echo "LOG4J_PROPERTIES not defined in " $configFile
-  exit 1
-fi
-
 fi
 
 #set classpath
 export CLASSPATH=`ls lib/*jar | tr "\n" :`;
+export CLASSPATH=$CLASSPATH:/etc/hadoop/conf/
 #echo setting classPath to $CLASSPATH
 
 case $startStop in
@@ -94,10 +74,9 @@ case $startStop in
       fi
     fi
 
-    echo starting DATABUS, logging to logfile defined in $LOG4J_PROPERTIES
+    echo starting DATABUS
 
-   nohup java "-Ddatabus.log4j.properties.file=${LOG4J_PROPERTIES}" \
-    -cp "$CLASSPATH" com.inmobi.databus.Databus $CLUSTERS_TO_PROCESS $DATABUS_CFG $ZK_CONNECT_STRING 2>&1 &
+   nohup java -cp "$CLASSPATH" com.inmobi.databus.Databus $configFile 2>&1 &
    if [ $? -eq 0 ]
     then
       if /bin/echo -n $! > "$_DATABUS_DAEMON_PIDFILE"

@@ -17,20 +17,24 @@ import com.inmobi.databus.distcp.MergedStreamService;
 import com.inmobi.databus.distcp.MirrorStreamService;
 import com.inmobi.databus.local.LocalStreamService;
 import com.inmobi.databus.purge.DataPurgerService;
+import com.inmobi.databus.utils.SecureLoginUtil;
 import com.inmobi.databus.zookeeper.CuratorLeaderManager;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
 import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
-public class Databus implements Service {
+public class Databus implements Service, DatabusConstants {
   private static Logger LOG = Logger.getLogger(Databus.class);
   private DatabusConfig config;
 
@@ -130,8 +134,7 @@ public class Databus implements Service {
     catch (Exception e) {
       LOG.warn("Error is starting service", e);
     }
-    //Block this method to avoid losing leadership
-    //of current work
+    //Block this method to avoid losing leadership of current work
     join();
     //If all threads are finished release leadership
     System.exit(0);
@@ -139,21 +142,43 @@ public class Databus implements Service {
 
   public static void main(String[] args) throws Exception {
     try {
-      if (args.length != 3 ) {
-        LOG.warn("Usage: com.inmobi.databus.Databus <clustersToProcess> <configFile> <zkconnectstring>");
-        return;
+      if (args.length != 1 ) {
+        LOG.error("Usage: com.inmobi.databus.Databus <databus.cfg>");
+        System.exit(-1);
       }
-      String log4jFile = System.getProperty("databus.log4j.properties.file");
+      String cfgFile = args[0].trim();
+      Properties prop = new Properties();
+      prop.load(new FileReader(cfgFile));
+
+      String log4jFile = prop.getProperty(LOG4J_FILE);
       if (log4jFile != null && new File(log4jFile).exists()) {
         PropertyConfigurator.configureAndWatch(log4jFile);
         LOG.info("Log4j Property File [" + log4jFile + "]");
       }
-      String clustersStr = args[0].trim();
+
+      String clustersStr = prop.getProperty(CLUSTERS_TO_PROCESS);
       String[] clusters = clustersStr.split(",");
-      String databusconfigFile = args[1].trim();
-      String zkConnectString = args[2].trim();
+      String databusConfigFile = prop.getProperty(DATABUS_XML);
+      String zkConnectString = prop.getProperty(ZK_ADDR);
+      String principal = prop.getProperty(KRB_PRINCIPAL);
+      String keytab = prop.getProperty(KEY_TAB_FILE);
+
+      if (UserGroupInformation.isSecurityEnabled()) {
+        LOG.info("Security enabled, trying kerberoes login principal [" +
+        principal + "] keytab [" + keytab + "]");
+        //krb enabled
+        if (principal != null && keytab != null) {
+          SecureLoginUtil.login(KRB_PRINCIPAL, principal, KEY_TAB_FILE, keytab);
+         }
+        else  {
+          LOG.error("Kerberoes principal/keytab not defined properly in " +
+          "databus.cfg");
+          System.exit(-1);
+        }
+      }
+
       DatabusConfigParser configParser =
-              new DatabusConfigParser(databusconfigFile);
+              new DatabusConfigParser(databusConfigFile);
       DatabusConfig config = configParser.getConfig();
       StringBuffer databusClusterId = new StringBuffer();
       Set<String> clustersToProcess = new HashSet<String>();
