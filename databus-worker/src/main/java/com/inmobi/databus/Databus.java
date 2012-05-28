@@ -144,7 +144,8 @@ public class Databus implements Service, DatabusConstants {
     try {
       if (args.length != 1 ) {
         LOG.error("Usage: com.inmobi.databus.Databus <databus.cfg>");
-        System.exit(-1);
+        throw new RuntimeException("Usage: com.inmobi.databus.Databus " +
+        "<databus.cfg>");
       }
       String cfgFile = args[0].trim();
       Properties prop = new Properties();
@@ -157,9 +158,25 @@ public class Databus implements Service, DatabusConstants {
       }
 
       String clustersStr = prop.getProperty(CLUSTERS_TO_PROCESS);
+      if (clustersStr == null || clustersStr.length() == 0) {
+         LOG.error("Please provide " + CLUSTERS_TO_PROCESS + " in [" +
+         cfgFile + "]");
+         throw new RuntimeException("Insufficent information on cluster name");
+      }
       String[] clusters = clustersStr.split(",");
       String databusConfigFile = prop.getProperty(DATABUS_XML);
+      if (!new File(databusConfigFile).exists())  {
+        LOG.error("Databus Configuration file [" + databusConfigFile + "] " +
+        "doesn't exist..can't proceed");
+        throw new RuntimeException("Specified databus config file doesn't " +
+        "exist");
+      }
       String zkConnectString = prop.getProperty(ZK_ADDR);
+      if (zkConnectString == null || zkConnectString.length() == 0) {
+        LOG.error("Zookeper connection string not specified");
+        throw new RuntimeException("Zoookeeper connection string not " +
+        "specified");
+      }
       String principal = prop.getProperty(KRB_PRINCIPAL);
       String keytab = prop.getProperty(KEY_TAB_FILE);
 
@@ -173,7 +190,8 @@ public class Databus implements Service, DatabusConstants {
         else  {
           LOG.error("Kerberoes principal/keytab not defined properly in " +
           "databus.cfg");
-          System.exit(-1);
+          throw new RuntimeException("Kerberoes principal/keytab not defined " +
+          "properly in databus.cfg");
         }
       }
 
