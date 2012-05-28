@@ -63,7 +63,7 @@ public class Databus implements Service, DatabusConstants {
       //Start LocalStreamConsumerService for this cluster if it's the source of any stream
       if (cluster.getSourceStreams().size() > 0) {
         services.add(new LocalStreamService(config, cluster,
-         new FSCheckpointProvider(cluster.getCheckpointDir())));
+        new FSCheckpointProvider(cluster.getCheckpointDir())));
       }
 
       List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();
@@ -75,7 +75,7 @@ public class Databus implements Service, DatabusConstants {
         //from where it has to mirror mergedStreams
 
         for (String cName : config.getSourceStreams().get(cStream.getName())
-                .getSourceClusters()) {
+        .getSourceClusters()) {
           if (cStream.isPrimary())
             mergedStreamRemoteClusters.add(config.getClusters().get(cName));
         }
@@ -152,16 +152,18 @@ public class Databus implements Service, DatabusConstants {
       prop.load(new FileReader(cfgFile));
 
       String log4jFile = prop.getProperty(LOG4J_FILE);
-      if (log4jFile != null && new File(log4jFile).exists()) {
-        PropertyConfigurator.configureAndWatch(log4jFile);
-        LOG.info("Log4j Property File [" + log4jFile + "]");
+      if (log4jFile == null ||  !new File(log4jFile).exists()) {
+        LOG.error("log4j.properties incorrectly defined");
+        throw new RuntimeException("Log4j.properties not defined");
       }
+      PropertyConfigurator.configureAndWatch(log4jFile);
+      LOG.info("Log4j Property File [" + log4jFile + "]");
 
       String clustersStr = prop.getProperty(CLUSTERS_TO_PROCESS);
       if (clustersStr == null || clustersStr.length() == 0) {
-         LOG.error("Please provide " + CLUSTERS_TO_PROCESS + " in [" +
-         cfgFile + "]");
-         throw new RuntimeException("Insufficent information on cluster name");
+        LOG.error("Please provide " + CLUSTERS_TO_PROCESS + " in [" +
+        cfgFile + "]");
+        throw new RuntimeException("Insufficent information on cluster name");
       }
       String[] clusters = clustersStr.split(",");
       String databusConfigFile = prop.getProperty(DATABUS_XML);
@@ -186,7 +188,7 @@ public class Databus implements Service, DatabusConstants {
         //krb enabled
         if (principal != null && keytab != null) {
           SecureLoginUtil.login(KRB_PRINCIPAL, principal, KEY_TAB_FILE, keytab);
-         }
+        }
         else  {
           LOG.error("Kerberoes principal/keytab not defined properly in " +
           "databus.cfg");
@@ -196,7 +198,7 @@ public class Databus implements Service, DatabusConstants {
       }
 
       DatabusConfigParser configParser =
-              new DatabusConfigParser(databusConfigFile);
+      new DatabusConfigParser(databusConfigFile);
       DatabusConfig config = configParser.getConfig();
       StringBuffer databusClusterId = new StringBuffer();
       Set<String> clustersToProcess = new HashSet<String>();
@@ -218,8 +220,8 @@ public class Databus implements Service, DatabusConstants {
       final Databus databus = new Databus(config, clustersToProcess);
       LOG.info("Starting CuratorLeaderManager for eleader election ");
       CuratorLeaderManager curatorLeaderManager =
-              new CuratorLeaderManager(databus, databusClusterId.toString(),
-                      zkConnectString);
+      new CuratorLeaderManager(databus, databusClusterId.toString(),
+      zkConnectString);
       curatorLeaderManager.start();
       Signal.handle(new Signal("INT"), new SignalHandler() {
         @Override

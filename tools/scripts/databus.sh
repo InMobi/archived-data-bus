@@ -56,8 +56,8 @@ export _DATABUS_DAEMON_PIDFILE=$DATABUS_PID_DIR/databus.pid
 
 fi
 
-if [ -z $HADOOP_CONF ]; then
-  echo "Please define HADOOP_CONF to point to hadoop configuration. eg:: /etc/hadoop/conf"
+if [ -z $HADOOP_CONF_DIR ]; then
+  echo "Please define HADOOP_CONF_DIR to point to hadoop configuration. eg:: /etc/hadoop/conf"
   exit 1
 fi
 
