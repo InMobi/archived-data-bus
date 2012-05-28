@@ -29,11 +29,6 @@ import org.apache.hadoop.fs.Path;
 import com.inmobi.databus.utils.CalendarHelper;
 
 public class Cluster {
-  private final String hdfsurlElement = "hdfsurl";
-  private final String jturlElement = "jturl";
-  private final String clusternameElement = "name";
-  private final String clusterjobqueuenameElement = "jobqueuename";
-
   private final String rootDir;
   private final String hdfsUrl;
   private final String clustername;
@@ -46,27 +41,27 @@ public class Cluster {
       Map<String, DestinationStream> consumeStreams, Set<String> sourceStreams)
       throws Exception {
     this.rootDir = rootDir;
-    this.clustername = clusterElementsMap.get(clusternameElement);
+    this.clustername = clusterElementsMap.get(DatabusConfigParser.NAME);
     if (clustername == null)
       throw new ParseException(
           "Cluster Name element not found in cluster configuration", 0);
-    this.hdfsUrl = clusterElementsMap.get(hdfsurlElement);
+    this.hdfsUrl = clusterElementsMap.get(DatabusConfigParser.HDFS_URL);
     if (hdfsUrl == null)
       throw new ParseException(
           "hdfsurl element not found in cluster configuration " + clustername,
           0);
     this.clusterjobqueuename = clusterElementsMap
-        .get(clusterjobqueuenameElement);
+        .get(DatabusConfigParser.JOB_QUEUE_NAME);
     if (clusterjobqueuename == null)
       throw new ParseException(
           "Cluster jobqueuename element not found in cluster configuration "
               + clustername, 0);
-    if (clusterElementsMap.get(jturlElement) == null)
+    if (clusterElementsMap.get(DatabusConfigParser.JT_URL) == null)
       throw new ParseException(
           "jturl element not found in cluster configuration " + clustername, 0);
     this.hadoopConf = new Configuration();
     this.hadoopConf.set("mapred.job.tracker",
-        clusterElementsMap.get(jturlElement));
+        clusterElementsMap.get(DatabusConfigParser.JT_URL));
     this.hadoopConf.set("databus.tmp.path", getTmpPath().toString());
     this.consumeStreams = consumeStreams;
     this.sourceStreams = sourceStreams;
@@ -198,6 +193,12 @@ public class Cluster {
 
   public Path getTrashPathWithDate() {
     return new Path(getTrashPath(), CalendarHelper.getCurrentDateAsString());
+  }
+  
+  public Path getTrashPathWithDateHour() {
+    return new Path(getTrashPath() + File.separator
+        + CalendarHelper.getCurrentDateAsString() + File.separator
+        + CalendarHelper.getCurrentHour());
   }
 
   public Path getDataDir() {

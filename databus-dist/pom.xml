@@ -58,6 +58,7 @@
             </goals>
             <configuration>
 	      <installDir>/usr/share/databus</installDir>
+	      <deb>${project.build.directory}/${artifactId}_${version}.deb</deb>
               <dataSet>
                 <data>
                   <src>target/databus-dist-${project.version}-pkg/</src>

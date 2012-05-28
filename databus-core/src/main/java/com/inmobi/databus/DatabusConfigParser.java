@@ -33,24 +33,23 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
 
-public class DatabusConfigParser {
+public class DatabusConfigParser implements DatabusConfigParserTags {
 
   private static Logger logger = Logger.getLogger(DatabusConfigParser.class);
   private Map<String, SourceStream> streamMap = new HashMap<String, SourceStream>();
   private Map<String, Cluster> clusterMap = new HashMap<String, Cluster>();
   private Map<String, List<DestinationStream>> clusterConsumeStreams = new HashMap<String, List<DestinationStream>>();
 
-  private String inputDir;
-  private String publishDir;
-  private String rootDir;
-  private int defaultRetentionInDays = 2;
+  private Map<String, String> defaults = new HashMap<String, String>();
+  private int defaultRetentionInHours = 48;
+  private int defaultTrashRetentionInHours = 24;
 
   public DatabusConfigParser(String fileName) throws Exception {
     parseXmlFile(fileName);
   }
 
   public DatabusConfig getConfig() {
-    DatabusConfig config = new DatabusConfig(streamMap, clusterMap);
+    DatabusConfig config = new DatabusConfig(streamMap, clusterMap, defaults);
     return config;
   }
 
@@ -86,27 +85,35 @@ public class DatabusConfigParser {
   }
 
   private void readDefaultPaths(Element docEle) throws Exception {
-    NodeList configList = docEle.getElementsByTagName("defaults");
+    NodeList configList = docEle.getElementsByTagName(DEFAULTS);
     if (configList != null && configList.getLength() > 0) {
-      rootDir = getTextValue((Element) configList.item(0), "rootdir");
+      String rootDir = getTextValue((Element) configList.item(0), ROOTDIR);
       if (rootDir == null)
         throw new ParseException("rootdir element not found in defaults", 0);
-      inputDir = getTextValue((Element) configList.item(0), "inputdir");
-      publishDir = getTextValue((Element) configList.item(0), "publishdir");
+      
+      defaults.put(ROOTDIR, rootDir);
       String retention = getTextValue((Element) configList.item(0),
-          "retentionindays");
+          RETENTION_IN_HOURS);
       if (retention != null) {
-        defaultRetentionInDays = Integer.parseInt(retention);
+        defaultRetentionInHours = Integer.parseInt(retention);
       }
+      defaults.put(RETENTION_IN_HOURS, retention);
 
-      logger.debug("rootDir = " + rootDir + " inputDir " + inputDir
-          + " publishDir " + publishDir + " global retentionInDays "
-          + defaultRetentionInDays);
+      String trashretention = getTextValue((Element) configList.item(0),
+          TRASH_RETENTION_IN_HOURS);
+      if (trashretention != null) {
+        defaultTrashRetentionInHours = Integer.parseInt(trashretention);
+      }
+      defaults.put(TRASH_RETENTION_IN_HOURS, trashretention);
+
+      logger.debug("rootDir = " + rootDir + " global retentionInHours "
+          + defaultRetentionInHours + " global trashretentionInHours "
+          + defaultTrashRetentionInHours);
     }
   }
 
   private void readAllClusters(Element docEle) throws Exception {
-    NodeList tmpClusterList = docEle.getElementsByTagName("cluster");
+    NodeList tmpClusterList = docEle.getElementsByTagName(CLUSTER);
     if (tmpClusterList != null && tmpClusterList.getLength() > 0) {
       for (int i = 0; i < tmpClusterList.getLength(); i++) {
         Element el = (Element) tmpClusterList.item(i);
@@ -126,27 +133,30 @@ public class DatabusConfigParser {
       logger.info(attribute.getName() + ":" + attribute.getValue());
       clusterelementsmap.put(attribute.getName(), attribute.getValue());
     }
-    String cRootDir = rootDir;
-    NodeList list = el.getElementsByTagName("rootdir");
+
+    String cRootDir = defaults.get(ROOTDIR);
+    NodeList list = el.getElementsByTagName(ROOTDIR);
     if (list != null && list.getLength() == 1) {
       Element elem = (Element) list.item(0);
       cRootDir = elem.getTextContent();
     }
+
     Map<String, DestinationStream> consumeStreams = new HashMap<String, DestinationStream>();
-    logger.debug("getting consume streams for CLuster ::"
-        + clusterelementsmap.get("name"));
+    logger.debug("getting consume streams for Cluster ::"
+        + clusterelementsmap.get(NAME));
     List<DestinationStream> consumeStreamList = getConsumeStreams(clusterelementsmap
-        .get("name"));
+        .get(NAME));
     if (consumeStreamList != null && consumeStreamList.size() > 0) {
       for (DestinationStream consumeStream : consumeStreamList) {
         consumeStreams.put(consumeStream.getName(), consumeStream);
       }
     }
+
     if (cRootDir == null)
-      cRootDir = rootDir;
+      cRootDir = defaults.get(ROOTDIR);
 
     return new Cluster(clusterelementsmap, cRootDir, consumeStreams,
-        getSourceStreams(clusterelementsmap.get("name")));
+        getSourceStreams(clusterelementsmap.get(NAME)));
   }
 
   private Set<String> getSourceStreams(String clusterName) throws Exception {
@@ -166,7 +176,7 @@ public class DatabusConfigParser {
   }
 
   private void readAllStreams(Element docEle) throws Exception {
-    NodeList tmpstreamList = docEle.getElementsByTagName("stream");
+    NodeList tmpstreamList = docEle.getElementsByTagName(STREAM);
     if (tmpstreamList != null && tmpstreamList.getLength() > 0) {
       for (int i = 0; i < tmpstreamList.getLength(); i++) {
         // for each stream
@@ -181,17 +191,17 @@ public class DatabusConfigParser {
   private SourceStream getStream(Element el) throws Exception {
     Map<String, Integer> sourceStreams = new HashMap<String, Integer>();
     // get sources for each stream
-    String streamName = el.getAttribute("name");
-    NodeList sourceList = el.getElementsByTagName("source");
+    String streamName = el.getAttribute(NAME);
+    NodeList sourceList = el.getElementsByTagName(SOURCE);
     for (int i = 0; i < sourceList.getLength(); i++) {
       Element source = (Element) sourceList.item(i);
       // for each source
-      String clusterName = getTextValue(source, "name");
-      int rententionInDays = getRetention(source, "retentionindays");
+      String clusterName = getTextValue(source, NAME);
+      int rententionInHours = getRetention(source, RETENTION_IN_HOURS);
       logger.debug(" StreamSource :: streamname " + streamName
-          + " retentionindays " + rententionInDays + " " + "clusterName "
+          + " retentioninhours " + rententionInHours + " " + "clusterName "
           + clusterName);
-      sourceStreams.put(clusterName, new Integer(rententionInDays));
+      sourceStreams.put(clusterName, new Integer(rententionInHours));
     }
     // get all destinations for this stream
     readConsumeStreams(streamName, el);
@@ -200,24 +210,24 @@ public class DatabusConfigParser {
 
   private void readConsumeStreams(String streamName, Element el)
       throws Exception {
-    NodeList consumeStreamNodeList = el.getElementsByTagName("destination");
+    NodeList consumeStreamNodeList = el.getElementsByTagName(DESTINATION);
     for (int i = 0; i < consumeStreamNodeList.getLength(); i++) {
       Element replicatedConsumeStream = (Element) consumeStreamNodeList.item(i);
       // for each source
-      String clusterName = getTextValue(replicatedConsumeStream, "name");
-      int retentionInDays = getRetention(replicatedConsumeStream,
-          "retentionindays");
-      String isPrimaryVal = getTextValue(replicatedConsumeStream, "primary");
+      String clusterName = getTextValue(replicatedConsumeStream, NAME);
+      int retentionInHours = getRetention(replicatedConsumeStream,
+          RETENTION_IN_HOURS);
+      String isPrimaryVal = getTextValue(replicatedConsumeStream, PRIMARY);
       Boolean isPrimary;
       if (isPrimaryVal != null && isPrimaryVal.equalsIgnoreCase("true"))
         isPrimary = new Boolean(true);
       else
         isPrimary = new Boolean(false);
       logger.info("Reading Stream Destination Details :: Stream Name "
-          + streamName + " cluster " + clusterName + " retentionInDays "
-          + retentionInDays + " isPrimary " + isPrimary);
+          + streamName + " cluster " + clusterName + " retentionInHours "
+          + retentionInHours + " isPrimary " + isPrimary);
       DestinationStream consumeStream = new DestinationStream(streamName,
-          retentionInDays, isPrimary);
+          retentionInHours, isPrimary);
       if (clusterConsumeStreams.get(clusterName) == null) {
         List<DestinationStream> consumeStreamList = new ArrayList<DestinationStream>();
         consumeStreamList.add(consumeStream);
@@ -251,7 +261,7 @@ public class DatabusConfigParser {
   private int getRetention(Element ele, String tagName) {
     String ob = getTextValue(ele, tagName);
     if (ob == null) {
-      return defaultRetentionInDays;
+      return defaultRetentionInHours;
     }
     return Integer.parseInt(ob);
   }

@@ -42,7 +42,7 @@ public class TestDatabusConfigParser {
       Assert.assertEquals(stream.getSourceClusters().size(), 1);
       for (String clusterName : stream.getSourceClusters()) {
         Assert.assertEquals(clusterName, "testcluster1");
-        Assert.assertEquals(stream.getRetentionInDays(clusterName), 1);
+        Assert.assertEquals(stream.getRetentionInHours(clusterName), 24);
       }
     }
   }
@@ -79,7 +79,7 @@ public class TestDatabusConfigParser {
       Assert.assertEquals(stream.getSourceClusters().size(), 1);
       for (String clusterName : stream.getSourceClusters()) {
         Assert.assertEquals(clusterName, "testcluster2");
-        Assert.assertEquals(stream.getRetentionInDays(clusterName), 2);
+        Assert.assertEquals(stream.getRetentionInHours(clusterName), 48);
       }
     }
   }
@@ -89,14 +89,17 @@ public class TestDatabusConfigParser {
     buffer.append("<databus>");
     buffer.append("<defaults>");
     buffer.append("<rootdir>/tmp/databustest3</rootdir>");
-    buffer.append("<retentionindays>3</retentionindays>");
+    buffer.append("<retentioninhours>96</retentioninhours>");
     buffer.append("</defaults>\n");
     buffer.append("<streams>");
     buffer.append("<stream name='test3'>");
     buffer.append("<sources>");
     buffer.append("<source>");
     buffer.append("<name>testcluster3</name>");
-    buffer.append("<retentionindays>3</retentionindays>");
+    buffer.append("<retentioninhours>48</retentioninhours>");
+    buffer.append("</source>");
+    buffer.append("<source>");
+    buffer.append("<name>testcluster4</name>");
     buffer.append("</source>");
     buffer.append("</sources>");
     buffer.append("<destinations>");
@@ -107,6 +110,10 @@ public class TestDatabusConfigParser {
     buffer.append("<cluster name='testcluster3' hdfsurl='file:///'");
     buffer.append(" jturl='local'");
     buffer.append(" jobqueuename='default'>");
+    buffer.append("</cluster>");
+    buffer.append("<cluster name='testcluster4' hdfsurl='file:///'");
+    buffer.append(" jturl='localhost:8021'");
+    buffer.append(" jobqueuename='databus'>");
     buffer.append("</cluster>");
     buffer.append("</clusters>");
     buffer.append("</databus>");
@@ -127,18 +134,29 @@ public class TestDatabusConfigParser {
     DatabusConfig config = databusConfigParser.getConfig();
 
     Map<String, Cluster> clusterMap = config.getClusters();
-    Assert.assertEquals(clusterMap.size(), 1);
+    Assert.assertEquals(clusterMap.size(), 2);
 
     for (Map.Entry<String, Cluster> clusterentry: clusterMap.entrySet())
     {
       Cluster cluster = clusterentry.getValue();
-      Assert.assertEquals(clusterentry.getKey(), "testcluster3");
-      Assert.assertEquals(cluster.getName(), "testcluster3");
-      Assert.assertEquals(cluster.getHdfsUrl(), "file:///");
-      Assert.assertEquals(cluster.getHadoopConf().get("mapred.job.tracker"),
-          "local");
-      Assert.assertEquals(cluster.getJobQueueName(), "default");
-      Assert.assertEquals(cluster.getRootDir(), "file://///tmp/databustest3/");
+      if (clusterentry.getKey().compareTo("testcluster3") == 0) {
+        Assert.assertEquals(cluster.getName(), "testcluster3");
+        Assert.assertEquals(cluster.getHdfsUrl(), "file:///");
+        Assert.assertEquals(cluster.getHadoopConf().get("mapred.job.tracker"),
+            "local");
+        Assert.assertEquals(cluster.getJobQueueName(), "default");
+        Assert
+            .assertEquals(cluster.getRootDir(), "file://///tmp/databustest3/");
+      }
+      if (clusterentry.getKey().compareTo("testcluster4") == 0) {
+        Assert.assertEquals(cluster.getName(), "testcluster4");
+        Assert.assertEquals(cluster.getHdfsUrl(), "file:///");
+        Assert.assertEquals(cluster.getHadoopConf().get("mapred.job.tracker"),
+            "localhost:8021");
+        Assert.assertEquals(cluster.getJobQueueName(), "databus");
+        Assert
+            .assertEquals(cluster.getRootDir(), "file://///tmp/databustest3/");
+      }
     }
 
     Map<String, SourceStream> streamMap = config.getSourceStreams();
@@ -148,11 +166,20 @@ public class TestDatabusConfigParser {
       Assert.assertEquals(streamEntry.getKey(), "test3");
       SourceStream stream = streamEntry.getValue();
       Assert.assertEquals(stream.getName(), "test3");
-      Assert.assertEquals(stream.getSourceClusters().size(), 1);
+      int numSourceClusters = stream.getSourceClusters().size();
+      Assert.assertEquals(numSourceClusters, 2);
+
       for (String clusterName : stream.getSourceClusters()) {
-        Assert.assertEquals(clusterName, "testcluster3");
-        Assert.assertEquals(stream.getRetentionInDays(clusterName), 3);
+        if(clusterName.compareTo("testcluster3")==0) {
+          Assert.assertEquals(stream.getRetentionInHours(clusterName), 48);
+          numSourceClusters--;
+        }
+        if (clusterName.compareTo("testcluster4") == 0) {
+          Assert.assertEquals(stream.getRetentionInHours(clusterName), 96);
+          numSourceClusters--;
+        }
       }
+      Assert.assertEquals(numSourceClusters, 0);
     }
     file.delete();
   }

@@ -1,7 +1,8 @@
 <databus>
   <defaults>
-    <rootdir>/tmp/databustest1</rootdir>
-    <retentioninhours>24</retentioninhours>
+    <rootdir>/tmp/datapurger</rootdir>
+    <retentioninhours>1</retentioninhours>
+    <trashretentioninhours>1</trashretentioninhours>
   </defaults>
 
   <!-- A stream can have only one primary and multiple mirrors as destinations
@@ -11,10 +12,15 @@
       <sources>
         <source>
           <name>testcluster1</name>
-          <retentioninhours>24</retentioninhours>
+          <retentioninhours>2</retentioninhours>
         </source>
       </sources>
       <destinations>
+        <destination>
+	  <primary>true</primary>
+          <name>testcluster1</name>
+          <retentioninhours>2</retentioninhours>
+        </destination>
       </destinations>
     </stream>
   </streams>
@@ -25,6 +31,5 @@
              jobqueuename="default"
              >
     </cluster>
-
   </clusters>
 </databus>

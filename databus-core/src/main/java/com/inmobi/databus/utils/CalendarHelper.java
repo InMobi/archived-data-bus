@@ -13,10 +13,10 @@
 */
 package com.inmobi.databus.utils;
 
-import org.apache.log4j.Logger;
-
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+
+import org.apache.log4j.Logger;
 
 public class CalendarHelper {
   static Logger logger = Logger.getLogger(CalendarHelper.class);
@@ -33,6 +33,13 @@ public class CalendarHelper {
         day.intValue());
   }
 
+  public static Calendar getDateHour(String year, String month, String day,
+      String hour) {
+    return new GregorianCalendar(new Integer(year).intValue(), new Integer(
+        month).intValue() - 1, new Integer(day).intValue(),
+        new Integer(hour).intValue(), new Integer(0));
+  }
+
   public static String getCurrentMinute() {
     Calendar calendar;
     calendar = new GregorianCalendar();
@@ -40,28 +47,45 @@ public class CalendarHelper {
     return minute;
   }
 
+  public static String getCurrentHour() {
+    Calendar calendar;
+    calendar = new GregorianCalendar();
+    String hour = Integer.toString(calendar.get(Calendar.HOUR_OF_DAY));
+    return hour;
+  }
+
   public static Calendar getNowTime() {
     return new GregorianCalendar();
   }
 
-  private static String getCurrentDayTimeAsString(boolean includeHourMinute) {
-    Calendar calendar;
+  private static String getCurrentDayTimeAsString(boolean includeMinute) {
+    return getDayTimeAsString(new GregorianCalendar(), includeMinute,
+        includeMinute);
+  }
+
+  private static String getDayTimeAsString(Calendar calendar,
+      boolean includeHour,
+      boolean includeMinute) {
     String minute = null;
     String hour = null;
     String fileNameInnYYMMDDHRMNFormat = null;
-    calendar = new GregorianCalendar();
     String year = Integer.toString(calendar.get(Calendar.YEAR));
     String month = Integer.toString(calendar.get(Calendar.MONTH) + 1);
     String day = Integer.toString(calendar.get(Calendar.DAY_OF_MONTH));
-    if (includeHourMinute) {
+    if (includeHour || includeMinute) {
       hour = Integer.toString(calendar.get(Calendar.HOUR_OF_DAY));
+    }
+    if (includeMinute) {
       minute = Integer.toString(calendar.get(Calendar.MINUTE));
     }
-    if (includeHourMinute)
+    if (includeHour) {
+      fileNameInnYYMMDDHRMNFormat = year + "-" + month + "-" + day + "-" + hour;
+    } else if (includeMinute) {
       fileNameInnYYMMDDHRMNFormat = year + "-" + month + "-" + day + "-" + hour
           + "-" + minute;
-    else
+    } else {
       fileNameInnYYMMDDHRMNFormat = year + "-" + month + "-" + day;
+    }
     logger.debug("getCurrentDayTimeAsString ::  ["
         + fileNameInnYYMMDDHRMNFormat + "]");
     return fileNameInnYYMMDDHRMNFormat;
@@ -72,8 +96,16 @@ public class CalendarHelper {
     return getCurrentDayTimeAsString(true);
   }
 
+  public static String getCurrentDayHourAsString() {
+    return getDayTimeAsString(new GregorianCalendar(), true, false);
+  }
+
   public static String getCurrentDateAsString() {
     return getCurrentDayTimeAsString(false);
+  }
+
+  public static String getDateAsString(Calendar calendar) {
+    return getDayTimeAsString(calendar, false, false);
   }
 
 }

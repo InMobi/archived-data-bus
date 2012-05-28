@@ -1,7 +1,8 @@
 <databus>
   <defaults>
     <rootdir>/databus</rootdir>
-    <retentionindays>2</retentionindays>
+    <retentioninhours>48</retentioninhours>
+    <trashretentioninhours>24</trashretentioninhours>
   </defaults>
 
   <!-- A stream can have only one primary and multiple mirrors as destinations
@@ -11,11 +12,11 @@
       <sources>
         <source>
           <name></name>
-          <retentionindays></retentionindays>
+          <retentioninhours></retentioninhours>
         </source>
         <source>
           <name></name>
-          <retentionindays></retentionindays>
+          <retentioninhours></retentioninhours>
         </source>
       </sources>
       <destinations>

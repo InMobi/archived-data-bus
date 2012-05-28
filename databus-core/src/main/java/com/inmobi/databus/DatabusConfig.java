@@ -19,12 +19,14 @@ public class DatabusConfig {
 
   private final Map<String, Cluster> clusters;
   private final Map<String, SourceStream> streams;
+  private final Map<String, String> defaults;
   
   public DatabusConfig( 
       Map<String, SourceStream> streams,
-                       Map<String, Cluster> clusterMap) {
+      Map<String, Cluster> clusterMap, Map<String, String> defaults) {
     this.streams = streams;
     this.clusters = clusterMap;
+    this.defaults = defaults;
   }
 
   public Cluster getPrimaryClusterForDestinationStream(String streamName) {
@@ -44,6 +46,10 @@ public class DatabusConfig {
 
   public Map<String, SourceStream> getSourceStreams() {
     return streams;
+  }
+
+  public Map<String, String> getDefaults() {
+    return defaults;
   }
 
 }
