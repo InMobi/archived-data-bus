@@ -80,7 +80,11 @@ public class LocalStreamService extends AbstractService {
 
   @Override
   public long getMSecondsTillNextRun(long currentTime) {
-    return (long)(DEFAULT_RUN_INTERVAL - (long)(currentTime % DEFAULT_RUN_INTERVAL));
+    long runIntervalInSec = (DEFAULT_RUN_INTERVAL / 1000);
+    Calendar calendar = new GregorianCalendar();
+    calendar.setTime(new Date(currentTime));
+    long currentSec = calendar.get(Calendar.SECOND);
+    return (runIntervalInSec - currentSec) * 1000;
   }
 
   @Override
