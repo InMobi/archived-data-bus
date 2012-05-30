@@ -13,6 +13,7 @@
 */
 package com.inmobi.databus.utils;
 
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
@@ -38,6 +39,12 @@ public class CalendarHelper {
     return new GregorianCalendar(new Integer(year).intValue(), new Integer(
         month).intValue() - 1, new Integer(day).intValue(),
         new Integer(hour).intValue(), new Integer(0));
+  }
+
+  public static Calendar getDateHourMinute(Integer year, Integer month,
+      Integer day, Integer hour, Integer minute) {
+    return new GregorianCalendar(year.intValue(), month.intValue() - 1,
+        day.intValue(), hour.intValue(), minute.intValue());
   }
 
   public static String getCurrentMinute() {
@@ -106,6 +113,21 @@ public class CalendarHelper {
 
   public static String getDateAsString(Calendar calendar) {
     return getDayTimeAsString(calendar, false, false);
+  }
+
+  public static String getDateTimeAsString(Calendar calendar) {
+    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd-HH-mm");
+    return format.format(calendar.getTime());
+  }
+
+  public static Calendar getDateTime(String dateTime) {
+    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd-HH-mm");
+    Calendar calendar = new GregorianCalendar();
+    try {
+    calendar.setTime(format.parse(dateTime));
+    } catch(Exception e){
+    }
+    return calendar;
   }
 
 }

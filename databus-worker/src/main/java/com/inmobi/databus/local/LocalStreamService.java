@@ -14,6 +14,7 @@
 package com.inmobi.databus.local;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
@@ -44,6 +45,8 @@ import com.inmobi.databus.AbstractService;
 import com.inmobi.databus.CheckpointProvider;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
+import com.inmobi.databus.SourceStream;
+import com.inmobi.databus.utils.CalendarHelper;
 
 /*
  * Handles Local Streams for a Cluster
@@ -60,6 +63,12 @@ public class LocalStreamService extends AbstractService {
   private Path tmpJobInputPath;
   private Path tmpJobOutputPath;
   private final int FILES_TO_KEEP = 6;
+  private Map<String, Long> prevRuntimeForCategory = new HashMap<String, Long>();
+  private final SimpleDateFormat LogDateFormat = new SimpleDateFormat(
+      "yyyy/MM/dd, hh:mm");
+  private final static long MILLISECONDS_IN_MINUTE = 60 * 1000;
+  private final static long MILLISECONDS_IN_HOUR = 60 * MILLISECONDS_IN_MINUTE;
+
 
   public LocalStreamService(DatabusConfig config, Cluster cluster,
       CheckpointProvider provider) {
@@ -76,6 +85,10 @@ public class LocalStreamService extends AbstractService {
       LOG.info("Deleting tmpPath recursively [" + tmpPath + "]");
       fs.delete(tmpPath, true);
     }
+  }
+
+  private String getLogDateString(long commitTime) {
+    return LogDateFormat.format(commitTime);
   }
 
   @Override
@@ -100,6 +113,7 @@ public class LocalStreamService extends AbstractService {
       Set<FileStatus> trashSet = new HashSet<FileStatus>();
       // checkpointKey, CheckPointPath
       Map<String, FileStatus> checkpointPaths = new TreeMap<String, FileStatus>();
+
       createMRInput(tmpJobInputPath, fileListing, trashSet, checkpointPaths);
 
       if (fileListing.size() == 0) {
@@ -115,14 +129,62 @@ public class LocalStreamService extends AbstractService {
         checkPoint(checkpointPaths);
         LOG.info("Commiting trashPaths");
         commit(populateTrashCommitPaths(trashSet));
-        LOG.info("Committed successfully at "
-            + ((new SimpleDateFormat("yyyy/MM/dd, hh:mm")).format(new Date(
-                commitTime))).toString());
+        LOG.info("Committed successfully at " + getLogDateString(commitTime));
       }
     } catch (Exception e) {
       LOG.warn("Error in running LocalStreamService " + e);
       throw e;
     }
+  }
+
+  private Path getLatestDir(FileSystem fs, Path Dir) throws Exception {
+    FileStatus[] fileStatus = fs.listStatus(Dir);
+    
+    if (fileStatus != null && fileStatus.length > 0) {
+      FileStatus latestfile = fileStatus[0];
+      for (FileStatus currentfile : fileStatus) {
+        if (currentfile.getPath().getName()
+            .compareTo(latestfile.getPath().getName()) > 0)
+          latestfile = currentfile;
+      }
+      return latestfile.getPath();
+    }
+    return null;
+  }
+
+  private long getPreviousRuntime(FileSystem fs, String category)
+      throws Exception {
+    String localDestDir = cluster.getLocalFinalDestDirRoot() + File.separator
+        + category;
+    LOG.warn("Querying Directory [" + localDestDir + "]");
+    Path latestyeardir = getLatestDir(fs, new Path(localDestDir));
+    int latestyear = 0, latestmonth = 0, latestday = 0, latesthour = 0, latestminute = 0;
+
+    if (latestyeardir != null) {
+      latestyear = Integer.parseInt(latestyeardir.getName());
+      Path latestmonthdir = getLatestDir(fs, latestyeardir);
+      if (latestmonthdir != null) {
+        latestmonth = Integer.parseInt(latestmonthdir.getName());
+        Path latestdaydir = getLatestDir(fs, latestmonthdir);
+        if (latestdaydir != null) {
+          latestday = Integer.parseInt(latestdaydir.getName());
+          Path latesthourdir = getLatestDir(fs, latestdaydir);
+          if (latesthourdir != null) {
+            latesthour = Integer.parseInt(latesthourdir.getName());
+            Path latestminutedir = getLatestDir(fs, latesthourdir);
+            if (latestminutedir != null) {
+              latestminute = Integer.parseInt(latestminutedir.getName());
+            }
+          }
+        }
+      }
+    } else
+      return -1;
+    LOG.debug("Date Found " + latestyear + File.separator + latestmonth
+        + File.separator + latestday + File.separator + latesthour
+        + File.separator + latestminute);
+    return CalendarHelper.getDateHourMinute(latestyear, latestmonth, latestday,
+        latesthour, latestminute).getTimeInMillis();
   }
 
   private void checkPoint(Map<String, FileStatus> checkPointPaths) {
@@ -134,23 +196,75 @@ public class LocalStreamService extends AbstractService {
       checkpointProvider.checkpoint(entry.getKey(), value.getBytes());
     }
   }
+  
+  private long getRetentionTimeinMillis(long commitTime, int retentioninhours) {
+    return (commitTime - (retentioninhours * MILLISECONDS_IN_HOUR));
+  }
+  
+  private long getRetentionTimeForCategory(long commitTime, String categoryName) {
+    SourceStream categorystream = getConfig().getSourceStreams().get(categoryName);
+    if (categorystream != null) {
+      int retentioninhours = categorystream.getRetentionInHours(cluster
+          .getName());
+      long retentionTime = getRetentionTimeinMillis(commitTime,
+          retentioninhours);
+      LOG.debug("Retention Runtime: [" + getLogDateString(retentionTime)
+          + "] for RetentioninHours [" + retentioninhours + "]");
+      return retentionTime;
+    } else {
+      LOG.debug("SourceStream " + categoryName + " not found in configuration");
+    }
+    return -1;
+  }
+  
+  private boolean shouldCreate(long commitTime, long prevRuntime) {
+    return ((commitTime - prevRuntime) > MILLISECONDS_IN_MINUTE);
+  }
+  private void publishMissingPaths(FileSystem fs, long commitTime,
+      String categoryName) throws Exception {
+    Long prevRuntime = new Long(-1);
+    if (!prevRuntimeForCategory.containsKey(categoryName)) {
+      prevRuntime = getPreviousRuntime(fs, categoryName);
+    }
+
+    if (prevRuntime != -1) {
+      if (shouldCreate(commitTime, prevRuntime)) {
+        LOG.debug("Previous Runtime: [" + getLogDateString(prevRuntime) + "]");
+        long retentionTime = getRetentionTimeForCategory(commitTime,
+            categoryName);
+        if (retentionTime != -1) {
+          if (prevRuntime < retentionTime)
+            prevRuntime = retentionTime;
+          while (shouldCreate(commitTime, prevRuntime)) {
+            String missingPath = cluster.getLocalDestDir(categoryName,
+                prevRuntime);
+            LOG.debug("Creating Missing Directory [" + missingPath + "]");
+            fs.mkdirs(new Path(missingPath));
+            prevRuntime += MILLISECONDS_IN_MINUTE;
+          }
+        }
+      }
+      prevRuntimeForCategory.put(categoryName, prevRuntime);
+    }
+  }
 
   private Map<Path, Path> prepareForCommit(long commitTime,
-      Map<FileStatus, String> fileListing) throws IOException {
+      Map<FileStatus, String> fileListing) throws Exception {
     FileSystem fs = FileSystem.get(cluster.getHadoopConf());
 
     // find final destination paths
     Map<Path, Path> mvPaths = new LinkedHashMap<Path, Path>();
     FileStatus[] categories = fs.listStatus(tmpJobOutputPath);
     for (FileStatus categoryDir : categories) {
-      Path destDir = new Path(cluster.getLocalDestDir(categoryDir.getPath()
-          .getName(), commitTime));
+      String categoryName = categoryDir.getPath().getName();
+      Path destDir = new Path(cluster.getLocalDestDir(categoryName, commitTime));
       FileStatus[] files = fs.listStatus(categoryDir.getPath());
       for (FileStatus file : files) {
         Path destPath = new Path(destDir, file.getPath().getName());
         LOG.debug("Moving [" + file.getPath() + "] to [" + destPath + "]");
         mvPaths.put(file.getPath(), destPath);
       }
+      publishMissingPaths(fs, commitTime, categoryName);
     }
 
     // find input files for consumer
@@ -298,7 +412,7 @@ public class LocalStreamService extends AbstractService {
         collectorPaths.put(fileName, file);
       } else {
         LOG.info("File [" + fileName + "] of size 0 bytes found. Deleting it");
-        fs.delete(file.getPath());
+        fs.delete(file.getPath(), false);
       }
     }
   }

@@ -19,6 +19,8 @@
 # Runs a Databus command as a daemon.
 
 usage="Usage: databus.sh [start/stop] [<conf-file>]"
+DATABUS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../"
+echo "Running Databus from $DATABUS_DIR"
 
 #echo $#
 # if no args specified, show usage
@@ -38,12 +40,11 @@ shift
 startStop=$var1
 configFile=$var2
 
-
-if [ "$var1" == "start" ] || [ "$var1" == "stop" ]
+if [ "$var1" == "start" ] || [ "$var1" == "stop" ] || [ "$var1" == "restart" ]
 then
 #check config existence
 if ! [ -r $configFile ]; then
-   echo $confgFile " not found."
+   echo $configFile " not found."
    echo $usage
    exit 1
 fi
@@ -62,7 +63,7 @@ if [ -z $HADOOP_CONF_DIR ]; then
 fi
 
 #set classpath
-export CLASSPATH=`ls lib/*jar | tr "\n" :`;
+export CLASSPATH=`ls $DATABUS_DIR/lib/*jar | tr "\n" :`;
 export CLASSPATH=$CLASSPATH:$HADOOP_CONF_DIR
 #echo setting classPath to $CLASSPATH
 
@@ -121,6 +122,11 @@ case $startStop in
     else
       echo no DATABUS to stop
     fi
+    ;;
+
+  (restart)
+    $0 start $configFile
+    $0 stop $configFile
     ;;
 
   (collapse)

@@ -57,7 +57,7 @@
               <goal>jdeb</goal>
             </goals>
             <configuration>
-	      <installDir>/usr/share/databus</installDir>
+	      <installDir>/usr/local/databus-${version}</installDir>
 	      <deb>${project.build.directory}/${artifactId}_${version}.deb</deb>
               <dataSet>
                 <data>
@@ -65,7 +65,7 @@
                   <type>directory</type>
                   <mapper>
                     <type>perm</type>
-		    <prefix>/usr/share/databus</prefix>
+		    <prefix>/usr/local/databus-${version}</prefix>
                   </mapper>
                 </data>
               </dataSet>

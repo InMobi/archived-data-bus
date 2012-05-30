@@ -12,7 +12,7 @@
       <sources>
         <source>
           <name>testcluster1</name>
-          <retentioninhours>24</retentioninhours>
+          <retentioninhours>12</retentioninhours>
         </source>
       </sources>
       <destinations>

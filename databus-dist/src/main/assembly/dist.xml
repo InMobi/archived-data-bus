@@ -65,7 +65,7 @@
 
     <fileSet>
       <directory>../databus-worker/src/main/resources</directory>
-      <outputDirectory>/</outputDirectory>
+      <outputDirectory>/conf/</outputDirectory>
       <includes>
       <include>**</include>
       </includes>
@@ -73,9 +73,17 @@
 
     <fileSet>
       <directory>../tools/scripts</directory>
-      <outputDirectory>/</outputDirectory>
+      <outputDirectory>/bin/</outputDirectory>
       <includes>
-        <include>**</include>
+        <include>**/databus.sh</include>
+      </includes>
+    </fileSet>
+   
+    <fileSet>
+      <directory>../tools/scripts</directory>
+      <outputDirectory>/conf/</outputDirectory>
+      <includes>
+        <include>**/databus.cfg</include>
       </includes>
     </fileSet>
   </fileSets>
