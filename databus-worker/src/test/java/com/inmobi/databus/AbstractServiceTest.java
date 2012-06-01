@@ -29,7 +29,7 @@ public class AbstractServiceTest {
   public void getMSecondsTillNextRun() {
 
     Date date = new Date(12819279812l);
-    SimpleDateFormat format = new SimpleDateFormat("yyyy:MM:dd:HH:mm:s");
+    SimpleDateFormat format = new SimpleDateFormat("yyyy:MM:dd:HH:mm:ss:SS");
     LOG.info("Test Date [" + format.format(date) + "]");
     try {
       LocalStreamService service = new LocalStreamService(null,
@@ -37,9 +37,9 @@ public class AbstractServiceTest {
 
       long mSecondsTillNextMin = service.getMSecondsTillNextRun(date.getTime());
       LOG.info("mSecondsTillNextMin = [" + mSecondsTillNextMin + "]");
-      Date roundedDate = new Date(date.getTime() + mSecondsTillNextMin);
+      long roundedDate = date.getTime() + mSecondsTillNextMin;
       LOG.info("Rounded Date to next MIN [" + format.format(roundedDate) + "]");
-      assert mSecondsTillNextMin == 21000l;
+      assert (roundedDate % 60000) == 0;
     } catch (Exception e) {
       LOG.warn(e.getMessage());
     }
