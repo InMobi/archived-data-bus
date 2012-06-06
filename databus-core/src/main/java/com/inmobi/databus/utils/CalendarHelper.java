@@ -21,12 +21,14 @@ import org.apache.log4j.Logger;
 
 public class CalendarHelper {
   static Logger logger = Logger.getLogger(CalendarHelper.class);
+  private final static SimpleDateFormat CalenderHelperformat = new SimpleDateFormat(
+      "yyyy-MM-dd-HH-mm");
 
   // TODO - all date/time should be returned in a common time zone GMT
 
   public static Calendar getDate(String year, String month, String day) {
-    return new GregorianCalendar(new Integer(year).intValue(), new Integer(
-        month).intValue() - 1, new Integer(day).intValue());
+    return getDate(new Integer(year).intValue(),
+        new Integer(month).intValue() - 1, new Integer(day).intValue());
   }
 
   public static Calendar getDate(Integer year, Integer month, Integer day) {
@@ -116,15 +118,13 @@ public class CalendarHelper {
   }
 
   public static String getDateTimeAsString(Calendar calendar) {
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd-HH-mm");
-    return format.format(calendar.getTime());
+    return CalenderHelperformat.format(calendar.getTime());
   }
 
   public static Calendar getDateTime(String dateTime) {
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd-HH-mm");
     Calendar calendar = new GregorianCalendar();
     try {
-    calendar.setTime(format.parse(dateTime));
+      calendar.setTime(CalenderHelperformat.parse(dateTime));
     } catch(Exception e){
     }
     return calendar;
