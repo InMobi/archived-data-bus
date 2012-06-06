@@ -28,6 +28,7 @@ import org.apache.log4j.Logger;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import com.inmobi.databus.local.LocalStreamServiceTest;
 import com.inmobi.databus.purge.DataPurgerService;
 import com.inmobi.databus.utils.CalendarHelper;
 

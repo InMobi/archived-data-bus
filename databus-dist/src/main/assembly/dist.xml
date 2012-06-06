@@ -84,6 +84,7 @@
       <outputDirectory>/conf/</outputDirectory>
       <includes>
         <include>**/databus.cfg</include>
+        <include>**/databus.env</include>
       </includes>
     </fileSet>
   </fileSets>

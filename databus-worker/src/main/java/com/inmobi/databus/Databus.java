@@ -139,6 +139,18 @@ public class Databus implements Service, DatabusConstants {
     //If all threads are finished release leadership
     System.exit(0);
   }
+  
+  private static String getProperty(Properties prop, String property) {
+    String propvalue = prop.getProperty(property);
+    if (new File(propvalue).exists()) {
+      return propvalue;
+    } else {
+      String filePath = ClassLoader.getSystemResource(propvalue).getPath();
+      if (new File(filePath).exists())
+        return filePath;
+    }
+    return null;
+  }
 
   public static void main(String[] args) throws Exception {
     try {
@@ -151,8 +163,8 @@ public class Databus implements Service, DatabusConstants {
       Properties prop = new Properties();
       prop.load(new FileReader(cfgFile));
 
-      String log4jFile = prop.getProperty(LOG4J_FILE);
-      if (log4jFile == null ||  !new File(log4jFile).exists()) {
+      String log4jFile = getProperty(prop, LOG4J_FILE);
+      if (log4jFile == null) {
         LOG.error("log4j.properties incorrectly defined");
         throw new RuntimeException("Log4j.properties not defined");
       }
@@ -166,10 +178,9 @@ public class Databus implements Service, DatabusConstants {
         throw new RuntimeException("Insufficent information on cluster name");
       }
       String[] clusters = clustersStr.split(",");
-      String databusConfigFile = prop.getProperty(DATABUS_XML);
-      if (!new File(databusConfigFile).exists())  {
-        LOG.error("Databus Configuration file [" + databusConfigFile + "] " +
-        "doesn't exist..can't proceed");
+      String databusConfigFile = getProperty(prop, DATABUS_XML);
+      if (databusConfigFile == null)  {
+        LOG.error("Databus Configuration file doesn't exist..can't proceed");
         throw new RuntimeException("Specified databus config file doesn't " +
         "exist");
       }
@@ -180,11 +191,12 @@ public class Databus implements Service, DatabusConstants {
         "specified");
       }
       String principal = prop.getProperty(KRB_PRINCIPAL);
-      String keytab = prop.getProperty(KEY_TAB_FILE);
+      String keytab = getProperty(prop, KEY_TAB_FILE);
+      prop = null;
 
       if (UserGroupInformation.isSecurityEnabled()) {
-        LOG.info("Security enabled, trying kerberoes login principal [" +
-        principal + "] keytab [" + keytab + "]");
+        LOG.info("Security enabled, trying kerberoes login principal ["
+            + principal + "] keytab [" + keytab + "]");
         //krb enabled
         if (principal != null && keytab != null) {
           SecureLoginUtil.login(KRB_PRINCIPAL, principal, KEY_TAB_FILE, keytab);

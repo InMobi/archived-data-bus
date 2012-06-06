@@ -39,6 +39,7 @@ shift
 
 startStop=$var1
 configFile=$var2
+envfile=$DATABUS_DIR/conf/databus.env
 
 if [ "$var1" == "start" ] || [ "$var1" == "stop" ] || [ "$var1" == "restart" ]
 then
@@ -48,6 +49,14 @@ if ! [ -r $configFile ]; then
    echo $usage
    exit 1
 fi
+
+#check env existence
+if ! [ -r $envfile ]; then
+   echo $envfile " not found."
+   exit 1
+fi
+
+. $envfile
 
 #create PID dir
 if [ "$DATABUS_PID_DIR" = "" ]; then
@@ -64,7 +73,7 @@ fi
 
 #set classpath
 export CLASSPATH=`ls $DATABUS_DIR/lib/*jar | tr "\n" :`;
-export CLASSPATH=$CLASSPATH:$HADOOP_CONF_DIR
+export CLASSPATH=$DATABUS_DIR/conf:$CLASSPATH:$HADOOP_CONF_DIR
 #echo setting classPath to $CLASSPATH
 
 case $startStop in

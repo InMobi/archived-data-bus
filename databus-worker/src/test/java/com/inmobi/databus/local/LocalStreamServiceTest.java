@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.inmobi.databus;
+package com.inmobi.databus.local;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
@@ -48,7 +48,15 @@ import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
 
-import com.inmobi.databus.local.LocalStreamService;
+import com.inmobi.databus.CheckpointProvider;
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.ClusterTest;
+import com.inmobi.databus.DatabusConfig;
+import com.inmobi.databus.DatabusConfigParser;
+import com.inmobi.databus.DestinationStream;
+import com.inmobi.databus.FSCheckpointProvider;
+import com.inmobi.databus.SourceStream;
+import com.inmobi.databus.TestMiniClusterUtil;
 
 @Test
 public class LocalStreamServiceTest extends TestMiniClusterUtil {
@@ -300,6 +308,77 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     return new DatabusConfig(streamMap, clusterMap, defaults);
   }
 
+  @Test
+  public void testPublishMissingPaths() throws Exception {
+    DatabusConfigParser configParser = new DatabusConfigParser(
+        "test-lss-pub-databus.xml");
+    
+    DatabusConfig config = configParser.getConfig();
+
+    FileSystem fs = FileSystem.getLocal(new Configuration());
+    
+    ArrayList<Cluster> clusterList = new ArrayList<Cluster>(config
+        .getClusters().values());
+    Cluster cluster = clusterList.get(0);
+    TestLocalStreamService service = new TestLocalStreamService(config,
+        cluster, new FSCheckpointProvider(cluster.getCheckpointDir()));
+    
+    ArrayList<SourceStream> sstreamList = new ArrayList<SourceStream>(config
+        .getSourceStreams().values());
+
+    SourceStream sstream = sstreamList.get(0);
+
+    Calendar behinddate = new GregorianCalendar();
+    Calendar todaysdate = new GregorianCalendar();
+    behinddate.add(Calendar.HOUR_OF_DAY, -2);
+    behinddate.set(Calendar.SECOND, 0);
+
+    String basepublishPaths = cluster.getLocalFinalDestDirRoot()
+        + sstream.getName() + File.separator;
+    String publishPaths = basepublishPaths
+        + getDateAsYYYYMMDDHHMMPath(behinddate.getTime());
+
+    fs.mkdirs(new Path(publishPaths));
+
+    int retentioninhours = config.getSourceStreams().get(sstream.getName())
+        .getRetentionInHours(cluster.getName());
+    
+    service.publishMissingPaths(fs, todaysdate.getTimeInMillis(),
+        sstream.getName());
+
+    VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
+        basepublishPaths, retentioninhours);
+
+    todaysdate.add(Calendar.HOUR_OF_DAY, 2);
+
+    service.publishMissingPaths(fs, todaysdate.getTimeInMillis(),
+        sstream.getName());
+
+    VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
+        basepublishPaths, retentioninhours);
+
+    fs.delete(new Path(cluster.getRootDir()), true);
+
+    fs.close();
+  }
+
+  private void VerifyMissingPublishPaths(FileSystem fs, long todaysdate,
+      Calendar behinddate, String basepublishPaths, int retentioninhours)
+      throws Exception {
+    long diff = todaysdate - behinddate.getTimeInMillis();
+    while (diff > 60000) {
+      String checkcommitpath = basepublishPaths
+          + getDateAsYYYYMMDDHHMMPath(behinddate.getTime());
+      LOG.debug("Checking for Created Missing Path: " + checkcommitpath);
+      if (diff < (retentioninhours * 60 * 60 * 1000))
+        fs.exists(new Path(checkcommitpath));
+      else
+        LOG.debug("Skipping because of outside retentionperiod");
+      behinddate.add(Calendar.MINUTE, 1);
+      diff = todaysdate - behinddate.getTimeInMillis();
+    }
+  }
+
   private String getDateAsYYYYMMDD(Date date) {
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     return dateFormat.format(date);
@@ -493,6 +572,11 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     protected String getCurrentFile(FileSystem fs, FileStatus[] files)
         throws IOException {
       return new String("file" + new Integer(number_files).toString());
+    }
+
+    public void publishMissingPaths(FileSystem fs, long commitTime,
+        String categoryName) throws Exception {
+      super.publishMissingPaths(fs, commitTime, categoryName);
     }
 
   }

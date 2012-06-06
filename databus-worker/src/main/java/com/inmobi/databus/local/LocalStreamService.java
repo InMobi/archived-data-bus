@@ -213,11 +213,16 @@ public class LocalStreamService extends AbstractService {
   private boolean shouldCreate(long commitTime, long prevRuntime) {
     return ((commitTime - prevRuntime) > MILLISECONDS_IN_MINUTE);
   }
-  private void publishMissingPaths(FileSystem fs, long commitTime,
+
+  void publishMissingPaths(FileSystem fs, long commitTime,
       String categoryName) throws Exception {
     Long prevRuntime = new Long(-1);
     if (!prevRuntimeForCategory.containsKey(categoryName)) {
+      LOG.debug("Calculating Previous Runtime from Directory Listing");
       prevRuntime = getPreviousRuntime(fs, categoryName);
+    } else {
+      LOG.debug("Reading Previous Runtime from Cache");
+      prevRuntime = prevRuntimeForCategory.get(categoryName);
     }
 
     if (prevRuntime != -1) {
@@ -236,6 +241,8 @@ public class LocalStreamService extends AbstractService {
             prevRuntime += MILLISECONDS_IN_MINUTE;
           }
         }
+      } else {
+        prevRuntime = commitTime;
       }
       prevRuntimeForCategory.put(categoryName, prevRuntime);
     }
