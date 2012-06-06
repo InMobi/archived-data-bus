@@ -28,9 +28,9 @@
   </repositories>
 
   <scm>
-    <connection>scm:git:git://github.com/InMobi/data-bus</connection>
+    <connection>scm:https://github.com/InMobi/data-bus</connection>
     <url>https://github.com/InMobi/data-bus</url>
-    <developerConnection>scm:git:git@github.com/InMobi/data-bus.git</developerConnection>
+    <developerConnection>scm:git:https://github.com/InMobi/data-bus.git</developerConnection>
   </scm>
 
   <dependencyManagement>
