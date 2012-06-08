@@ -37,10 +37,15 @@
     <!-- Jenkins by default defines a property BUILD_NUMBER which is used to enable the profile. -->
     <profile>
       <id>jenkins</id>
+      <properties>
+        <excluded.testng.groups>none</excluded.testng.groups>
+      </properties>
+
       <activation>
         <property>
           <name>env.BUILD_NUMBER</name>
         </property>
+
       </activation>
       <build>
         <pluginManagement>
@@ -189,7 +194,7 @@
           <excludedGroups>${excluded.testng.groups}</excludedGroups>
         </configuration>
       </plugin>
-  </plugins>
+    </plugins>
   </build>
 
   <reporting>
