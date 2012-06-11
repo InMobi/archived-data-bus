@@ -312,17 +312,17 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
   public void testPublishMissingPaths() throws Exception {
     DatabusConfigParser configParser = new DatabusConfigParser(
         "test-lss-pub-databus.xml");
-    
+
     DatabusConfig config = configParser.getConfig();
 
     FileSystem fs = FileSystem.getLocal(new Configuration());
-    
+
     ArrayList<Cluster> clusterList = new ArrayList<Cluster>(config
         .getClusters().values());
     Cluster cluster = clusterList.get(0);
     TestLocalStreamService service = new TestLocalStreamService(config,
         cluster, new FSCheckpointProvider(cluster.getCheckpointDir()));
-    
+
     ArrayList<SourceStream> sstreamList = new ArrayList<SourceStream>(config
         .getSourceStreams().values());
 
@@ -342,7 +342,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
 
     int retentioninhours = config.getSourceStreams().get(sstream.getName())
         .getRetentionInHours(cluster.getName());
-    
+
     service.publishMissingPaths(fs, todaysdate.getTimeInMillis(),
         sstream.getName());
 
@@ -460,8 +460,28 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
         fs.mkdirs(new Path(dummycommitpath));
 
         for (TestLocalStreamService service : services) {
+          for (int j = 0; j < NUM_OF_FILES; ++j) {
+            Path tmppath = new Path(cluster.getTmpPath(), service.getName()
+                + File.separator + getDateAsYYYYMMDDHHMMSS(new Date()));
+            FSDataOutputStream tmpstreamout = fs.create(tmppath);
+            tmpstreamout.writeBytes("Creating Tmp Test data for teststream "
+                + files[j]);
+            tmpstreamout.close();
+
+            Assert.assertTrue(fs.exists(tmppath));
+
+          }
           service.runOnce();
+
+          for (int j = 0; j < NUM_OF_FILES; ++j) {
+            Path tmppath = new Path(cluster.getTmpPath(), service.getName()
+                + File.separator + getDateAsYYYYMMDDHHMMSS(new Date()));
+            Assert.assertFalse(fs.exists(tmppath));
+          }
+          LOG.info("Tmp Path does not exist for cluster " + cluster.getName());
         }
+
+
 
         for (int dates = 0; dates < services.size(); ++dates) {
 
@@ -578,6 +598,5 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
         String categoryName) throws Exception {
       super.publishMissingPaths(fs, commitTime, categoryName);
     }
-
   }
 }
