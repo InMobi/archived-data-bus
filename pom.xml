@@ -25,6 +25,10 @@
       <name>mvn central repo</name>
       <url>http://repo1.maven.org maven2/</url>
     </repository>
+    <repository>
+      <id>Inmobi-Snapshot</id>
+      <name>Inmobi Snapshot Repository</name>
+      <url>http://build.corp.inmobi.com/nexus/content/repositories/snapshots/</url>
   </repositories>
 
   <scm>
