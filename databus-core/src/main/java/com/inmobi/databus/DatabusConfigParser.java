@@ -97,7 +97,7 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
       if (retention != null) {
         defaultRetentionInHours = Integer.parseInt(retention);
       }
-      defaults.put(RETENTION_IN_HOURS, retention);
+      defaults.put(RETENTION_IN_HOURS, String.valueOf(defaultRetentionInHours));
 
       String trashretention = getTextValue((Element) configList.item(0),
           TRASH_RETENTION_IN_HOURS);

@@ -47,7 +47,8 @@ public class DataPurgerService extends AbstractService {
 
   private final Cluster cluster;
   private final FileSystem fs;
-  private final Integer trashPathRetentioninHours;
+  private final Integer defaulttrashPathRetentioninHours;
+  private final Integer defaultstreamPathRetentioninHours;
   private Map<String, Integer> streamRetention;
   private Set<Path> streamsToPurge;
   private DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm");
@@ -58,8 +59,12 @@ public class DataPurgerService extends AbstractService {
     super(DataPurgerService.class.getName(), databusConfig, 60000 * 60);
     this.cluster = cluster;
     fs = FileSystem.get(cluster.getHadoopConf());
-    this.trashPathRetentioninHours = new Integer(Integer.parseInt(databusConfig
+    this.defaulttrashPathRetentioninHours = new Integer(
+        Integer.parseInt(databusConfig
         .getDefaults().get(DatabusConfigParser.TRASH_RETENTION_IN_HOURS)));
+    this.defaultstreamPathRetentioninHours = new Integer(
+        Integer.parseInt(databusConfig.getDefaults().get(
+            DatabusConfigParser.RETENTION_IN_HOURS)));
   }
 
   @Override
@@ -119,7 +124,7 @@ public class DataPurgerService extends AbstractService {
 
   private void addLocalStreams() {
     for (SourceStream s : getConfig().getSourceStreams().values()) {
-      if (s.getSourceClusters().contains(cluster)) {
+      if (s.getSourceClusters().contains(cluster.getName())) {
         String streamName = s.getName();
         Integer retentionInHours = new Integer(s.getRetentionInHours(cluster
             .getName()));
@@ -130,23 +135,15 @@ public class DataPurgerService extends AbstractService {
     }
   }
 
-  private Integer getDefaultStreamRetentionInHours() {
-    return new Integer(1);
+  Integer getTrashPathRetentionInHours() {
+    return defaulttrashPathRetentioninHours;
   }
 
-  private Integer getTrashPathRetentionInHours() {
-    return trashPathRetentioninHours;
-  }
-
-  private Integer getRetentionPeriod(String streamName) {
+  Integer getRetentionPeriod(String streamName) {
     Integer retentionInHours = streamRetention.get(streamName);
     if (retentionInHours == null)
-      return getDefaultStreamRetentionInHours();
+      retentionInHours = defaultstreamPathRetentioninHours;
     return retentionInHours;
-  }
-
-  private long getMsecInDay() {
-    return 1000 * 60 * 60 * 24; // 1 day
   }
 
   @Override
