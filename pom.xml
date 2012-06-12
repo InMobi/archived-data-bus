@@ -29,6 +29,7 @@
       <id>Inmobi-Snapshot</id>
       <name>Inmobi Snapshot Repository</name>
       <url>http://build.corp.inmobi.com/nexus/content/repositories/snapshots/</url>
+    </repository>
   </repositories>
 
   <scm>
