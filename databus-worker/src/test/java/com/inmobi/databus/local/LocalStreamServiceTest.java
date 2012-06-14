@@ -58,11 +58,12 @@ import com.inmobi.databus.Stream;
 import com.inmobi.databus.Stream.SourceStreamCluster;
 import com.inmobi.databus.Stream.StreamCluster;
 import com.inmobi.databus.TestMiniClusterUtil;
+import com.inmobi.databus.utils.CalendarHelper;
 
 @Test
 public class LocalStreamServiceTest extends TestMiniClusterUtil {
   private static Logger LOG = Logger.getLogger(LocalStreamServiceTest.class);
-  private final int number_files = 9;
+  private static final int number_files = 9;
 
   Set<String> expectedResults = new LinkedHashSet<String>();
   Set<String> expectedTrashPaths = new LinkedHashSet<String>();
@@ -331,7 +332,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     String basepublishPaths = cluster.getLocalFinalDestDirRoot()
         + sstream.getName() + File.separator;
     String publishPaths = basepublishPaths
-        + getDateAsYYYYMMDDHHMMPath(behinddate.getTime());
+        + CalendarHelper.getDateAsYYYYMMDDHHMNPath(behinddate.getTime());
 
     fs.mkdirs(new Path(publishPaths));
 
@@ -362,7 +363,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     long diff = todaysdate - behinddate.getTimeInMillis();
     while (diff > 60000) {
       String checkcommitpath = basepublishPaths
-          + getDateAsYYYYMMDDHHMMPath(behinddate.getTime());
+          + CalendarHelper.getDateAsYYYYMMDDHHMNPath(behinddate.getTime());
       LOG.debug("Checking for Created Missing Path: " + checkcommitpath);
       if (diff < (retentioninhours * 60 * 60 * 1000))
         fs.exists(new Path(checkcommitpath));
@@ -373,25 +374,8 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     }
   }
 
-  private String getDateAsYYYYMMDD(Date date) {
-    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    return dateFormat.format(date);
-  }
-
-  public static String getDateAsYYYYMMDDHHPath(Date date) {
-    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator + "MM"
-        + File.separator + "dd" + File.separator + "HH" + File.separator);
-    return dateFormat.format(date);
-  }
-
   public static String getDateAsYYYYMMDDHHMMSS(Date date) {
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss_SSSSS");
-    return dateFormat.format(date);
-  }
-
-  public static String getDateAsYYYYMMDDHHMMPath(Date date) {
-    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator + "MM"
-        + File.separator + "dd" + File.separator + "HH" + File.separator + "mm");
     return dateFormat.format(date);
   }
 
@@ -458,7 +442,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
         behinddate.add(Calendar.HOUR_OF_DAY, -2);
         String dummycommitpath = cluster.getLocalFinalDestDirRoot()
             + sstream.getValue().getName() + File.separator
-            + getDateAsYYYYMMDDHHMMPath(behinddate.getTime());
+            + CalendarHelper.getDateAsYYYYMMDDHHMNPath(behinddate.getTime());
         fs.mkdirs(new Path(dummycommitpath));
 
         for (TestLocalStreamService service : services) {
@@ -491,7 +475,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
           Path trashpath = cluster.getTrashPathWithDateHour();
           String commitpath = cluster.getLocalFinalDestDirRoot()
               + sstream.getValue().getName() + File.separator
-              + getDateAsYYYYMMDDHHPath(todaysdate);
+              + CalendarHelper.getDateAsYYYYMMDDHHPath(todaysdate.getTime());
           String checkpointpath = cluster.getCheckpointDir();
           FileStatus[] mindirs = fs.listStatus(new Path(commitpath));
 
@@ -508,7 +492,8 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
           while (diff > 60000) {
             String checkcommitpath = cluster.getLocalFinalDestDirRoot()
                 + sstream.getValue().getName() + File.separator
-                + getDateAsYYYYMMDDHHMMPath(behinddate.getTime());
+                + CalendarHelper
+                    .getDateAsYYYYMMDDHHMNPath(behinddate.getTime());
             LOG.debug("Checking for Created Missing Path: " + checkcommitpath);
             if (diff < (retentioninhours * 60 * 60 * 1000))
               fs.exists(new Path(checkcommitpath));
@@ -579,11 +564,13 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     fs.close();
   }
 
-  private class TestLocalStreamService extends LocalStreamService {
+  public static class TestLocalStreamService extends LocalStreamService {
 
+    private final Cluster cluster;
     public TestLocalStreamService(DatabusConfig config, Cluster cluster,
         CheckpointProvider provider) {
       super(config, cluster, provider);
+      this.cluster = cluster;
     }
 
     public void runOnce() throws Exception {
@@ -599,6 +586,10 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     public void publishMissingPaths(FileSystem fs, long commitTime,
         String categoryName) throws Exception {
       super.publishMissingPaths(fs, commitTime, categoryName);
+    }
+
+    public Cluster getCluster() {
+      return cluster;
     }
   }
 }

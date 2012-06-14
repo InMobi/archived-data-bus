@@ -187,8 +187,8 @@ public class DataPurgerServiceTest {
       throws Exception {
     for(String streamname: cluster.getSourceStreams()) {
       String[] files = new String[NUM_OF_FILES];
-      String datapath = LocalStreamServiceTest.getDateAsYYYYMMDDHHMMPath(date
-          .getTime());
+      String datapath = CalendarHelper
+          .getDateAsYYYYMMDDHHMNPath(date.getTime());
       String commitpath = cluster.getLocalFinalDestDirRoot() + File.separator
           + streamname + File.separator + datapath;
       String mergecommitpath = cluster.getFinalDestDirRoot() + File.separator
@@ -238,8 +238,8 @@ public class DataPurgerServiceTest {
   private void verifyPurgefiles(FileSystem fs, Cluster cluster, Calendar date,
       boolean checkexists, boolean checktrashexists) throws Exception {
     for (String streamname : cluster.getSourceStreams()) {
-      String datapath = LocalStreamServiceTest.getDateAsYYYYMMDDHHMMPath(date
-          .getTime());
+      String datapath = CalendarHelper
+          .getDateAsYYYYMMDDHHMNPath(date.getTime());
       String commitpath = cluster.getLocalFinalDestDirRoot() + File.separator
           + streamname + File.separator + datapath;
       String mergecommitpath = cluster.getFinalDestDirRoot() + File.separator

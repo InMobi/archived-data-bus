@@ -13,6 +13,7 @@
 */
 package com.inmobi.databus;
 
+import com.inmobi.databus.Stream.StreamCluster;
 import com.inmobi.databus.distcp.MergedStreamService;
 import com.inmobi.databus.distcp.MirrorStreamService;
 import com.inmobi.databus.local.LocalStreamService;
@@ -68,7 +69,7 @@ public class Databus implements Service, DatabusConstants {
 
       List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();
       List<Cluster> mirroredRemoteClusters = new ArrayList<Cluster>();
-      for (Iterator<String> cStream = cluster.getDestinationStreams()
+      for (Iterator<String> cStream = cluster.getSourceStreams()
           .iterator(); cStream.hasNext();) {
         //Start MergedStreamConsumerService instances for this cluster for each cluster
         //from where it has to fetch a partial stream and is hosting a primary stream
@@ -77,14 +78,19 @@ public class Databus implements Service, DatabusConstants {
 
         if (config.getAllStreams().get(cStream).getPrimaryDestinationCluster()
             .getName().compareTo(cluster.getName()) == 0) {
-          for (Iterator<String> cName = cluster.getSourceStreams().iterator(); cName
+          for (Iterator<StreamCluster> cName = config.getAllStreams()
+              .get(cStream).getSourceStreamClusters().iterator(); cName
               .hasNext();) {
-            mergedStreamRemoteClusters.add(config.getAllClusters().get(cName));
+            StreamCluster sourceCluster = cName.next();
+            if (!mergedStreamRemoteClusters
+                .contains(sourceCluster.getCluster()))
+              mergedStreamRemoteClusters.add(sourceCluster.getCluster());
           }
         } else {
           Cluster primaryCluster = config.getAllStreams().get(cStream)
               .getPrimaryDestinationCluster();
-          if (primaryCluster != null)
+          if ((primaryCluster != null)
+              && !mirroredRemoteClusters.contains(primaryCluster))
             mirroredRemoteClusters.add(primaryCluster);
         }
       }

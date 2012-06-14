@@ -18,10 +18,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -244,15 +246,20 @@ public class LocalStreamService extends AbstractService {
 
     // find input files for consumer
     Map<Path, Path> consumerCommitPaths = new HashMap<Path, Path>();
+    List<String> primaryClusters = new ArrayList<String>();
     for (Iterator<String> sourceStream = cluster.getSourceStreams().iterator(); sourceStream
         .hasNext();) {
-      Stream primaryStream = getConfig().getAllStreams().get(
-          sourceStream.next());
+      String streamName = sourceStream.next();
+      Stream primaryStream = getConfig().getAllStreams().get(streamName);
       if (primaryStream != null) {
         Cluster primaryCluster = primaryStream.getPrimaryDestinationCluster();
         boolean consumeCluster = false;
-        if (primaryCluster != null) {
+        if ((primaryCluster != null)
+            && !primaryClusters.contains(primaryCluster.getName())) {
           consumeCluster = true;
+          LOG.debug("Consuming the Local Stream output for Cluster "
+              + cluster.getName());
+          primaryClusters.add(primaryCluster.getName());
         }
 
         if (consumeCluster) {

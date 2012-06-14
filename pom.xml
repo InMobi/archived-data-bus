@@ -16,11 +16,6 @@
 
   <repositories>
     <repository>
-      <id>Inmobi-Snapshot</id>
-      <name>Inmobi Snapshot Repository</name>
-      <url>http://build.corp.inmobi.com/nexus/content/repositories/snapshots/</url>
-    </repository>
-    <repository>
       <id>cloudera</id>
       <name>cloudera repo</name>
       <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
