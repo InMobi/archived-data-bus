@@ -55,6 +55,7 @@ public class Cluster {
     this.hadoopConf.set("mapred.job.tracker",jtUrl);
     this.hadoopConf.set("databus.tmp.path", getTmpPath().toString());
     this.hadoopConf.set("fs.default.name", hdfsUrl);
+    this.hadoopConf.set("mapred.job.queue.name", clusterjobqueuename);
   }
 
   private void Validate(String element, String objType) throws ParseException {
@@ -102,7 +103,9 @@ public class Cluster {
   }
 
   public String getUnqaulifiedFinalDestDirRoot() {
-    String dest = File.separator + rootDir + File.separator + "streams"
+    Path absolutePath = new Path(hdfsUrl);
+    String dest = File.separator + absolutePath.toUri().getPath() + rootDir
+        + File.separator + "streams"
         + File.separator;
     return dest;
   }

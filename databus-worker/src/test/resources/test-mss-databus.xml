@@ -1,6 +1,6 @@
 <databus>
   <defaults>
-    <rootdir>/tmp/mergeservice</rootdir>
+    <rootdir>/mergeservice</rootdir>
     <retentioninhours>24</retentioninhours>
     <trashretentioninhours>48</trashretentioninhours>
   </defaults>
@@ -34,12 +34,12 @@
   </streams>
 
   <clusters>
-    <cluster name="testcluster1" hdfsurl="file:///tmp/testcluster1"
+    <cluster name="testcluster1" hdfsurl="file:///tmp/mergeservicetest/testcluster1"
              jturl="local"
              jobqueuename="default"
              >
     </cluster>
-    <cluster name="testcluster2" hdfsurl="file:///tmp/testcluster2"
+    <cluster name="testcluster2" hdfsurl="file:////tmp/mergeservicetest/testcluster2"
              jturl="local"
              jobqueuename="default"
              >

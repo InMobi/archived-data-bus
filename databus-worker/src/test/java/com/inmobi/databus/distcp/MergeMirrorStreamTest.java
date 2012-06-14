@@ -30,6 +30,7 @@ import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.DatabusConfigParser;
 import com.inmobi.databus.FSCheckpointProvider;
 import com.inmobi.databus.Stream;
+import com.inmobi.databus.Stream.DestinationStreamCluster;
 import com.inmobi.databus.TestMiniClusterUtil;
 import com.inmobi.databus.Stream.SourceStreamCluster;
 import com.inmobi.databus.Stream.StreamCluster;
@@ -38,9 +39,9 @@ import com.inmobi.databus.local.LocalStreamServiceTest.TestLocalStreamService;
 import com.inmobi.databus.utils.CalendarHelper;
 
 @Test(groups = { "integration" })
-public class MergeStreamTest extends TestMiniClusterUtil {
+public class MergeMirrorStreamTest extends TestMiniClusterUtil {
 
-  private static final Log LOG = LogFactory.getLog(MergeStreamTest.class);
+  private static final Log LOG = LogFactory.getLog(MergeMirrorStreamTest.class);
 
   /*
    * Here is the basic idea, create two clusters of different rootdir paths run
@@ -51,7 +52,7 @@ public class MergeStreamTest extends TestMiniClusterUtil {
   /**
    * @throws Exception
    */
-  public void testMergeStream() throws Exception {
+  public void testMergeMirrorStream() throws Exception {
     final int NUM_OF_FILES = 35;
 
     DatabusConfigParser configParser = new DatabusConfigParser(
@@ -146,10 +147,27 @@ public class MergeStreamTest extends TestMiniClusterUtil {
 
         service.execute();
       }
+      
+      Set<StreamCluster> destMirrorClusters = primaryStream
+          .getDestinationStreamClusters();
+      Set<Cluster> MirrorprimaryCluster = new HashSet<Cluster>();
 
+      for (Iterator<StreamCluster> destStreamCluster = destMirrorClusters
+          .iterator(); destStreamCluster.hasNext();) {
+        DestinationStreamCluster cluster = (DestinationStreamCluster) destStreamCluster
+            .next();
+        if (!cluster.isPrimary()) {
+          MirrorprimaryCluster.add(cluster.getCluster());
+          TestMirrorStreamService service = new TestMirrorStreamService(config,
+              destcluster, cluster.getCluster());
+
+          service.execute();
+        }
+      }
+
+      {
       String commitpath = destcluster.getFinalDestDirRoot()
-          + sstream.getValue().getName()
-          + File.separator
+          + sstream.getValue().getName() + File.separator
           + CalendarHelper.getDateAsYYYYMMDDHHPath(todaysdate.getTime());
       FileStatus[] mindirs = fs.listStatus(new Path(commitpath));
 
@@ -167,7 +185,7 @@ public class MergeStreamTest extends TestMiniClusterUtil {
         String streams_dir = commitpath + mindir.getPath().getName()
             + File.separator;
 
-        LOG.debug("Checking in Path for mapred Output: " + streams_dir);
+        LOG.debug("Checking in Path for Merged mapred Output: " + streams_dir);
         
         for (Iterator<Cluster> checkcluster = primaryCluster.iterator(); checkcluster
             .hasNext();) {
@@ -180,22 +198,76 @@ public class MergeStreamTest extends TestMiniClusterUtil {
             Assert.assertTrue(fs.exists(new Path(checkpath)));
             }
           }
+        
+        
 
       } catch (NumberFormatException e) {
 
       }
-    }
+      
+      }
+      
+      {
+        for (Iterator<Cluster> checkcluster = MirrorprimaryCluster.iterator(); checkcluster
+          .hasNext();) {
+          Cluster tmpcluster = checkcluster.next();
+          String commitpath = tmpcluster.getFinalDestDirRoot()
+          + sstream.getValue().getName() + File.separator
+          + CalendarHelper.getDateAsYYYYMMDDHHPath(todaysdate.getTime());
+          FileStatus[] mindirs = fs.listStatus(new Path(commitpath));
 
+          FileStatus mindir = mindirs[0];
+
+          for (FileStatus minutedir : mindirs) {
+            if (mindir.getPath().getName()
+                .compareTo(minutedir.getPath().getName()) < 0) {
+              mindir = minutedir;
+            }
+          }
+
+          try {
+            Integer.parseInt(mindir.getPath().getName());
+            String streams_dir = commitpath + mindir.getPath().getName()
+                + File.separator;
+
+            LOG.debug("Checking in Path for Mirror mapred Output: "
+                + streams_dir);
+
+            for (Map.Entry<String, List<String>> checkFiles : filesList
+                .entrySet()) {
+              List<String> files = checkFiles.getValue();
+              for (int j = 0; j < NUM_OF_FILES; ++j) {
+                String checkpath = streams_dir + checkFiles.getKey() + "-"
+                    + files.get(j) + ".gz";
+                LOG.debug("Checking file: " + checkpath);
+                Assert.assertTrue(fs.exists(new Path(checkpath)));
+              }
+              }
+          } catch (NumberFormatException e) {
+
+          }
+      }
+      }
+    }
     for (Iterator<String> path = pathstoRemove.iterator(); path.hasNext();) {
       fs.delete(new Path(path.next()), true);
     }
-
     fs.close();
   }
 
   public static class TestMergeStreamService extends MergedStreamService {
 
     public TestMergeStreamService(DatabusConfig config, Cluster srcCluster,
+        Cluster destinationCluster) throws Exception {
+      super(config, srcCluster, destinationCluster);
+      // TODO Auto-generated constructor stub
+    }
+
+  }
+
+  public static class TestMirrorStreamService extends MirrorStreamService {
+
+    public TestMirrorStreamService(DatabusConfig config, Cluster srcCluster,
         Cluster destinationCluster) throws Exception {
       super(config, srcCluster, destinationCluster);
       // TODO Auto-generated constructor stub
