@@ -4,10 +4,14 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.Map;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import com.inmobi.databus.Stream.SourceStreamCluster;
+import com.inmobi.databus.Stream.StreamCluster;
 
 public class TestDatabusConfigParser {
 
@@ -17,7 +21,7 @@ public class TestDatabusConfigParser {
 
     DatabusConfig config = databusConfigParser.getConfig();
 
-    Map<String, Cluster> clusterMap = config.getClusters();
+    Map<String, Cluster> clusterMap = config.getAllClusters();
     Assert.assertEquals(clusterMap.size(), 1);
 
     for (Map.Entry<String, Cluster> clusterentry: clusterMap.entrySet())
@@ -32,17 +36,20 @@ public class TestDatabusConfigParser {
       Assert.assertEquals(cluster.getRootDir(), "file://///tmp/databustest1/");
     }
 
-    Map<String, SourceStream> streamMap = config.getSourceStreams();
+    Map<String, Stream> streamMap = config.getAllStreams();
     Assert.assertEquals(streamMap.size(), 1);
 
-    for (Map.Entry<String, SourceStream> streamEntry : streamMap.entrySet()) {
+    for (Map.Entry<String, Stream> streamEntry : streamMap.entrySet()) {
       Assert.assertEquals(streamEntry.getKey(), "test1");
-      SourceStream stream = streamEntry.getValue();
+      Stream stream = streamEntry.getValue();
       Assert.assertEquals(stream.getName(), "test1");
-      Assert.assertEquals(stream.getSourceClusters().size(), 1);
-      for (String clusterName : stream.getSourceClusters()) {
-        Assert.assertEquals(clusterName, "testcluster1");
-        Assert.assertEquals(stream.getRetentionInHours(clusterName), 24);
+      Assert.assertEquals(stream.getSourceStreamClusters().size(), 1);
+      for (Iterator<StreamCluster> streamCluster = stream
+          .getSourceStreamClusters().iterator(); streamCluster.hasNext();) {
+        StreamCluster scluster = streamCluster.next();
+        Assert.assertEquals(scluster.getCluster().getName(),
+            "testcluster1");
+        Assert.assertEquals(scluster.getRetentionPeriod(), 24);
       }
     }
   }
@@ -54,7 +61,7 @@ public class TestDatabusConfigParser {
 
     DatabusConfig config = databusConfigParser.getConfig();
 
-    Map<String, Cluster> clusterMap = config.getClusters();
+    Map<String, Cluster> clusterMap = config.getAllClusters();
     Assert.assertEquals(clusterMap.size(), 1);
 
     for (Map.Entry<String, Cluster> clusterentry: clusterMap.entrySet())
@@ -69,17 +76,20 @@ public class TestDatabusConfigParser {
       Assert.assertEquals(cluster.getRootDir(), "file://///tmp/databustest2/");
     }
 
-    Map<String, SourceStream> streamMap = config.getSourceStreams();
-    Assert.assertEquals(streamMap.size(), 1);
+    Map<String, Stream> Streams = config.getAllStreams();
+    Assert.assertEquals(Streams.size(), 1);
 
-    for (Map.Entry<String, SourceStream> streamEntry : streamMap.entrySet()) {
+    for (Map.Entry<String, Stream> streamEntry : Streams.entrySet()) {
       Assert.assertEquals(streamEntry.getKey(), "test2");
-      SourceStream stream = streamEntry.getValue();
+      Stream stream = streamEntry.getValue();
       Assert.assertEquals(stream.getName(), "test2");
-      Assert.assertEquals(stream.getSourceClusters().size(), 1);
-      for (String clusterName : stream.getSourceClusters()) {
-        Assert.assertEquals(clusterName, "testcluster2");
-        Assert.assertEquals(stream.getRetentionInHours(clusterName), 48);
+      Assert.assertEquals(stream.getSourceStreamClusters().size(), 1);
+      for (Iterator<StreamCluster> cluster = stream
+          .getSourceStreamClusters().iterator(); cluster.hasNext();) {
+        StreamCluster scluster = cluster.next();
+        Assert.assertEquals(scluster.getCluster().getName(),
+            "testcluster2");
+        Assert.assertEquals(scluster.getRetentionPeriod(), 48);
       }
     }
   }
@@ -133,11 +143,10 @@ public class TestDatabusConfigParser {
 
     DatabusConfig config = databusConfigParser.getConfig();
 
-    Map<String, Cluster> clusterMap = config.getClusters();
+    Map<String, Cluster> clusterMap = config.getAllClusters();
     Assert.assertEquals(clusterMap.size(), 2);
 
-    for (Map.Entry<String, Cluster> clusterentry: clusterMap.entrySet())
-    {
+    for (Map.Entry<String, Cluster> clusterentry: clusterMap.entrySet()) {
       Cluster cluster = clusterentry.getValue();
       if (clusterentry.getKey().compareTo("testcluster3") == 0) {
         Assert.assertEquals(cluster.getName(), "testcluster3");
@@ -159,23 +168,26 @@ public class TestDatabusConfigParser {
       }
     }
 
-    Map<String, SourceStream> streamMap = config.getSourceStreams();
-    Assert.assertEquals(streamMap.size(), 1);
+    Map<String, Stream> Streams = config.getAllStreams();
+    Assert.assertEquals(Streams.size(), 1);
 
-    for (Map.Entry<String, SourceStream> streamEntry : streamMap.entrySet()) {
+    for (Map.Entry<String, Stream> streamEntry : Streams.entrySet()) {
       Assert.assertEquals(streamEntry.getKey(), "test3");
-      SourceStream stream = streamEntry.getValue();
+      Stream stream = streamEntry.getValue();
       Assert.assertEquals(stream.getName(), "test3");
-      int numSourceClusters = stream.getSourceClusters().size();
+      int numSourceClusters = stream.getSourceStreamClusters().size();
       Assert.assertEquals(numSourceClusters, 2);
 
-      for (String clusterName : stream.getSourceClusters()) {
+      for (Iterator<StreamCluster> sourceCluster = stream
+          .getSourceStreamClusters().iterator(); sourceCluster.hasNext();) {
+        StreamCluster scluster = sourceCluster.next();
+        String clusterName = scluster.getCluster().getName();
         if(clusterName.compareTo("testcluster3")==0) {
-          Assert.assertEquals(stream.getRetentionInHours(clusterName), 48);
+          Assert.assertEquals(scluster.getRetentionPeriod(), 48);
           numSourceClusters--;
         }
         if (clusterName.compareTo("testcluster4") == 0) {
-          Assert.assertEquals(stream.getRetentionInHours(clusterName), 96);
+          Assert.assertEquals(scluster.getRetentionPeriod(), 96);
           numSourceClusters--;
         }
       }

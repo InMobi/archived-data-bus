@@ -15,6 +15,10 @@ package com.inmobi.databus.distcp;
 
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
+import com.inmobi.databus.Stream;
+import com.inmobi.databus.Stream.DestinationStreamCluster;
+import com.inmobi.databus.Stream.StreamCluster;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -126,17 +130,17 @@ public class MergedStreamService extends DistcpBaseService {
     // for each stream in committedPaths
     for (String stream : committedPaths.keySet()) {
       // for each cluster
-      for (Cluster cluster : getConfig().getClusters().values()) {
+      for (Iterator<DestinationStreamCluster> destCluster = getConfig().
+          getAllStreams().get(stream).getMirroredClusters().iterator();
+          destCluster.hasNext();) {
         // is this stream to be mirrored on this cluster
-        if (cluster.getMirroredStreams().contains(stream)) {
-          Set<Cluster> mirrorConsumers = mirrorStreamConsumers.get(stream);
-          if (mirrorConsumers == null)
-            mirrorConsumers = new HashSet<Cluster>();
-          mirrorConsumers.add(cluster);
-          mirrorStreamConsumers.put(stream, mirrorConsumers);
+            Set<Cluster> mirrorConsumers = mirrorStreamConsumers.get(stream);
+            if (mirrorConsumers == null)
+              mirrorConsumers = new HashSet<Cluster>();
+            mirrorConsumers.add(destCluster.next().getCluster());
+            mirrorStreamConsumers.put(stream, mirrorConsumers);
         }
       }
-    } // for each stream
 
     // Commit paths for each consumer
     for (String stream : committedPaths.keySet()) {

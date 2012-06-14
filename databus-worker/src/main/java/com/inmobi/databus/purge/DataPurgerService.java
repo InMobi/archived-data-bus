@@ -33,8 +33,9 @@ import com.inmobi.databus.AbstractService;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.DatabusConfigParser;
-import com.inmobi.databus.DestinationStream;
-import com.inmobi.databus.SourceStream;
+import com.inmobi.databus.Stream;
+import com.inmobi.databus.Stream.DestinationStreamCluster;
+import com.inmobi.databus.Stream.StreamCluster;
 import com.inmobi.databus.utils.CalendarHelper;
 
 /*
@@ -83,37 +84,44 @@ public class DataPurgerService extends AbstractService {
   }
 
   private void addMergedStreams() {
-    Map<String, DestinationStream> destinationStreamMapStreamMap = cluster
-        .getDestinationStreams();
-    Set<Map.Entry<String, DestinationStream>> entrySet = destinationStreamMapStreamMap
-        .entrySet();
-    Iterator it = entrySet.iterator();
+    Set<String> destinationStreams = cluster.getDestinationStreams();
+    Iterator<String> it = destinationStreams.iterator();
     while (it.hasNext()) {
-      Map.Entry entry = (Map.Entry) it.next();
-      String streamName = (String) entry.getKey();
-      DestinationStream consumeStream = (DestinationStream) entry.getValue();
-      Integer mergedStreamRetentionInHours = consumeStream
-          .getRetentionInHours();
-      LOG.debug("Merged Stream :: streamName [" + streamName
+      String destStreamName = it.next();
+      Integer mergedStreamRetentionInHours = -1;
+
+      for (Iterator<StreamCluster> destClusters = getConfig().getAllStreams()
+          .get(destStreamName).getDestinationStreamClusters().iterator(); destClusters
+          .hasNext();) {
+        DestinationStreamCluster destCluster = (DestinationStreamCluster) destClusters
+            .next();
+        if(destCluster.getCluster().getName().compareTo(cluster.getName())==0)
+          mergedStreamRetentionInHours = destCluster.getRetentionPeriod();
+
+      }
+      LOG.debug("Merged Stream :: streamName [" + destStreamName
           + "] mergedStreamRetentionInHours [" + mergedStreamRetentionInHours
           + "]");
-      if (streamRetention.get(streamName) == null) {
-        streamRetention.put(streamName, mergedStreamRetentionInHours);
-        LOG.debug("Adding Merged Stream [" + streamName
+      if (streamRetention.get(destStreamName) == null) {
+        streamRetention.put(destStreamName, mergedStreamRetentionInHours);
+        LOG.debug("Adding Merged Stream [" + destStreamName
             + "] retentionInHours [" + mergedStreamRetentionInHours + "]");
       } else {
         // Partial & Merged stream are produced at this cluster
         // choose max retention period
-        Integer partialStreamRetentionInHours = streamRetention.get(streamName);
+        Integer partialStreamRetentionInHours = streamRetention
+            .get(destStreamName);
         if (partialStreamRetentionInHours
             .compareTo(mergedStreamRetentionInHours) > 0) {
-          streamRetention.put(streamName, partialStreamRetentionInHours);
-          LOG.debug("Overriding Stream [" + streamName + "] retentionInHours ["
+          streamRetention.put(destStreamName, partialStreamRetentionInHours);
+          LOG.debug("Overriding Stream [" + destStreamName
+              + "] retentionInHours ["
               + partialStreamRetentionInHours + "]");
 
         } else {
-          streamRetention.put(streamName, mergedStreamRetentionInHours);
-          LOG.debug("Overriding Stream [" + streamName + "] retentionInHours ["
+          streamRetention.put(destStreamName, mergedStreamRetentionInHours);
+          LOG.debug("Overriding Stream [" + destStreamName
+              + "] retentionInHours ["
               + mergedStreamRetentionInHours + "]");
 
         }
@@ -123,14 +131,18 @@ public class DataPurgerService extends AbstractService {
   }
 
   private void addLocalStreams() {
-    for (SourceStream s : getConfig().getSourceStreams().values()) {
-      if (s.getSourceClusters().contains(cluster.getName())) {
-        String streamName = s.getName();
-        Integer retentionInHours = new Integer(s.getRetentionInHours(cluster
-            .getName()));
-        streamRetention.put(streamName, retentionInHours);
-        LOG.debug("Adding Partial Stream [" + streamName
-            + "] with retentionPeriod [" + retentionInHours + " Hours]");
+    for (Stream s : getConfig().getAllStreams().values()) {
+      for (Iterator<StreamCluster> sourceClusterItr = s
+          .getSourceStreamClusters().iterator(); sourceClusterItr.hasNext();) {
+        StreamCluster sourceCluster = sourceClusterItr.next();
+        if (sourceCluster.getCluster().getName().compareTo(cluster.getName()) == 0) {
+          String streamName = s.getName();
+          Integer retentionInHours = new Integer(
+              sourceCluster.getRetentionPeriod());
+          streamRetention.put(streamName, retentionInHours);
+          LOG.debug("Adding Partial Stream [" + streamName
+              + "] with retentionPeriod [" + retentionInHours + " Hours]");
+        }
       }
     }
   }

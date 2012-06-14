@@ -25,7 +25,7 @@ public class TestCluster {
 
     DatabusConfig config = databusConfigParser.getConfig();
 
-    Map<String, Cluster> clusterMap = config.getClusters();
+    Map<String, Cluster> clusterMap = config.getAllClusters();
 
     for (Cluster cluster : clusterMap.values()) {
 
@@ -59,13 +59,15 @@ public class TestCluster {
 
       LOG.info("Testing getDateAsYYYYMMDDHHMNPath with long " + formattedDate
           + " "
-          + Cluster.getDateAsYYYYMMDDHHMNPath(startTime.getTimeInMillis()));
-      Assert.assertTrue(Cluster.getDateAsYYYYMMDDHHMNPath(
+          + CalendarHelper.getDateAsYYYYMMDDHHMNPath(startTime
+              .getTimeInMillis()));
+      Assert.assertTrue(CalendarHelper.getDateAsYYYYMMDDHHMNPath(
           startTime.getTimeInMillis()).compareTo(formattedDate) == 0);
 
       LOG.info("Testing getDateAsYYYYMMDDHHMNPath with Date " + formattedDate
-          + " " + Cluster.getDateAsYYYYMMDDHHMNPath(startTime.getTime()));
-      Assert.assertTrue(Cluster.getDateAsYYYYMMDDHHMNPath(startTime.getTime())
+          + " " + CalendarHelper.getDateAsYYYYMMDDHHMNPath(startTime.getTime()));
+      Assert.assertTrue(CalendarHelper.getDateAsYYYYMMDDHHMNPath(
+          startTime.getTime())
           .compareTo(formattedDate) == 0);
 
       DateFormat clusterdateHourFormat = new SimpleDateFormat("yyyy"

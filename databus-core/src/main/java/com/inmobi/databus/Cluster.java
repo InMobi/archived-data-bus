@@ -33,32 +33,25 @@ public class Cluster {
   private final String hdfsUrl;
   private final String clustername;
   private final String clusterjobqueuename;
-  private final Map<String, DestinationStream> consumeStreams;
-  private final Set<String> sourceStreams;
   private final Configuration hadoopConf = new Configuration();
-  private final static DateFormat clusterdateHourMinuteFormat = new SimpleDateFormat(
-      "yyyy" + File.separator + "MM" + File.separator + "dd" + File.separator
-          + "HH" + File.separator + "mm" + File.separator);
-  private final static DateFormat clusterdateHourFormat = new SimpleDateFormat(
-      "yyyy" + File.separator + "MM" + File.separator + "dd" + File.separator
-          + "HH" + File.separator);
 
-  public Cluster(Map<String, String> clusterElementsMap, String rootDir,
-      Map<String, DestinationStream> consumeStreams, Set<String> sourceStreams)
+  private final Set<String> sourceStreams = new HashSet<String>();
+  private final Set<String> destinationStreams = new HashSet<String>();
+
+  public Cluster(Map<String, String> clusterConfiguration)
       throws Exception {
-    this.rootDir = rootDir;
-    this.consumeStreams = consumeStreams;
-    this.sourceStreams = sourceStreams;
-    this.clustername = clusterElementsMap.get(DatabusConfigParser.NAME);
+    this.rootDir = clusterConfiguration.get(DatabusConfigParser.ROOTDIR);
+    this.clustername = clusterConfiguration.get(DatabusConfigParser.NAME);
     Validate(clustername, "Cluster Name");
-    this.hdfsUrl = clusterElementsMap.get(DatabusConfigParser.HDFS_URL);
+    this.hdfsUrl = clusterConfiguration.get(DatabusConfigParser.HDFS_URL);
     Validate(hdfsUrl, "In Cluster " + clustername + " hdfsUrl");
-    this.clusterjobqueuename = clusterElementsMap
+    this.clusterjobqueuename = clusterConfiguration
         .get(DatabusConfigParser.JOB_QUEUE_NAME);
     Validate(clusterjobqueuename, "In Cluster " + clustername
         + " clusterjobqueuename");
-    String jtUrl = clusterElementsMap.get(DatabusConfigParser.JT_URL);
+    String jtUrl = clusterConfiguration.get(DatabusConfigParser.JT_URL);
     Validate(clusterjobqueuename, "In Cluster " + clustername + " jtUrl");
+
     this.hadoopConf.set("mapred.job.tracker",jtUrl);
     this.hadoopConf.set("databus.tmp.path", getTmpPath().toString());
     this.hadoopConf.set("fs.default.name", hdfsUrl);
@@ -79,28 +72,16 @@ public class Cluster {
     return dest;
   }
 
-  public static String getDateAsYYYYMMDDHHMNPath(long commitTime) {
-    return clusterdateHourMinuteFormat.format(commitTime);
-  }
-
-  public static String getDateAsYYYYMMDDHHMNPath(Date date) {
-    return clusterdateHourMinuteFormat.format(date);
-  }
-
-  private static String getDateAsYYYYMMDDHHPath(long commitTime) {
-    return clusterdateHourFormat.format(commitTime);
-  }
-
   public String getLocalDestDir(String category, long commitTime)
       throws IOException {
     String dest = getLocalFinalDestDirRoot() + category + File.separator
-        + getDateAsYYYYMMDDHHMNPath(commitTime);
+        + CalendarHelper.getDateAsYYYYMMDDHHMNPath(commitTime);
     return dest;
   }
 
   public String getLocalDestDir(String category, Date date) throws IOException {
     String dest = getLocalFinalDestDirRoot() + category + File.separator
-        + getDateAsYYYYMMDDHHMNPath(date);
+        + CalendarHelper.getDateAsYYYYMMDDHHMNPath(date);
     return dest;
   }
 
@@ -133,49 +114,22 @@ public class Cluster {
 
   public String getDateTimeDestDir(String category, long commitTime) {
     String dest = category + File.separator
-        + getDateAsYYYYMMDDHHMNPath(commitTime);
+        + CalendarHelper.getDateAsYYYYMMDDHHMNPath(commitTime);
     return dest;
   }
 
   public String getFinalDestDir(String category, long commitTime)
       throws IOException {
     String dest = getFinalDestDirRoot() + category + File.separator
-        + getDateAsYYYYMMDDHHMNPath(commitTime);
+        + CalendarHelper.getDateAsYYYYMMDDHHMNPath(commitTime);
     return dest;
   }
 
   public String getFinalDestDirTillHour(String category, long commitTime)
       throws IOException {
     String dest = getFinalDestDirRoot() + category + File.separator
-        + getDateAsYYYYMMDDHHPath(commitTime);
+        + CalendarHelper.getDateAsYYYYMMDDHHPath(commitTime);
     return dest;
-  }
-
-  public Map<String, DestinationStream> getDestinationStreams() {
-    return consumeStreams;
-  }
-
-  public Set<String> getMirroredStreams() {
-    Set<String> mirroredStreams = new HashSet<String>();
-    for (DestinationStream consumeStream : getDestinationStreams().values()) {
-      if (!consumeStream.isPrimary())
-        mirroredStreams.add(consumeStream.getName());
-    }
-    return mirroredStreams;
-  }
-
-  public Set<String> getPrimaryDestinationStreams() {
-    Set<String> primaryStreams = new HashSet<String>();
-    for (DestinationStream consumeStream : getDestinationStreams().values()) {
-      if (consumeStream.isPrimary())
-        primaryStreams.add(consumeStream.getName());
-    }
-    return primaryStreams;
-
-  }
-
-  public Set<String> getSourceStreams() {
-    return sourceStreams;
   }
 
   public Path getTrashPath() {
@@ -196,14 +150,14 @@ public class Cluster {
     return new Path(getRootDir() + "data");
   }
 
-  public Path getConsumePath(Cluster consumeCluster) {
+  public Path getConsumePath(Cluster cluster) {
     return new Path(getSystemDir() + File.separator + "consumers"
-        + File.separator + consumeCluster.getName());
+        + File.separator + cluster.getName());
   }
 
-  public Path getMirrorConsumePath(Cluster consumeCluster) {
+  public Path getMirrorConsumePath(Cluster cluster) {
     return new Path(getSystemDir() + File.separator + "mirrors"
-        + File.separator + consumeCluster.getName());
+        + File.separator + cluster.getName());
   }
 
   public Path getTmpPath() {
@@ -220,5 +174,21 @@ public class Cluster {
 
   public String getJobQueueName() {
     return clusterjobqueuename;
+  }
+
+  public void addSourceStream(String streamName) {
+    sourceStreams.add(streamName);
+  }
+
+  public void addDestinationStream(String streamName) {
+    destinationStreams.add(streamName);
+  }
+
+  public Set<String> getSourceStreams() {
+    return sourceStreams;
+  }
+
+  public Set<String> getDestinationStreams() {
+    return destinationStreams;
   }
 }

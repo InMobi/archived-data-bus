@@ -56,7 +56,7 @@ public class Databus implements Service, DatabusConstants {
   }
 
   private void init() throws Exception {
-    for (Cluster cluster : config.getClusters().values()) {
+    for (Cluster cluster : config.getAllClusters().values()) {
       if (!clustersToProcess.contains(cluster.getName())) {
         continue;
       }
@@ -68,19 +68,22 @@ public class Databus implements Service, DatabusConstants {
 
       List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();
       List<Cluster> mirroredRemoteClusters = new ArrayList<Cluster>();
-      for (DestinationStream cStream : cluster.getDestinationStreams().values()) {
+      for (Iterator<String> cStream = cluster.getDestinationStreams()
+          .iterator(); cStream.hasNext();) {
         //Start MergedStreamConsumerService instances for this cluster for each cluster
         //from where it has to fetch a partial stream and is hosting a primary stream
         //Start MirroredStreamConsumerService instances for this cluster for each cluster
         //from where it has to mirror mergedStreams
 
-        for (String cName : config.getSourceStreams().get(cStream.getName())
-        .getSourceClusters()) {
-          if (cStream.isPrimary())
-            mergedStreamRemoteClusters.add(config.getClusters().get(cName));
-        }
-        if (!cStream.isPrimary())  {
-          Cluster primaryCluster = config.getPrimaryClusterForDestinationStream(cStream.getName());
+        if (config.getAllStreams().get(cStream).getPrimaryDestinationCluster()
+            .getName().compareTo(cluster.getName()) == 0) {
+          for (Iterator<String> cName = cluster.getSourceStreams().iterator(); cName
+              .hasNext();) {
+            mergedStreamRemoteClusters.add(config.getAllClusters().get(cName));
+          }
+        } else {
+          Cluster primaryCluster = config.getAllStreams().get(cStream)
+              .getPrimaryDestinationCluster();
           if (primaryCluster != null)
             mirroredRemoteClusters.add(primaryCluster);
         }
@@ -99,10 +102,12 @@ public class Databus implements Service, DatabusConstants {
     Iterator<String> it = clustersToProcess.iterator();
     while(it.hasNext()) {
       String  clusterName = it.next();
-      Cluster cluster =  config.getClusters().get(clusterName);
-      LOG.info("Starting Purger for Cluster [" + clusterName + "]");
-      //Start a purger per cluster
-      services.add(new DataPurgerService(config, cluster));
+      Cluster purgecluster = config.getAllClusters().get(clusterName);
+      if (purgecluster != null) {
+        LOG.info("Starting Purger for Cluster [" + clusterName + "]");
+        //Start a purger per cluster
+        services.add(new DataPurgerService(config, purgecluster));
+      }
     }
   }
 
@@ -215,12 +220,12 @@ public class Databus implements Service, DatabusConstants {
       StringBuffer databusClusterId = new StringBuffer();
       Set<String> clustersToProcess = new HashSet<String>();
       if (clusters.length == 1 && "ALL".equalsIgnoreCase(clusters[0])) {
-        for (Cluster c : config.getClusters().values()) {
+        for (Cluster c : config.getAllClusters().values()) {
           clustersToProcess.add(c.getName());
         }
       } else {
         for (String c : clusters) {
-          if (config.getClusters().get(c) == null) {
+          if (config.getAllClusters().get(c) == null) {
             LOG.warn("Cluster name is not found in the config - " + c);
             return;
           }

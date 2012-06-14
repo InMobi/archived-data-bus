@@ -42,7 +42,8 @@ import com.inmobi.databus.AbstractService;
 import com.inmobi.databus.CheckpointProvider;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.SourceStream;
+import com.inmobi.databus.Stream;
+import com.inmobi.databus.Stream.StreamCluster;
 import com.inmobi.databus.utils.CalendarHelper;
 
 /*
@@ -190,27 +191,7 @@ public class LocalStreamService extends AbstractService {
     }
   }
   
-  private long getRetentionTimeinMillis(long commitTime, int retentioninhours) {
-    return (commitTime - (retentioninhours * MILLISECONDS_IN_HOUR));
-  }
-  
-  private long getRetentionTimeForCategory(long commitTime, String categoryName) {
-    SourceStream categorystream = getConfig().getSourceStreams().get(categoryName);
-    if (categorystream != null) {
-      int retentioninhours = categorystream.getRetentionInHours(cluster
-          .getName());
-      long retentionTime = getRetentionTimeinMillis(commitTime,
-          retentioninhours);
-      LOG.debug("Retention Runtime: [" + getLogDateString(retentionTime)
-          + "] for RetentioninHours [" + retentioninhours + "]");
-      return retentionTime;
-    } else {
-      LOG.debug("SourceStream " + categoryName + " not found in configuration");
-    }
-    return -1;
-  }
-  
-  private boolean shouldCreate(long commitTime, long prevRuntime) {
+  private boolean isMissingPaths(long commitTime, long prevRuntime) {
     return ((commitTime - prevRuntime) > MILLISECONDS_IN_MINUTE);
   }
 
@@ -226,20 +207,14 @@ public class LocalStreamService extends AbstractService {
     }
 
     if (prevRuntime != -1) {
-      if (shouldCreate(commitTime, prevRuntime)) {
+      if (isMissingPaths(commitTime, prevRuntime)) {
         LOG.debug("Previous Runtime: [" + getLogDateString(prevRuntime) + "]");
-        long retentionTime = getRetentionTimeForCategory(commitTime,
-            categoryName);
-        if (retentionTime != -1) {
-          if (prevRuntime < retentionTime)
-            prevRuntime = retentionTime;
-          while (shouldCreate(commitTime, prevRuntime)) {
-            String missingPath = cluster.getLocalDestDir(categoryName,
-                prevRuntime);
-            LOG.debug("Creating Missing Directory [" + missingPath + "]");
-            fs.mkdirs(new Path(missingPath));
-            prevRuntime += MILLISECONDS_IN_MINUTE;
-          }
+        while (isMissingPaths(commitTime, prevRuntime)) {
+          String missingPath = cluster.getLocalDestDir(categoryName,
+              prevRuntime);
+          LOG.debug("Creating Missing Directory [" + missingPath + "]");
+          fs.mkdirs(new Path(missingPath));
+          prevRuntime += runIntervalInMsec;
         }
       } else {
         prevRuntime = commitTime;
@@ -269,35 +244,38 @@ public class LocalStreamService extends AbstractService {
 
     // find input files for consumer
     Map<Path, Path> consumerCommitPaths = new HashMap<Path, Path>();
-    for (Cluster clusterEntry : getConfig().getClusters().values()) {
-      Set<String> destStreams = clusterEntry.getDestinationStreams().keySet();
-      boolean consumeCluster = false;
-      for (String destStream : destStreams) {
-        if (clusterEntry.getPrimaryDestinationStreams().contains(destStream)
-            && cluster.getSourceStreams().contains(destStream)) {
+    for (Iterator<String> sourceStream = cluster.getSourceStreams().iterator(); sourceStream
+        .hasNext();) {
+      Stream primaryStream = getConfig().getAllStreams().get(
+          sourceStream.next());
+      if (primaryStream != null) {
+        Cluster primaryCluster = primaryStream.getPrimaryDestinationCluster();
+        boolean consumeCluster = false;
+        if (primaryCluster != null) {
           consumeCluster = true;
         }
-      }
 
-      if (consumeCluster) {
-        Path tmpConsumerPath = new Path(tmpPath, clusterEntry.getName());
-        FSDataOutputStream out = fs.create(tmpConsumerPath);
-        for (Path destPath : mvPaths.values()) {
-          String category = getCategoryFromDestPath(destPath);
-          if (clusterEntry.getDestinationStreams().containsKey(category)) {
-            out.writeBytes(destPath.toString());
-            LOG.debug("Adding [" + destPath + "]  for consumer ["
-                + clusterEntry.getName() + "] to commit Paths in ["
-                + tmpConsumerPath + "]");
-            out.writeBytes("\n");
+        if (consumeCluster) {
+          Path tmpConsumerPath = new Path(tmpPath, primaryCluster.getName());
+          FSDataOutputStream out = fs.create(tmpConsumerPath);
+          for (Path destPath : mvPaths.values()) {
+            String category = getCategoryFromDestPath(destPath);
+            if (primaryCluster.getDestinationStreams().contains(category)) {
+              out.writeBytes(destPath.toString());
+              LOG.debug("Adding [" + destPath + "]  for consumer ["
+                  + primaryCluster.getName() + "] to commit Paths in ["
+                  + tmpConsumerPath + "]");
+              out.writeBytes("\n");
+            }
           }
+          out.close();
+          Path finalConsumerPath = new Path(
+              cluster.getConsumePath(primaryCluster), Long.toString(System
+                  .currentTimeMillis()));
+          LOG.debug("Moving [" + tmpConsumerPath + "] to [ "
+              + finalConsumerPath + "]");
+          consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
         }
-        out.close();
-        Path finalConsumerPath = new Path(cluster.getConsumePath(clusterEntry),
-            Long.toString(System.currentTimeMillis()));
-        LOG.debug("Moving [" + tmpConsumerPath + "] to [ " + finalConsumerPath
-            + "]");
-        consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
       }
     }
 

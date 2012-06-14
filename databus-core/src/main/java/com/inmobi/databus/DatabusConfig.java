@@ -13,43 +13,32 @@
 */
 package com.inmobi.databus;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class DatabusConfig {
 
-  private final Map<String, Cluster> clusters;
-  private final Map<String, SourceStream> streams;
-  private final Map<String, String> defaults;
+  private Map<String, Stream> Streams;
+  private Map<String, Cluster> Clusters;
+  private Map<String, String> Defaults;
   
-  public DatabusConfig( 
-      Map<String, SourceStream> streams,
-      Map<String, Cluster> clusterMap, Map<String, String> defaults) {
-    this.streams = streams;
-    this.clusters = clusterMap;
-    this.defaults = defaults;
+  public DatabusConfig(Map<String, Stream> Streams,
+      Map<String, Cluster> Clusters, Map<String, String> Defaults) {
+    this.Streams = Streams;
+    this.Clusters = Clusters;
+    this.Defaults = Defaults;
   }
 
-  public Cluster getPrimaryClusterForDestinationStream(String streamName) {
-   for(Cluster cluster : getClusters().values()) {
-     if (cluster.getDestinationStreams().containsKey(streamName)) {
-       DestinationStream consumeStream = cluster.getDestinationStreams().get(streamName);
-       if (consumeStream.isPrimary())
-         return cluster;
-     }
-   }
-    return null;
+  public Map<String, Cluster> getAllClusters() {
+    return Clusters;
   }
 
-  public Map<String, Cluster> getClusters() {
-    return clusters;
-  }
-
-  public Map<String, SourceStream> getSourceStreams() {
-    return streams;
+  public Map<String, Stream> getAllStreams() {
+    return Streams;
   }
 
   public Map<String, String> getDefaults() {
-    return defaults;
+    return Defaults;
   }
 
 }

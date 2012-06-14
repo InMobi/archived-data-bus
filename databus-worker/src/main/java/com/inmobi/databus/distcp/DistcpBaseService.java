@@ -91,7 +91,7 @@ public abstract class DistcpBaseService extends AbstractService {
 	  //with the arguments as sent in by the Derived Service
 	  String[] defargs = {"-D", "mapred.job.queue.name", this.getDestCluster().getJobQueueName() }; 
 	  if (DistCp.runDistCp((String[])ArrayUtils.addAll(args, defargs),
-			  				destCluster.getHadoopConf())==DISTCP_SUCCESS)
+        destCluster.getHadoopConf()) == DISTCP_SUCCESS)
 		  distcpExecuteSuccess = true;
 	  
 	  return distcpExecuteSuccess;
@@ -119,11 +119,7 @@ public abstract class DistcpBaseService extends AbstractService {
 
   @Override
   public long getMSecondsTillNextRun(long currentTime) {
-    long runIntervalInSec = (DEFAULT_RUN_INTERVAL/1000);
-    Calendar calendar = new GregorianCalendar();
-    calendar.setTime(new Date(currentTime));
-    long currentSec = calendar.get(Calendar.SECOND);
-    return (runIntervalInSec - currentSec) * 1000;
+    return (long) (DEFAULT_RUN_INTERVAL - (long) (currentTime % DEFAULT_RUN_INTERVAL));
   }
 
   protected void doFinalCommit(Map<Path, FileSystem> consumePaths) throws
@@ -133,7 +129,7 @@ public abstract class DistcpBaseService extends AbstractService {
     for (Map.Entry<Path, FileSystem> consumePathEntry : consumeEntries) {
       FileSystem fileSystem = consumePathEntry.getValue();
       Path consumePath = consumePathEntry.getKey();
-      fileSystem.delete(consumePath);
+      fileSystem.delete(consumePath, true);
       LOG.debug("Deleting/Commiting [" + consumePath + "]");
     }
 

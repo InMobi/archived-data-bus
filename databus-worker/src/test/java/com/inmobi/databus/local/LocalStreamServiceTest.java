@@ -53,9 +53,10 @@ import com.inmobi.databus.Cluster;
 import com.inmobi.databus.ClusterTest;
 import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.DatabusConfigParser;
-import com.inmobi.databus.DestinationStream;
 import com.inmobi.databus.FSCheckpointProvider;
-import com.inmobi.databus.SourceStream;
+import com.inmobi.databus.Stream;
+import com.inmobi.databus.Stream.SourceStreamCluster;
+import com.inmobi.databus.Stream.StreamCluster;
 import com.inmobi.databus.TestMiniClusterUtil;
 
 @Test
@@ -252,47 +253,17 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     return createTestData(count, path, false);
   }
 
-  private DatabusConfig buildTestDatabusConfig() throws Exception {
-    JobConf conf = super.CreateJobConf();
-    return buildTestDatabusConfig(conf.get("mapred.job.tracker"),
-        "file:///tmp", "databus", "48", "24");
-  }
-
   public static DatabusConfig buildTestDatabusConfig(String jturl,
       String hdfsurl, String rootdir, String retentioninhours,
       String trashretentioninhours) throws Exception {
-
-    Map<String, Integer> sourcestreams = new HashMap<String, Integer>();
-
-    sourcestreams.put("cluster1", new Integer(retentioninhours));
-
-    Map<String, SourceStream> streamMap = new HashMap<String, SourceStream>();
-    streamMap.put("stream1", new SourceStream("stream1", sourcestreams));
-
-    sourcestreams.clear();
-
-    Map<String, DestinationStream> deststreamMap = new HashMap<String, DestinationStream>();
-    deststreamMap.put("stream1",
-        new DestinationStream("stream1", Integer.parseInt(retentioninhours),
-            Boolean.TRUE));
-
-    sourcestreams.clear();
 
     /*
      * sourcestreams.put("cluster2", new Integer(2)); streamMap.put("stream2",
      * new SourceStream("stream2", sourcestreams));
      */
 
-    Set<String> sourcestreamnames = new HashSet<String>();
-
-    for (Map.Entry<String, SourceStream> stream : streamMap.entrySet()) {
-      sourcestreamnames.add(stream.getValue().getName());
-    }
-    Map<String, Cluster> clusterMap = new HashMap<String, Cluster>();
-
-    clusterMap.put("cluster1", ClusterTest.buildLocalCluster(rootdir,
-        "cluster1", hdfsurl, jturl, sourcestreamnames, deststreamMap));
-
+    Map<String, Stream> Streams = new HashMap<String, Stream>();
+    Map<String, Cluster> Clusters = new HashMap<String, Cluster>();
     Map<String, String> defaults = new HashMap<String, String>();
 
     defaults.put(DatabusConfigParser.ROOTDIR, rootdir);
@@ -300,12 +271,27 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     defaults.put(DatabusConfigParser.TRASH_RETENTION_IN_HOURS,
         trashretentioninhours);
 
+    Map<String, String> clusterconfiguration = new HashMap<String, String>();
+
+    clusterconfiguration.put(DatabusConfigParser.NAME, "defaultCluster");
+    clusterconfiguration.put(DatabusConfigParser.ROOTDIR, rootdir);
+    clusterconfiguration.put(DatabusConfigParser.JT_URL, jturl);
+    clusterconfiguration.put(DatabusConfigParser.HDFS_URL, hdfsurl);
+    clusterconfiguration.put(DatabusConfigParser.JOB_QUEUE_NAME, "default");
+
+    Cluster cluster = new Cluster(clusterconfiguration);
+    Clusters.put("cluster1", cluster);
+
+    Stream stream = new Stream("testStream");
+    stream.addSourceCluster(24, cluster);
+    Streams.put("testStream", stream);
+
     /*
      * clusterMap.put( "cluster2", ClusterTest.buildLocalCluster("cluster2",
      * "file:///tmp", conf.get("mapred.job.tracker")));
      */
 
-    return new DatabusConfig(streamMap, clusterMap, defaults);
+    return new DatabusConfig(Streams, Clusters, defaults);
   }
 
   @Test
@@ -318,15 +304,24 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     FileSystem fs = FileSystem.getLocal(new Configuration());
 
     ArrayList<Cluster> clusterList = new ArrayList<Cluster>(config
-        .getClusters().values());
+        .getAllClusters().values());
     Cluster cluster = clusterList.get(0);
     TestLocalStreamService service = new TestLocalStreamService(config,
         cluster, new FSCheckpointProvider(cluster.getCheckpointDir()));
 
-    ArrayList<SourceStream> sstreamList = new ArrayList<SourceStream>(config
-        .getSourceStreams().values());
 
-    SourceStream sstream = sstreamList.get(0);
+    ArrayList<Stream> sstreams = new ArrayList<Stream>(config.getAllStreams()
+        .values());
+
+    Stream sstream = sstreams.get(0);
+    SourceStreamCluster sourcestreamCluster = null;
+    for (Iterator<StreamCluster> sstreamCluster = sstream
+        .getSourceStreamClusters().iterator(); sstreamCluster.hasNext();) {
+      StreamCluster scluster = sstreamCluster.next();
+      if (scluster.getCluster().getName()
+          .compareTo(cluster.getName()) == 0)
+        sourcestreamCluster = (SourceStreamCluster) scluster;
+    }
 
     Calendar behinddate = new GregorianCalendar();
     Calendar todaysdate = new GregorianCalendar();
@@ -340,8 +335,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
 
     fs.mkdirs(new Path(publishPaths));
 
-    int retentioninhours = config.getSourceStreams().get(sstream.getName())
-        .getRetentionInHours(cluster.getName());
+    int retentioninhours = sourcestreamCluster.getRetentionPeriod();
 
     service.publishMissingPaths(fs, todaysdate.getTimeInMillis(),
         sstream.getName());
@@ -414,15 +408,16 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
 
     List<TestLocalStreamService> services = new ArrayList<TestLocalStreamService>();
 
-    for (Map.Entry<String, Cluster> cluster : config.getClusters().entrySet()) {
+    for (Map.Entry<String, Cluster> cluster : config.getAllClusters()
+        .entrySet()) {
       services.add(new TestLocalStreamService(config, cluster.getValue(),
           new FSCheckpointProvider(cluster.getValue().getCheckpointDir())));
     }
 
-    for (Map.Entry<String, SourceStream> sstream : config.getSourceStreams()
+    for (Map.Entry<String, Stream> sstream : config.getAllStreams()
         .entrySet()) {
 
-      for (Cluster cluster : config.getClusters().values()) {
+      for (Cluster cluster : config.getAllClusters().values()) {
 
         String[] files = new String[NUM_OF_FILES];
         String testRootDir = cluster.getRootDir();
@@ -448,9 +443,16 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
            */
         }
 
-        int retentioninhours = config.getSourceStreams()
-            .get(sstream.getValue().getName())
-            .getRetentionInHours(cluster.getName());
+        SourceStreamCluster sourcestreamCluster = null;
+        for (Iterator<StreamCluster> sstreamCluster = sstream.getValue()
+            .getSourceStreamClusters().iterator(); sstreamCluster.hasNext();) {
+          StreamCluster scluster = sstreamCluster.next();
+          if (scluster.getCluster().getName()
+              .compareTo(cluster.getName()) == 0)
+            sourcestreamCluster = (SourceStreamCluster) scluster;
+        }
+
+        int retentioninhours = sourcestreamCluster.getRetentionPeriod();
 
         Calendar behinddate = new GregorianCalendar();
         behinddate.add(Calendar.HOUR_OF_DAY, -2);
