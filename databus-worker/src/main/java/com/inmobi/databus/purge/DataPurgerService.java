@@ -19,7 +19,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -85,16 +84,12 @@ public class DataPurgerService extends AbstractService {
 
   private void addMergedStreams() {
     Set<String> destinationStreams = cluster.getDestinationStreams();
-    Iterator<String> it = destinationStreams.iterator();
-    while (it.hasNext()) {
-      String destStreamName = it.next();
+    for (String destStreamName : destinationStreams) {
       Integer mergedStreamRetentionInHours = -1;
 
-      for (Iterator<StreamCluster> destClusters = getConfig().getAllStreams()
-          .get(destStreamName).getDestinationStreamClusters().iterator(); destClusters
-          .hasNext();) {
-        DestinationStreamCluster destCluster = (DestinationStreamCluster) destClusters
-            .next();
+      for (StreamCluster destClusters : getConfig().getAllStreams()
+          .get(destStreamName).getDestinationStreamClusters()) {
+        DestinationStreamCluster destCluster = (DestinationStreamCluster) destClusters;
         if(destCluster.getCluster().getName().compareTo(cluster.getName())==0)
           mergedStreamRetentionInHours = destCluster.getRetentionPeriod();
 
@@ -132,9 +127,7 @@ public class DataPurgerService extends AbstractService {
 
   private void addLocalStreams() {
     for (Stream s : getConfig().getAllStreams().values()) {
-      for (Iterator<StreamCluster> sourceClusterItr = s
-          .getSourceStreamClusters().iterator(); sourceClusterItr.hasNext();) {
-        StreamCluster sourceCluster = sourceClusterItr.next();
+      for (StreamCluster sourceCluster : s.getSourceStreamClusters()) {
         if (sourceCluster.getCluster().getName().compareTo(cluster.getName()) == 0) {
           String streamName = s.getName();
           Integer retentionInHours = new Integer(
@@ -248,9 +241,7 @@ public class DataPurgerService extends AbstractService {
   private void getStreamsPathToPurge(Map<String, Path> streamPathMap)
       throws Exception {
     Set<Map.Entry<String, Path>> streamsToProcess = streamPathMap.entrySet();
-    Iterator it = streamsToProcess.iterator();
-    while (it.hasNext()) {
-      Map.Entry<String, Path> entry = (Map.Entry<String, Path>) it.next();
+    for (Map.Entry<String, Path> entry : streamsToProcess) {
       String streamName = entry.getKey();
       Path streamRootPath = entry.getValue();
       LOG.debug("Find Paths to purge for stream [" + streamName
@@ -328,9 +319,7 @@ public class DataPurgerService extends AbstractService {
   }
 
   private void purge() throws Exception {
-    Iterator it = streamsToPurge.iterator();
-    while (it.hasNext()) {
-      Path purgePath = (Path) it.next();
+    for (Path purgePath : streamsToPurge) {
       fs.delete(purgePath, true);
       LOG.info("Purging [" + purgePath + "]");
     }

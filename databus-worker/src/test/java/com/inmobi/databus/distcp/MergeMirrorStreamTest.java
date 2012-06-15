@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -81,9 +80,10 @@ filename);
         boolean processCluster = false;
         List<String> files = new ArrayList<String>(NUM_OF_FILES);
         Cluster cluster = service.getCluster();
-        for (Iterator<StreamCluster> sourceClusters = sstream.getValue()
-            .getSourceStreamClusters().iterator(); sourceClusters.hasNext();) {
-          if(cluster.getName().compareTo(sourceClusters.next().getCluster().getName())==0)
+        for (StreamCluster sourceClusters : sstream.getValue()
+            .getSourceStreamClusters()) {
+          if (cluster.getName()
+              .compareTo(sourceClusters.getCluster().getName()) == 0)
             processCluster =true;
         }
         
@@ -149,8 +149,7 @@ filename);
       Set<Cluster> primaryCluster = new HashSet<Cluster>();
       Cluster destcluster = primaryStream.getPrimaryDestinationCluster();
       
-      for(Iterator<StreamCluster> sourceStream = primaryStream.getSourceStreamClusters().iterator();sourceStream.hasNext();) {
-        StreamCluster cluster = sourceStream.next();
+      for (StreamCluster cluster : primaryStream.getSourceStreamClusters()) {
         primaryCluster.add(cluster.getCluster());
         TestMergeStreamService service = new TestMergeStreamService(config,
             cluster.getCluster(), destcluster);
@@ -162,10 +161,8 @@ filename);
           .getDestinationStreamClusters();
       Set<Cluster> MirrorprimaryCluster = new HashSet<Cluster>();
 
-      for (Iterator<StreamCluster> destStreamCluster = destMirrorClusters
-          .iterator(); destStreamCluster.hasNext();) {
-        DestinationStreamCluster cluster = (DestinationStreamCluster) destStreamCluster
-            .next();
+      for (StreamCluster destStreamCluster : destMirrorClusters) {
+        DestinationStreamCluster cluster = (DestinationStreamCluster) destStreamCluster;
         if (!cluster.isPrimary()) {
           MirrorprimaryCluster.add(cluster.getCluster());
           TestMirrorStreamService service = new TestMirrorStreamService(config,
@@ -197,9 +194,7 @@ filename);
 
         LOG.debug("Checking in Path for Merged mapred Output: " + streams_dir);
         
-        for (Iterator<Cluster> checkcluster = primaryCluster.iterator(); checkcluster
-            .hasNext();) {
-            Cluster tmpcluster = checkcluster.next();
+          for (Cluster tmpcluster : primaryCluster) {
           List<String> files = filesList.get(tmpcluster.getName());
             for (int j = 0; j < NUM_OF_FILES; ++j) {
             String checkpath = streams_dir + tmpcluster.getName() + "-"
@@ -218,9 +213,7 @@ filename);
       }
       
       {
-        for (Iterator<Cluster> checkcluster = MirrorprimaryCluster.iterator(); checkcluster
-          .hasNext();) {
-          Cluster tmpcluster = checkcluster.next();
+        for (Cluster tmpcluster : MirrorprimaryCluster) {
           String commitpath = tmpcluster.getFinalDestDirRoot()
           + sstream.getValue().getName() + File.separator
           + CalendarHelper.getDateAsYYYYMMDDHHPath(todaysdate.getTime());
@@ -259,8 +252,8 @@ filename);
       }
       }
     }
-    for (Iterator<String> path = pathstoRemove.iterator(); path.hasNext();) {
-      fs.delete(new Path(path.next()), true);
+    for (String path : pathstoRemove) {
+      fs.delete(new Path(path), true);
     }
     fs.close();
   }

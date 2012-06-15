@@ -13,32 +13,31 @@
 */
 package com.inmobi.databus;
 
-import java.util.HashMap;
 import java.util.Map;
 
 public class DatabusConfig {
 
-  private Map<String, Stream> Streams;
-  private Map<String, Cluster> Clusters;
-  private Map<String, String> Defaults;
+  private Map<String, Stream> streams;
+  private Map<String, Cluster> clusters;
+  private Map<String, String> defaults;
   
-  public DatabusConfig(Map<String, Stream> Streams,
-      Map<String, Cluster> Clusters, Map<String, String> Defaults) {
-    this.Streams = Streams;
-    this.Clusters = Clusters;
-    this.Defaults = Defaults;
+  public DatabusConfig(Map<String, Stream> streams,
+      Map<String, Cluster> clusters, Map<String, String> defaults) {
+    this.streams = streams;
+    this.clusters = clusters;
+    this.defaults = defaults;
   }
 
   public Map<String, Cluster> getAllClusters() {
-    return Clusters;
+    return clusters;
   }
 
   public Map<String, Stream> getAllStreams() {
-    return Streams;
+    return streams;
   }
 
   public Map<String, String> getDefaults() {
-    return Defaults;
+    return defaults;
   }
 
 }

@@ -45,7 +45,6 @@ import com.inmobi.databus.CheckpointProvider;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.Stream;
-import com.inmobi.databus.Stream.StreamCluster;
 import com.inmobi.databus.utils.CalendarHelper;
 
 /*
@@ -67,7 +66,6 @@ public class LocalStreamService extends AbstractService {
   private final SimpleDateFormat LogDateFormat = new SimpleDateFormat(
       "yyyy/MM/dd, hh:mm");
   private final static long MILLISECONDS_IN_MINUTE = 60 * 1000;
-  private final static long MILLISECONDS_IN_HOUR = 60 * MILLISECONDS_IN_MINUTE;
 
 
   public LocalStreamService(DatabusConfig config, Cluster cluster,
@@ -247,9 +245,7 @@ public class LocalStreamService extends AbstractService {
     // find input files for consumer
     Map<Path, Path> consumerCommitPaths = new HashMap<Path, Path>();
     List<String> primaryClusters = new ArrayList<String>();
-    for (Iterator<String> sourceStream = cluster.getSourceStreams().iterator(); sourceStream
-        .hasNext();) {
-      String streamName = sourceStream.next();
+    for (String streamName : cluster.getSourceStreams()) {
       Stream primaryStream = getConfig().getAllStreams().get(streamName);
       if (primaryStream != null) {
         Cluster primaryCluster = primaryStream.getPrimaryDestinationCluster();
@@ -297,9 +293,7 @@ public class LocalStreamService extends AbstractService {
     // find trash paths
     Map<Path, Path> trashPaths = new LinkedHashMap<Path, Path>();
     Path trash = cluster.getTrashPathWithDateHour();
-    Iterator<FileStatus> it = trashSet.iterator();
-    while (it.hasNext()) {
-      FileStatus src = it.next();
+    for (FileStatus src : trashSet) {
       Path target = null;
       target = new Path(trash, src.getPath().getParent().getName() + "-"
           + src.getPath().getName());
@@ -334,10 +328,8 @@ public class LocalStreamService extends AbstractService {
         trashSet, checkpointPaths);
 
     FSDataOutputStream out = fs.create(inputPath);
-    Iterator<Entry<FileStatus, String>> it = fileListing.entrySet().iterator();
 
-    while (it.hasNext()) {
-      Entry<FileStatus, String> entry = it.next();
+    for (Entry<FileStatus, String> entry : fileListing.entrySet()) {
       out.writeBytes(entry.getKey().getPath().toString());
       out.writeBytes("\t");
       out.writeBytes(entry.getValue());

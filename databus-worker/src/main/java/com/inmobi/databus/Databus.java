@@ -30,7 +30,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -69,8 +68,7 @@ public class Databus implements Service, DatabusConstants {
 
       List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();
       List<Cluster> mirroredRemoteClusters = new ArrayList<Cluster>();
-      for (Iterator<String> cStream = cluster.getSourceStreams()
-          .iterator(); cStream.hasNext();) {
+      for (String cStream : cluster.getSourceStreams()) {
         //Start MergedStreamConsumerService instances for this cluster for each cluster
         //from where it has to fetch a partial stream and is hosting a primary stream
         //Start MirroredStreamConsumerService instances for this cluster for each cluster
@@ -78,13 +76,10 @@ public class Databus implements Service, DatabusConstants {
 
         if (config.getAllStreams().get(cStream).getPrimaryDestinationCluster()
             .getName().compareTo(cluster.getName()) == 0) {
-          for (Iterator<StreamCluster> cName = config.getAllStreams()
-              .get(cStream).getSourceStreamClusters().iterator(); cName
-              .hasNext();) {
-            StreamCluster sourceCluster = cName.next();
-            if (!mergedStreamRemoteClusters
-                .contains(sourceCluster.getCluster()))
-              mergedStreamRemoteClusters.add(sourceCluster.getCluster());
+          for (StreamCluster cName : config.getAllStreams().get(cStream)
+              .getSourceStreamClusters()) {
+            if (!mergedStreamRemoteClusters.contains(cName.getCluster()))
+              mergedStreamRemoteClusters.add(cName.getCluster());
           }
         } else {
           Cluster primaryCluster = config.getAllStreams().get(cStream)
@@ -105,9 +100,7 @@ public class Databus implements Service, DatabusConstants {
     }
 
     //Start a DataPurgerService for this Cluster/Clusters to process
-    Iterator<String> it = clustersToProcess.iterator();
-    while(it.hasNext()) {
-      String  clusterName = it.next();
+    for (String clusterName : clustersToProcess) {
       Cluster purgecluster = config.getAllClusters().get(clusterName);
       if (purgecluster != null) {
         LOG.info("Starting Purger for Cluster [" + clusterName + "]");

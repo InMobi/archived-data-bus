@@ -15,13 +15,8 @@ package com.inmobi.databus;
 
 import java.io.File;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -37,9 +32,9 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
 
   private static Logger logger = Logger.getLogger(DatabusConfigParser.class);
 
-  private Map<String, Stream> Streams = new HashMap<String, Stream>();
-  private Map<String, Cluster> Clusters = new HashMap<String, Cluster>();
-  private Map<String, String> Defaults = new HashMap<String, String>();
+  private Map<String, Stream> streams = new HashMap<String, Stream>();
+  private Map<String, Cluster> clusters = new HashMap<String, Cluster>();
+  private Map<String, String> defaults = new HashMap<String, String>();
 
   private int defaultRetentionInHours = 48;
   private int defaultTrashRetentionInHours = 24;
@@ -49,7 +44,7 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
   }
 
   public DatabusConfig getConfig() {
-    DatabusConfig config = new DatabusConfig(Streams, Clusters, Defaults);
+    DatabusConfig config = new DatabusConfig(streams, clusters, defaults);
     return config;
   }
 
@@ -89,20 +84,20 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
       if (rootDir == null)
         throw new ParseException("rootdir element not found in defaults", 0);
       
-      Defaults.put(ROOTDIR, rootDir);
+      defaults.put(ROOTDIR, rootDir);
       String retention = getTextValue((Element) configList.item(0),
           RETENTION_IN_HOURS);
       if (retention != null) {
         defaultRetentionInHours = Integer.parseInt(retention);
       }
-      Defaults.put(RETENTION_IN_HOURS, String.valueOf(defaultRetentionInHours));
+      defaults.put(RETENTION_IN_HOURS, String.valueOf(defaultRetentionInHours));
 
       String trashretention = getTextValue((Element) configList.item(0),
           TRASH_RETENTION_IN_HOURS);
       if (trashretention != null) {
         defaultTrashRetentionInHours = Integer.parseInt(trashretention);
       }
-      Defaults.put(TRASH_RETENTION_IN_HOURS, trashretention);
+      defaults.put(TRASH_RETENTION_IN_HOURS, trashretention);
 
       logger.debug("rootDir = " + rootDir + " global retentionInHours "
           + defaultRetentionInHours + " global trashretentionInHours "
@@ -116,7 +111,7 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
       for (int i = 0; i < tmpClusterList.getLength(); i++) {
         Element el = (Element) tmpClusterList.item(i);
         Cluster cluster = getCluster(el);
-        Clusters.put(cluster.getName(), cluster);
+        clusters.put(cluster.getName(), cluster);
       }
     }
 
@@ -132,7 +127,7 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
       clusterConfiguration.put(attribute.getName(), attribute.getValue());
     }
 
-    String cRootDir = Defaults.get(ROOTDIR);
+    String cRootDir = defaults.get(ROOTDIR);
     NodeList list = el.getElementsByTagName(ROOTDIR);
     if (list != null && list.getLength() == 1) {
       Element elem = (Element) list.item(0);
@@ -140,7 +135,7 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
     }
 
     if (cRootDir == null)
-      cRootDir = Defaults.get(ROOTDIR);
+      cRootDir = defaults.get(ROOTDIR);
 
     clusterConfiguration.put(ROOTDIR, cRootDir);
 
@@ -155,7 +150,7 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
         Element el = (Element) tmpstreamList.item(i);
         String streamName = el.getAttribute(NAME);
         Stream stream = getStream(streamName, el);
-        Streams.put(streamName, stream);
+        streams.put(streamName, stream);
       }
     }
 
@@ -176,7 +171,7 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
       Element source = (Element) sourceList.item(i);
       // for each source
       String clusterName = getTextValue(source, NAME);
-      Cluster sourceCluster = Clusters.get(clusterName);
+      Cluster sourceCluster = clusters.get(clusterName);
       if (sourceCluster == null)
         throw new ParseException(clusterName
             + " Not Found in Clusters Configration", 0);
@@ -196,7 +191,7 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
           .item(i);
       // for each source
       String clusterName = getTextValue(replicatedDestinationStream, NAME);
-      Cluster destinationCluster = Clusters.get(clusterName);
+      Cluster destinationCluster = clusters.get(clusterName);
       if (destinationCluster == null)
         throw new ParseException(clusterName
             + " Not Found in Clusters Configration", 0);

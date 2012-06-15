@@ -2,7 +2,6 @@ package com.inmobi.databus;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -12,7 +11,7 @@ public class Stream {
     SOURCE, DESTINATION;
   }
   private final String streamName;
-  private final Map<STREAM_TYPE, Set<StreamCluster>> Clusters = new HashMap<STREAM_TYPE, Set<StreamCluster>>();
+  private final Map<STREAM_TYPE, Set<StreamCluster>> clusters = new HashMap<STREAM_TYPE, Set<StreamCluster>>();
 
   public class StreamCluster {
     private final int retentionInHours;
@@ -61,7 +60,7 @@ public class Stream {
   }
 
   public void addSourceCluster(int retentionInHours, Cluster cluster) {
-    Set<StreamCluster> clusterSet = Clusters.get(STREAM_TYPE.SOURCE);
+    Set<StreamCluster> clusterSet = clusters.get(STREAM_TYPE.SOURCE);
 
     StreamCluster newStreamCluster = new SourceStreamCluster(retentionInHours,
         cluster);
@@ -70,14 +69,14 @@ public class Stream {
     } else {
       clusterSet = new HashSet<StreamCluster>();
       clusterSet.add(newStreamCluster);
-      Clusters.put(STREAM_TYPE.SOURCE, clusterSet);
+      clusters.put(STREAM_TYPE.SOURCE, clusterSet);
     }
     cluster.addSourceStream(getName());
   }
 
   public void addDestinationCluster(int retentionInHours, Cluster cluster,
       Boolean isPrimary) {
-    Set<StreamCluster> clusterSet = Clusters.get(STREAM_TYPE.DESTINATION);
+    Set<StreamCluster> clusterSet = clusters.get(STREAM_TYPE.DESTINATION);
 
     StreamCluster newStreamCluster = new DestinationStreamCluster(
         retentionInHours, cluster, isPrimary);
@@ -86,26 +85,24 @@ public class Stream {
     } else {
       clusterSet = new HashSet<StreamCluster>();
       clusterSet.add(newStreamCluster);
-      Clusters.put(STREAM_TYPE.DESTINATION, clusterSet);
+      clusters.put(STREAM_TYPE.DESTINATION, clusterSet);
     }
     cluster.addDestinationStream(getName());
   }
 
   public Set<StreamCluster> getDestinationStreamClusters() {
-    return Clusters.get(STREAM_TYPE.DESTINATION);
+    return clusters.get(STREAM_TYPE.DESTINATION);
   }
 
   public Set<StreamCluster> getSourceStreamClusters() {
-    return Clusters.get(STREAM_TYPE.SOURCE);
+    return clusters.get(STREAM_TYPE.SOURCE);
   }
 
   public Cluster getPrimaryDestinationCluster() {
     Set<StreamCluster> primaryDestinationCluster = getDestinationStreamClusters();
     if(primaryDestinationCluster!=null) {
-      Iterator<StreamCluster> cluster = primaryDestinationCluster.iterator();
-      while (cluster.hasNext()) {
-        DestinationStreamCluster streamCluster = (DestinationStreamCluster) cluster
-            .next();
+      for (StreamCluster cluster : primaryDestinationCluster) {
+        DestinationStreamCluster streamCluster = (DestinationStreamCluster) cluster;
         if (streamCluster.isPrimary()) {
           return streamCluster.getCluster();
         }
@@ -116,10 +113,8 @@ public class Stream {
   
   public Set<DestinationStreamCluster> getMirroredClusters() {
     Set<DestinationStreamCluster> destStreamClusters = new HashSet<DestinationStreamCluster>();
-    for (Iterator<StreamCluster> destStreamClustersItr = getDestinationStreamClusters()
-        .iterator(); destStreamClustersItr.hasNext();) {
-      DestinationStreamCluster streamCluster = (DestinationStreamCluster) destStreamClustersItr
-          .next();
+    for (StreamCluster destStreamClustersItr : getDestinationStreamClusters()) {
+      DestinationStreamCluster streamCluster = (DestinationStreamCluster) destStreamClustersItr;
       if (!streamCluster.isPrimary())
         destStreamClusters.add(streamCluster);
       }
