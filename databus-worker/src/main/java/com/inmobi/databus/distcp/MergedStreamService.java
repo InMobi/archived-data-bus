@@ -130,14 +130,13 @@ public class MergedStreamService extends DistcpBaseService {
     // for each stream in committedPaths
     for (String stream : committedPaths.keySet()) {
       // for each cluster
-      for (Iterator<DestinationStreamCluster> destCluster = getConfig().
-          getAllStreams().get(stream).getMirroredClusters().iterator();
-          destCluster.hasNext();) {
+      for (DestinationStreamCluster destCluster : getConfig().getAllStreams()
+          .get(stream).getMirroredClusters()) {
         // is this stream to be mirrored on this cluster
             Set<Cluster> mirrorConsumers = mirrorStreamConsumers.get(stream);
             if (mirrorConsumers == null)
               mirrorConsumers = new HashSet<Cluster>();
-            mirrorConsumers.add(destCluster.next().getCluster());
+        mirrorConsumers.add(destCluster.getCluster());
             mirrorStreamConsumers.put(stream, mirrorConsumers);
         }
       }
@@ -237,12 +236,7 @@ public class MergedStreamService extends DistcpBaseService {
   private Map<String, Set<Path>> doLocalCommit(long commitTime,
                                                Map<String, List<Path>> categoriesToCommit) throws Exception {
     Map<String, Set<Path>> comittedPaths = new HashMap<String, Set<Path>>();
-    Set<Map.Entry<String, List<Path>>> commitEntries = categoriesToCommit
-            .entrySet();
-    Iterator it = commitEntries.iterator();
-    while (it.hasNext()) {
-      Map.Entry<String, List<Path>> entry = (Map.Entry<String, List<Path>>) it
-              .next();
+    for (Map.Entry<String, List<Path>> entry : categoriesToCommit.entrySet()) {
       String category = entry.getKey();
       List<Path> filesInCategory = entry.getValue();
       for (Path filePath : filesInCategory) {

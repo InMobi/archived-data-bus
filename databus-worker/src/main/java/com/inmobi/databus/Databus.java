@@ -73,23 +73,20 @@ public class Databus implements Service, DatabusConstants {
         //from where it has to fetch a partial stream and is hosting a primary stream
         //Start MirroredStreamConsumerService instances for this cluster for each cluster
         //from where it has to mirror mergedStreams
-
-        if (config.getAllStreams().get(cStream).getPrimaryDestinationCluster()
-            .getName().compareTo(cluster.getName()) == 0) {
-          for (StreamCluster cName : config.getAllStreams().get(cStream)
-              .getSourceStreamClusters()) {
-            if (!mergedStreamRemoteClusters.contains(cName.getCluster()))
-              mergedStreamRemoteClusters.add(cName.getCluster());
+        Cluster primaryDestinationCluster = config.getAllStreams().get(cStream).getPrimaryDestinationCluster();
+        if (primaryDestinationCluster != null) {
+          if (primaryDestinationCluster.getName().compareTo(cluster.getName()) == 0) {
+            for (StreamCluster cName : config.getAllStreams().get(cStream)
+                .getSourceStreamClusters()) {
+              if (!mergedStreamRemoteClusters.contains(cName.getCluster()))
+                mergedStreamRemoteClusters.add(cName.getCluster());
+            }
+          } else {
+            if (!mirroredRemoteClusters.contains(primaryDestinationCluster))
+              mirroredRemoteClusters.add(primaryDestinationCluster);
           }
-        } else {
-          Cluster primaryCluster = config.getAllStreams().get(cStream)
-              .getPrimaryDestinationCluster();
-          if ((primaryCluster != null)
-              && !mirroredRemoteClusters.contains(primaryCluster))
-            mirroredRemoteClusters.add(primaryCluster);
         }
       }
-
 
       for (Cluster remote : mergedStreamRemoteClusters) {
         services.add(new MergedStreamService(config, remote, cluster));
