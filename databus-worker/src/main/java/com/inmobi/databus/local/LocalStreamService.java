@@ -67,7 +67,6 @@ public class LocalStreamService extends AbstractService {
       "yyyy/MM/dd, hh:mm");
   private final static long MILLISECONDS_IN_MINUTE = 60 * 1000;
 
-
   public LocalStreamService(DatabusConfig config, Cluster cluster,
       CheckpointProvider provider) {
     super(LocalStreamService.class.getName(), config, DEFAULT_RUN_INTERVAL,
@@ -103,6 +102,15 @@ public class LocalStreamService extends AbstractService {
       // any old data being used in this run if the old run was aborted
       cleanUpTmp(fs);
       LOG.info("TmpPath is [" + tmpPath + "]");
+      {
+        FileStatus[] fileStatus = fs.listStatus(new Path(cluster
+            .getLocalFinalDestDirRoot()));
+        LOG.info("Create All the Missing Paths for the Current Run");
+        for (FileStatus file : fileStatus) {
+          publishMissingPaths(fs, cluster.getCommitTime(), file.getPath()
+              .getName());
+        }
+      }
       Map<FileStatus, String> fileListing = new TreeMap<FileStatus, String>();
       Set<FileStatus> trashSet = new HashSet<FileStatus>();
       // checkpointKey, CheckPointPath
@@ -239,7 +247,7 @@ public class LocalStreamService extends AbstractService {
         LOG.debug("Moving [" + file.getPath() + "] to [" + destPath + "]");
         mvPaths.put(file.getPath(), destPath);
       }
-      publishMissingPaths(fs, commitTime, categoryName);
+      // publishMissingPaths(fs, commitTime, categoryName);
     }
 
     // find input files for consumer
