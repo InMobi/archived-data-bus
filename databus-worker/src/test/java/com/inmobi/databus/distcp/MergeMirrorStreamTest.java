@@ -1,11 +1,8 @@
 package com.inmobi.databus.distcp;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -23,7 +20,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-import org.apache.log4j.Logger;
 
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
@@ -32,7 +28,6 @@ import com.inmobi.databus.FSCheckpointProvider;
 import com.inmobi.databus.Stream;
 import com.inmobi.databus.Stream.DestinationStreamCluster;
 import com.inmobi.databus.TestMiniClusterUtil;
-import com.inmobi.databus.Stream.SourceStreamCluster;
 import com.inmobi.databus.Stream.StreamCluster;
 import com.inmobi.databus.local.LocalStreamServiceTest;
 import com.inmobi.databus.local.LocalStreamServiceTest.TestLocalStreamService;
@@ -53,10 +48,16 @@ public class MergeMirrorStreamTest extends TestMiniClusterUtil {
    * @throws Exception
    */
   public void testMergeMirrorStream() throws Exception {
+    testMergeMirrorStream("test-mss-databus.xml");
+    // Test with 2 mirror sites
+    testMergeMirrorStream("test-mss-databus_mirror.xml");
+  }
+
+  private void testMergeMirrorStream(String filename) throws Exception {
     final int NUM_OF_FILES = 35;
 
     DatabusConfigParser configParser = new DatabusConfigParser(
-        "test-mss-databus.xml");
+filename);
     DatabusConfig config = configParser.getConfig();
 
     FileSystem fs = FileSystem.getLocal(new Configuration());
@@ -77,8 +78,16 @@ public class MergeMirrorStreamTest extends TestMiniClusterUtil {
       Map<String, List<String>> filesList = new HashMap<String, List<String>>();
 
       for (TestLocalStreamService service : services) {
+        boolean processCluster = false;
         List<String> files = new ArrayList<String>(NUM_OF_FILES);
         Cluster cluster = service.getCluster();
+        for (Iterator<StreamCluster> sourceClusters = sstream.getValue()
+            .getSourceStreamClusters().iterator(); sourceClusters.hasNext();) {
+          if(cluster.getName().compareTo(sourceClusters.next().getCluster().getName())==0)
+            processCluster =true;
+        }
+        
+        if (processCluster) {
         pathstoRemove.add(cluster.getRootDir());
 
         fs.delete(new Path(cluster.getRootDir()), true);
@@ -133,6 +142,7 @@ public class MergeMirrorStreamTest extends TestMiniClusterUtil {
 
         }
         //fs.delete(new Path(testRootDir), true);
+      }
       }
       
       Stream primaryStream = sstream.getValue();
