@@ -119,7 +119,7 @@ public class DataPurgerService extends AbstractService {
 
   private void addLocalStreams() {
     for (SourceStream s : getConfig().getSourceStreams().values()) {
-      if (s.getSourceClusters().contains(cluster)) {
+      if (s.getSourceClusters().contains(cluster.getName())) {
         String streamName = s.getName();
         Integer retentionInHours = new Integer(s.getRetentionInHours(cluster
             .getName()));
