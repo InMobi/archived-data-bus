@@ -113,11 +113,13 @@ public class Stream {
   
   public Set<DestinationStreamCluster> getMirroredClusters() {
     Set<DestinationStreamCluster> destStreamClusters = new HashSet<DestinationStreamCluster>();
-    for (StreamCluster destStreamClustersItr : getDestinationStreamClusters()) {
-      DestinationStreamCluster streamCluster = (DestinationStreamCluster) destStreamClustersItr;
-      if (!streamCluster.isPrimary())
-        destStreamClusters.add(streamCluster);
+    if (getDestinationStreamClusters() != null) {
+      for (StreamCluster destStreamClustersItr : getDestinationStreamClusters()) {
+        DestinationStreamCluster streamCluster = (DestinationStreamCluster) destStreamClustersItr;
+        if (!streamCluster.isPrimary())
+          destStreamClusters.add(streamCluster);
       }
+    }
     return destStreamClusters;
   }
 }

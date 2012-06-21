@@ -130,6 +130,7 @@ public class MergedStreamService extends DistcpBaseService {
     // for each stream in committedPaths
     for (String stream : committedPaths.keySet()) {
       // for each cluster
+      if (getConfig().getAllStreams().get(stream) != null) {
       for (DestinationStreamCluster destCluster : getConfig().getAllStreams()
           .get(stream).getMirroredClusters()) {
         // is this stream to be mirrored on this cluster
@@ -140,34 +141,37 @@ public class MergedStreamService extends DistcpBaseService {
             mirrorStreamConsumers.put(stream, mirrorConsumers);
         }
       }
+    }
 
     // Commit paths for each consumer
     for (String stream : committedPaths.keySet()) {
       // consumers for this stream
       Set<Cluster> consumers = mirrorStreamConsumers.get(stream);
       Path tmpConsumerPath;
-      for (Cluster consumer : consumers) {
-        // commit paths for this consumer, this stream
-        // adding srcCluster avoids two Remote Copiers creating same filename
-        String tmpPath = "src_" + getSrcCluster().getName() + "_via_"
-                + getDestCluster().getName() + "_mirrorto_" + consumer.getName()
-                + "_" + stream;
-        tmpConsumerPath = new Path(tmp, tmpPath);
-        FSDataOutputStream out = getDestFs().create(tmpConsumerPath);
-        for (Path path : committedPaths.get(stream)) {
-          out.writeBytes(path.toString());
-          out.writeBytes("\n");
-        }
-        out.close();
-        // Two MergedStreamConsumers will write file for same consumer within
-        // the same time
-        // adding srcCLuster name avoids that conflict
-        Path finalMirrorPath = new Path(getDestCluster().getMirrorConsumePath(
-                consumer), tmpPath + "_"
-                + new Long(System.currentTimeMillis()).toString());
-        consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
+      if (consumers != null) {
+        for (Cluster consumer : consumers) {
+          // commit paths for this consumer, this stream
+          // adding srcCluster avoids two Remote Copiers creating same filename
+          String tmpPath = "src_" + getSrcCluster().getName() + "_via_"
+              + getDestCluster().getName() + "_mirrorto_" + consumer.getName()
+              + "_" + stream;
+          tmpConsumerPath = new Path(tmp, tmpPath);
+          FSDataOutputStream out = getDestFs().create(tmpConsumerPath);
+          for (Path path : committedPaths.get(stream)) {
+            out.writeBytes(path.toString());
+            out.writeBytes("\n");
+          }
+          out.close();
+          // Two MergedStreamConsumers will write file for same consumer within
+          // the same time
+          // adding srcCLuster name avoids that conflict
+          Path finalMirrorPath = new Path(getDestCluster()
+              .getMirrorConsumePath(consumer), tmpPath + "_"
+              + new Long(System.currentTimeMillis()).toString());
+          consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
 
-      } // for each consumer
+        } // for each consumer
+      }
     } // for each stream
 
     // Do the final mirrorCommit
