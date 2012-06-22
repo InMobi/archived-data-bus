@@ -13,8 +13,20 @@
 */
 package com.inmobi.databus;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+
+import com.inmobi.databus.utils.CalendarHelper;
 
 public abstract class AbstractService implements Service, Runnable {
 
@@ -27,6 +39,11 @@ public abstract class AbstractService implements Service, Runnable {
   protected Thread thread;
   protected volatile boolean stopped = false;
   protected CheckpointProvider checkpointProvider = null;
+  protected Cluster currentCluster = null;
+  private Map<String, Long> prevRuntimeForCategory = new HashMap<String, Long>();
+  private final SimpleDateFormat logDateFormat = new SimpleDateFormat(
+      "yyyy/MM/dd, hh:mm");
+  private final static int MILLISECONDS_IN_MINUTE = 60000;
 
   public AbstractService(String name, DatabusConfig config) {
     this(name, config, DEFAULT_RUN_INTERVAL);
@@ -51,6 +68,108 @@ public abstract class AbstractService implements Service, Runnable {
 
   public String getName() {
     return name;
+  }
+
+  protected String getLogDateString(long commitTime) {
+    return logDateFormat.format(commitTime);
+  }
+
+  private Path getLatestDir(FileSystem fs, Path Dir) throws Exception {
+    FileStatus[] fileStatus = fs.listStatus(Dir);
+
+    if (fileStatus != null && fileStatus.length > 0) {
+      FileStatus latestfile = fileStatus[0];
+      for (FileStatus currentfile : fileStatus) {
+        if (currentfile.getPath().getName()
+            .compareTo(latestfile.getPath().getName()) > 0)
+          latestfile = currentfile;
+      }
+      return latestfile.getPath();
+    }
+    return null;
+  }
+
+  private long getPreviousRuntime(FileSystem fs, String destDir, String category)
+      throws Exception {
+    String checkdestDir = destDir + File.separator
+        + category;
+    LOG.warn("Querying Directory [" + checkdestDir + "]");
+    Path latestyeardir = getLatestDir(fs, new Path(checkdestDir));
+    int latestyear = 0, latestmonth = 0, latestday = 0, latesthour = 0, latestminute = 0;
+
+    if (latestyeardir != null) {
+      latestyear = Integer.parseInt(latestyeardir.getName());
+      Path latestmonthdir = getLatestDir(fs, latestyeardir);
+      if (latestmonthdir != null) {
+        latestmonth = Integer.parseInt(latestmonthdir.getName());
+        Path latestdaydir = getLatestDir(fs, latestmonthdir);
+        if (latestdaydir != null) {
+          latestday = Integer.parseInt(latestdaydir.getName());
+          Path latesthourdir = getLatestDir(fs, latestdaydir);
+          if (latesthourdir != null) {
+            latesthour = Integer.parseInt(latesthourdir.getName());
+            Path latestminutedir = getLatestDir(fs, latesthourdir);
+            if (latestminutedir != null) {
+              latestminute = Integer.parseInt(latestminutedir.getName());
+            }
+          }
+        }
+      }
+    } else
+      return -1;
+    LOG.debug("Date Found " + latestyear + File.separator + latestmonth
+        + File.separator + latestday + File.separator + latesthour
+        + File.separator + latestminute);
+    return CalendarHelper.getDateHourMinute(latestyear, latestmonth, latestday,
+        latesthour, latestminute).getTimeInMillis();
+  }
+
+  private boolean isMissingPaths(long commitTime, long prevRuntime) {
+    return ((commitTime - prevRuntime) >= MILLISECONDS_IN_MINUTE);
+  }
+
+  protected void publishMissingPaths(FileSystem fs, String destDir,
+      long commitTime, String categoryName) throws Exception {
+    Calendar commitTimeMinutes = new GregorianCalendar();
+    commitTimeMinutes.setTimeInMillis(commitTime);
+    commitTimeMinutes.set(Calendar.MILLISECOND, 0);
+    commitTimeMinutes.set(Calendar.SECOND, 0);
+    commitTime = commitTimeMinutes.getTimeInMillis();
+    Long prevRuntime = new Long(-1);
+    if (!prevRuntimeForCategory.containsKey(categoryName)) {
+      LOG.debug("Calculating Previous Runtime from Directory Listing");
+      prevRuntime = getPreviousRuntime(fs, destDir, categoryName);
+    } else {
+      LOG.debug("Reading Previous Runtime from Cache");
+      prevRuntime = prevRuntimeForCategory.get(categoryName);
+    }
+
+    if (prevRuntime != -1) {
+      if (isMissingPaths(commitTime, prevRuntime)) {
+        LOG.debug("Previous Runtime: [" + getLogDateString(prevRuntime) + "]");
+        while (isMissingPaths(commitTime, prevRuntime)) {
+          String missingPath = Cluster.getDestDir(destDir, categoryName,
+              prevRuntime);
+          LOG.debug("Creating Missing Directory [" + missingPath + "]");
+          fs.mkdirs(new Path(missingPath));
+          prevRuntime += MILLISECONDS_IN_MINUTE;
+        }
+      }
+      prevRuntimeForCategory.put(categoryName, commitTime);
+    }
+  }
+
+  public void publishMissingPaths(FileSystem fs, String destDir)
+      throws Exception {
+    FileStatus[] fileStatus = fs.listStatus(new Path(destDir));
+    LOG.info("Create All the Missing Paths");
+    if (fileStatus != null) {
+      for (FileStatus file : fileStatus) {
+        publishMissingPaths(fs, destDir, System.currentTimeMillis(), file
+            .getPath().getName());
+      }
+    }
+    LOG.info("Done Creating All the Missing Paths");
   }
 
   public abstract long getMSecondsTillNextRun(long currentTime);

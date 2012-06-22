@@ -16,11 +16,13 @@ package com.inmobi.databus.purge;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -155,7 +157,7 @@ public class DataPurgerService extends AbstractService {
   protected void execute() throws Exception {
     try {
       streamRetention = new HashMap<String, Integer>();
-      streamsToPurge = new HashSet<Path>();
+      streamsToPurge = new TreeSet<Path>();
 
       // populates - streamRetention
       // Map of streams and their retention period at this cluster (Partial +

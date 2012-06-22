@@ -2,7 +2,9 @@ package com.inmobi.databus.distcp;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -36,6 +38,47 @@ import com.inmobi.databus.utils.CalendarHelper;
 public class MergeMirrorStreamTest extends TestMiniClusterUtil {
 
   private static final Log LOG = LogFactory.getLog(MergeMirrorStreamTest.class);
+
+  private void testPublishMissingPaths(TestService service) throws Exception {
+
+    FileSystem fs = FileSystem.getLocal(new Configuration());
+    Calendar behinddate = new GregorianCalendar();
+    Calendar todaysdate = new GregorianCalendar();
+    String basepublishPaths = service.getDestCluster().getFinalDestDirRoot()
+        + "streams_publish" + File.separator;
+    String publishPaths = basepublishPaths
+        + CalendarHelper.getDateAsYYYYMMDDHHMNPath(behinddate.getTime());
+
+    fs.mkdirs(new Path(publishPaths));
+
+    service.publishMissingPaths(fs);
+
+    VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
+        basepublishPaths);
+
+    todaysdate.add(Calendar.HOUR_OF_DAY, 2);
+
+    service.publishMissingPaths(fs);
+
+    VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
+        basepublishPaths);
+
+    fs.delete(new Path(basepublishPaths), true);
+  }
+
+  private void VerifyMissingPublishPaths(FileSystem fs, long todaysdate,
+      Calendar behinddate, String basepublishPaths)
+      throws Exception {
+    long diff = todaysdate - behinddate.getTimeInMillis();
+    while (diff > 60000) {
+      String checkcommitpath = basepublishPaths
+          + CalendarHelper.getDateAsYYYYMMDDHHMNPath(behinddate.getTime());
+      LOG.debug("Checking for Created Missing Path: " + checkcommitpath);
+      fs.exists(new Path(checkcommitpath));
+      behinddate.add(Calendar.MINUTE, 1);
+      diff = todaysdate - behinddate.getTimeInMillis();
+    }
+  }
 
   /*
    * Here is the basic idea, create two clusters of different rootdir paths run
@@ -71,6 +114,10 @@ filename);
     
     List<String> pathstoRemove = new LinkedList<String>();
 
+    for (Cluster cluster : config.getAllClusters().values()) {
+      pathstoRemove.add(cluster.getRootDir());
+    }
+
     for (Map.Entry<String, Stream> sstream : config.getAllStreams().entrySet()) {
 
       Date todaysdate = null;
@@ -88,7 +135,6 @@ filename);
         }
         
         if (processCluster) {
-        pathstoRemove.add(cluster.getRootDir());
 
         fs.delete(new Path(cluster.getRootDir()), true);
         Path createPath = new Path(cluster.getDataDir(), sstream.getValue()
@@ -150,16 +196,32 @@ filename);
       Cluster destcluster = primaryStream.getPrimaryDestinationCluster();
       
       for (StreamCluster cluster : primaryStream.getSourceStreamClusters()) {
+        TestMergeStreamService service = new TestMergeStreamService(config,
+            cluster.getCluster(), destcluster);
+        testPublishMissingPaths(service);
+      }
+
+      for (StreamCluster cluster : primaryStream.getSourceStreamClusters()) {
         primaryCluster.add(cluster.getCluster());
         TestMergeStreamService service = new TestMergeStreamService(config,
             cluster.getCluster(), destcluster);
-
         service.execute();
       }
       
       Set<StreamCluster> destMirrorClusters = primaryStream
           .getDestinationStreamClusters();
       Set<Cluster> MirrorprimaryCluster = new HashSet<Cluster>();
+
+      for (StreamCluster destStreamCluster : destMirrorClusters) {
+        DestinationStreamCluster cluster = (DestinationStreamCluster) destStreamCluster;
+        if (!cluster.isPrimary()) {
+          TestMirrorStreamService service = new TestMirrorStreamService(config,
+              destcluster, cluster.getCluster());
+          testPublishMissingPaths(service);
+        }
+      }
+
+
 
       for (StreamCluster destStreamCluster : destMirrorClusters) {
         DestinationStreamCluster cluster = (DestinationStreamCluster) destStreamCluster;
@@ -178,38 +240,30 @@ filename);
           + CalendarHelper.getDateAsYYYYMMDDHHPath(todaysdate.getTime());
       FileStatus[] mindirs = fs.listStatus(new Path(commitpath));
 
-      FileStatus mindir = mindirs[0];
+      Set<String> commitPaths = new HashSet<String>();
 
       for (FileStatus minutedir : mindirs) {
-        if (mindir.getPath().getName()
-            .compareTo(minutedir.getPath().getName()) < 0) {
-          mindir = minutedir;
+          FileStatus[] filePaths = fs.listStatus(minutedir.getPath());
+          for (FileStatus filePath : filePaths) {
+            commitPaths.add(filePath.getPath().getName());
         }
       }
 
       try {
-        Integer.parseInt(mindir.getPath().getName());
-        String streams_dir = commitpath + mindir.getPath().getName()
-            + File.separator;
-
-        LOG.debug("Checking in Path for Merged mapred Output: " + streams_dir);
+          LOG.debug("Checking in Path for Merged mapred Output, No. of files: "
+              + commitPaths.size());
         
           for (Cluster tmpcluster : primaryCluster) {
-          List<String> files = filesList.get(tmpcluster.getName());
+            List<String> files = filesList.get(tmpcluster.getName());
             for (int j = 0; j < NUM_OF_FILES; ++j) {
-            String checkpath = streams_dir + tmpcluster.getName() + "-"
-                + files.get(j) + ".gz";
-            LOG.debug("Checking file: " + checkpath);
-            Assert.assertTrue(fs.exists(new Path(checkpath)));
-            }
+              String checkpath = tmpcluster.getName() + "-" + files.get(j)
+                  + ".gz";
+              LOG.debug("Merged Checking file: " + checkpath);
+              Assert.assertTrue(commitPaths.contains(checkpath));
           }
-        
-        
-
+          }
       } catch (NumberFormatException e) {
-
       }
-      
       }
       
       {
@@ -219,31 +273,28 @@ filename);
           + CalendarHelper.getDateAsYYYYMMDDHHPath(todaysdate.getTime());
           FileStatus[] mindirs = fs.listStatus(new Path(commitpath));
 
-          FileStatus mindir = mindirs[0];
+          Set<String> commitPaths = new HashSet<String>();
 
           for (FileStatus minutedir : mindirs) {
-            if (mindir.getPath().getName()
-                .compareTo(minutedir.getPath().getName()) < 0) {
-              mindir = minutedir;
+              FileStatus[] filePaths = fs.listStatus(minutedir.getPath());
+              for (FileStatus filePath : filePaths) {
+                commitPaths.add(filePath.getPath().getName());
             }
           }
 
           try {
-            Integer.parseInt(mindir.getPath().getName());
-            String streams_dir = commitpath + mindir.getPath().getName()
-                + File.separator;
 
-            LOG.debug("Checking in Path for Mirror mapred Output: "
-                + streams_dir);
+            LOG.debug("Checking in Path for Mirror mapred Output, No. of files: "
+              + commitPaths.size());
 
             for (Map.Entry<String, List<String>> checkFiles : filesList
                 .entrySet()) {
               List<String> files = checkFiles.getValue();
               for (int j = 0; j < NUM_OF_FILES; ++j) {
-                String checkpath = streams_dir + checkFiles.getKey() + "-"
+                String checkpath = checkFiles.getKey() + "-"
                     + files.get(j) + ".gz";
-                LOG.debug("Checking file: " + checkpath);
-                Assert.assertTrue(fs.exists(new Path(checkpath)));
+                LOG.debug("Mirror Checking file: " + checkpath);
+                Assert.assertTrue(commitPaths.contains(checkpath));
               }
               }
           } catch (NumberFormatException e) {
@@ -257,25 +308,55 @@ filename);
     }
     fs.close();
   }
+  
+  static interface TestService {
+    Cluster getDestCluster();
+    void publishMissingPaths(FileSystem fs) throws Exception;
+  }
 
-  public static class TestMergeStreamService extends MergedStreamService {
+  public static class TestMergeStreamService extends MergedStreamService implements TestService{
+    
+    private Cluster destinationCluster = null;
 
     public TestMergeStreamService(DatabusConfig config, Cluster srcCluster,
         Cluster destinationCluster) throws Exception {
       super(config, srcCluster, destinationCluster);
       // TODO Auto-generated constructor stub
+      this.destinationCluster = destinationCluster;
+    }
+
+    @Override
+    public void publishMissingPaths(FileSystem fs) throws Exception {
+      super.publishMissingPaths(fs, destinationCluster.getFinalDestDirRoot());
+    }
+
+    @Override
+    public Cluster getDestCluster() {
+      return destinationCluster;
     }
 
   }
 
-  public static class TestMirrorStreamService extends MirrorStreamService {
+  public static class TestMirrorStreamService extends MirrorStreamService implements TestService{
+
+    private Cluster destinationCluster = null;
 
     public TestMirrorStreamService(DatabusConfig config, Cluster srcCluster,
         Cluster destinationCluster) throws Exception {
       super(config, srcCluster, destinationCluster);
+      this.destinationCluster = destinationCluster;
       // TODO Auto-generated constructor stub
     }
 
+    @Override
+    public void publishMissingPaths(FileSystem fs) throws Exception {
+      super.publishMissingPaths(fs, destinationCluster.getFinalDestDirRoot());
+    }
+
+    @Override
+    public Cluster getDestCluster() {
+      return destinationCluster;
+    }
   }
 
 }

@@ -338,16 +338,14 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
 
     int retentioninhours = sourcestreamCluster.getRetentionPeriod();
 
-    service.publishMissingPaths(fs, todaysdate.getTimeInMillis(),
-        sstream.getName());
+    service.publishMissingPaths(fs);
 
     VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
         basepublishPaths, retentioninhours);
 
     todaysdate.add(Calendar.HOUR_OF_DAY, 2);
 
-    service.publishMissingPaths(fs, todaysdate.getTimeInMillis(),
-        sstream.getName());
+    service.publishMissingPaths(fs);
 
     VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
         basepublishPaths, retentioninhours);
@@ -583,9 +581,8 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
       return new String("file" + new Integer(number_files).toString());
     }
 
-    public void publishMissingPaths(FileSystem fs, long commitTime,
-        String categoryName) throws Exception {
-      super.publishMissingPaths(fs, commitTime, categoryName);
+    public void publishMissingPaths(FileSystem fs) throws Exception {
+      super.publishMissingPaths(fs, cluster.getLocalFinalDestDirRoot());
     }
 
     public Cluster getCluster() {

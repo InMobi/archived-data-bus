@@ -73,6 +73,8 @@ public class MergedStreamService extends DistcpBaseService {
         return;
       }
 
+      publishMissingPaths(getDestFs(), getDestCluster().getFinalDestDirRoot());
+
       Path inputFilePath = getInputFilePath(consumePaths, tmp);
       if (inputFilePath == null) {
         LOG.warn("No data to pull from " + "Cluster ["
@@ -101,6 +103,10 @@ public class MergedStreamService extends DistcpBaseService {
         synchronized (getDestCluster()) {
           long commitTime = getDestCluster().getCommitTime();
           // category, Set of Paths to commit
+          for (String category : categoriesToCommit.keySet()) {
+            publishMissingPaths(getDestFs(), getDestCluster()
+                .getFinalDestDirRoot(), commitTime, category);
+          }
           committedPaths = doLocalCommit(commitTime, categoriesToCommit);
         }
         // Prepare paths for MirrorStreamConsumerService

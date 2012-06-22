@@ -71,17 +71,19 @@ public class Cluster {
     return dest;
   }
 
-  public String getLocalDestDir(String category, long commitTime)
-      throws IOException {
-    String dest = getLocalFinalDestDirRoot() + category + File.separator
-        + CalendarHelper.getDateAsYYYYMMDDHHMNPath(commitTime);
+  public static String getDestDir(String destRootDir, String category,
+      long commitTime) {
+    String dest = destRootDir + getDateTimeDestDir(category, commitTime);
     return dest;
   }
 
+  public String getLocalDestDir(String category, long commitTime)
+      throws IOException {
+    return getDestDir(getLocalFinalDestDirRoot(), category, commitTime);
+  }
+
   public String getLocalDestDir(String category, Date date) throws IOException {
-    String dest = getLocalFinalDestDirRoot() + category + File.separator
-        + CalendarHelper.getDateAsYYYYMMDDHHMNPath(date);
-    return dest;
+    return getDestDir(getLocalFinalDestDirRoot(), category, date.getTime());
   }
 
   public synchronized long getCommitTime() {
@@ -113,7 +115,7 @@ public class Cluster {
     return dest;
   }
 
-  public String getDateTimeDestDir(String category, long commitTime) {
+  public static String getDateTimeDestDir(String category, long commitTime) {
     String dest = category + File.separator
         + CalendarHelper.getDateAsYYYYMMDDHHMNPath(commitTime);
     return dest;
@@ -121,9 +123,7 @@ public class Cluster {
 
   public String getFinalDestDir(String category, long commitTime)
       throws IOException {
-    String dest = getFinalDestDirRoot() + category + File.separator
-        + CalendarHelper.getDateAsYYYYMMDDHHMNPath(commitTime);
-    return dest;
+    return getDestDir(getFinalDestDirRoot(), category, commitTime);
   }
 
   public String getFinalDestDirTillHour(String category, long commitTime)
