@@ -80,12 +80,12 @@ public class Cluster {
     return dest;
   }
 
-  public String getDateAsYYYYMMDDHHMNPath(long commitTime) {
+	public static String getDateAsYYYYMMDDHHMNPath(long commitTime) {
     Date date = new Date(commitTime);
     return getDateAsYYYYMMDDHHMNPath(date);
   }
 
-  public String getDateAsYYYYMMDDHHMNPath(Date date) {
+	public static String getDateAsYYYYMMDDHHMNPath(Date date) {
     DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator + "MM"
         + File.separator + "dd" + File.separator + "HH" + File.separator + "mm"
         + File.separator);
@@ -98,6 +98,13 @@ public class Cluster {
         + File.separator + "dd" + File.separator + "HH" + File.separator);
     return dateFormat.format(date);
   }
+
+	public static String getDestDir(String destDir, String category,
+	    long commitTime) {
+		String dest = destDir + File.separator + category + File.separator
+		    + getDateAsYYYYMMDDHHMNPath(commitTime);
+		return dest;
+	}
 
   public String getLocalDestDir(String category, long commitTime)
       throws IOException {
