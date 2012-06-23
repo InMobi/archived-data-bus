@@ -66,6 +66,8 @@ public class Cluster {
     this.consumeStreams = consumeStreams;
     this.sourceStreams = sourceStreams;
     this.hadoopConf.set("fs.default.name", hdfsUrl);
+    this.hadoopConf.set("mapred.job.queue.name",
+    		clusterjobqueuename);
   }
 
   public String getRootDir() {

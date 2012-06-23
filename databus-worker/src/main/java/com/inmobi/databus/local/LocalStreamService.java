@@ -496,8 +496,6 @@ public class LocalStreamService extends AbstractService {
     job.getConfiguration().set("mapred.map.tasks.speculative.execution",
         "false");
     job.getConfiguration().set("localstream.tmp.path", tmpPath.toString());
-    job.getConfiguration().set("mapred.job.queue.name",
-        cluster.getJobQueueName());
 
     return job;
   }

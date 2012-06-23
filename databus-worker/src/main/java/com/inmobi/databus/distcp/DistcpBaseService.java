@@ -89,9 +89,7 @@ public abstract class DistcpBaseService extends AbstractService {
 	  Boolean distcpExecuteSuccess = false;
 	  //Add Additional Default arguments to the array below which gets merged
 	  //with the arguments as sent in by the Derived Service
-	  String[] defargs = {"-D", "mapred.job.queue.name", this.getDestCluster().getJobQueueName() }; 
-	  if (DistCp.runDistCp((String[])ArrayUtils.addAll(args, defargs),
-			  				destCluster.getHadoopConf())==DISTCP_SUCCESS)
+		if (DistCp.runDistCp(args, destCluster.getHadoopConf()) == DISTCP_SUCCESS)
 		  distcpExecuteSuccess = true;
 	  
 	  return distcpExecuteSuccess;
