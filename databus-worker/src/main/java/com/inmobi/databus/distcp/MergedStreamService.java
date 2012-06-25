@@ -69,7 +69,9 @@ public class MergedStreamService extends DistcpBaseService {
         return;
       }
 
-			publishMissingPaths(getDestFs(), getDestCluster().getFinalDestDirRoot());
+			synchronized (getDestCluster()) {
+				publishMissingPaths(getDestFs(), getDestCluster().getFinalDestDirRoot());
+			}
 
       Path inputFilePath = getInputFilePath(consumePaths, tmp);
       if (inputFilePath == null) {
@@ -115,7 +117,7 @@ public class MergedStreamService extends DistcpBaseService {
       getDestFs().delete(tmpOut, true);
       LOG.debug("Deleting [" + tmpOut + "]");
     } catch (Exception e) {
-      LOG.warn("Error in run [" + e.getMessage() +"]", e);
+			LOG.warn("Error in run ", e);
       throw new Exception(e);
     }
   }
@@ -149,6 +151,10 @@ public class MergedStreamService extends DistcpBaseService {
       // consumers for this stream
       Set<Cluster> consumers = mirrorStreamConsumers.get(stream);
       Path tmpConsumerPath;
+			if (consumers == null || consumers.size() == 0) {
+				LOG.warn(" Consumers is empty for stream [" + stream + "]");
+				continue;
+			}
       for (Cluster consumer : consumers) {
         // commit paths for this consumer, this stream
         // adding srcCluster avoids two Remote Copiers creating same filename
@@ -173,6 +179,10 @@ public class MergedStreamService extends DistcpBaseService {
       } // for each consumer
     } // for each stream
 
+		if (consumerCommitPaths == null || consumerCommitPaths.size() == 0) {
+			LOG.info("consumerCommitPaths is empty for all stream, skipping mirrorCommit");
+			return;
+		}
     // Do the final mirrorCommit
     LOG.info("Committing [" + consumerCommitPaths.size() + "] paths for " +
             "mirrored Stream");
