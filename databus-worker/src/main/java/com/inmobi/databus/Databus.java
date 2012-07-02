@@ -66,8 +66,8 @@ public class Databus implements Service, DatabusConstants {
         new FSCheckpointProvider(cluster.getCheckpointDir())));
       }
 
-      List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();
-      List<Cluster> mirroredRemoteClusters = new ArrayList<Cluster>();
+      Set<String> mergedStreamRemoteClusters = new HashSet<String>();
+      Set<String> mirroredRemoteClusters = new HashSet<String>();
       for (String cStream : cluster.getSourceStreams()) {
         //Start MergedStreamConsumerService instances for this cluster for each cluster
         //from where it has to fetch a partial stream and is hosting a primary stream
@@ -78,21 +78,24 @@ public class Databus implements Service, DatabusConstants {
           if (primaryDestinationCluster.getName().compareTo(cluster.getName()) == 0) {
             for (StreamCluster cName : config.getAllStreams().get(cStream)
                 .getSourceStreamClusters()) {
-              if (!mergedStreamRemoteClusters.contains(cName.getCluster()))
-                mergedStreamRemoteClusters.add(cName.getCluster());
+              if (!mergedStreamRemoteClusters.contains(cName.getCluster()
+                  .getName()))
+                mergedStreamRemoteClusters.add(cName.getCluster().getName());
             }
           } else {
             if (!mirroredRemoteClusters.contains(primaryDestinationCluster))
-              mirroredRemoteClusters.add(primaryDestinationCluster);
+              mirroredRemoteClusters.add(primaryDestinationCluster.getName());
           }
         }
       }
 
-      for (Cluster remote : mergedStreamRemoteClusters) {
-        services.add(new MergedStreamService(config, remote, cluster));
+      for (String remote : mergedStreamRemoteClusters) {
+        services.add(new MergedStreamService(config, config.getAllClusters()
+            .get(remote), cluster));
       }
-      for (Cluster remote : mirroredRemoteClusters) {
-        services.add(new MirrorStreamService(config, remote, cluster));
+      for (String remote : mirroredRemoteClusters) {
+        services.add(new MirrorStreamService(config, config.getAllClusters()
+            .get(remote), cluster));
       }
     }
 
