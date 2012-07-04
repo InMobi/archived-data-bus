@@ -61,7 +61,7 @@ import com.inmobi.databus.TestMiniClusterUtil;
 @Test
 public class LocalStreamServiceTest extends TestMiniClusterUtil {
   private static Logger LOG = Logger.getLogger(LocalStreamServiceTest.class);
-  private final int number_files = 9;
+  private final static int number_files = 9;
 
   Set<String> expectedResults = new LinkedHashSet<String>();
   Set<String> expectedTrashPaths = new LinkedHashSet<String>();
@@ -343,16 +343,14 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     int retentioninhours = config.getSourceStreams().get(sstream.getName())
         .getRetentionInHours(cluster.getName());
 
-    service.publishMissingPaths(fs, todaysdate.getTimeInMillis(),
-        sstream.getName());
+    service.publishMissingPaths(fs);
 
     VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
         basepublishPaths, retentioninhours);
 
     todaysdate.add(Calendar.HOUR_OF_DAY, 2);
 
-    service.publishMissingPaths(fs, todaysdate.getTimeInMillis(),
-        sstream.getName());
+    service.publishMissingPaths(fs);
 
     VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
         basepublishPaths, retentioninhours);
@@ -577,7 +575,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     fs.close();
   }
 
-  private class TestLocalStreamService extends LocalStreamService {
+  public static class TestLocalStreamService extends LocalStreamService {
 		private Cluster srcCluster = null;
 
     public TestLocalStreamService(DatabusConfig config, Cluster cluster,
@@ -596,10 +594,12 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
       return new String("file" + new Integer(number_files).toString());
     }
 
-    public void publishMissingPaths(FileSystem fs, long commitTime,
-        String categoryName) throws Exception {
-			super.publishMissingPaths(fs, srcCluster.getLocalFinalDestDirRoot(),
-			    commitTime, categoryName);
+    public void publishMissingPaths(FileSystem fs) throws Exception {
+      super.publishMissingPaths(fs, srcCluster.getLocalFinalDestDirRoot());
+    }
+
+    public Cluster getCluster() {
+      return srcCluster;
     }
   }
 }

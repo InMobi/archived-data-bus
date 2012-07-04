@@ -89,14 +89,15 @@ public class TestCluster {
               .compareTo(
                   LocalFinalDestDir + "dummy" + File.separator + formattedDate) == 0);
 
-      LOG.info("Testing getUnqaulifiedFinalDestDirRoot " + File.separator
-          + rootDir + File.separator + "streams" + File.separator
-          + " "
-          + cluster.getUnqaulifiedFinalDestDirRoot());
+      Path absolutePath = new Path(hdfsUrl);
+      String UnqaulifiedFinalDestDirRoot = File.separator
+          + absolutePath.toUri().getPath() + rootDir + File.separator
+          + "streams" + File.separator;
+      LOG.info("Testing getUnqaulifiedFinalDestDirRoot "
+          + UnqaulifiedFinalDestDirRoot);
 
       Assert.assertTrue(cluster.getUnqaulifiedFinalDestDirRoot().compareTo(
-          File.separator + rootDir + File.separator + "streams"
-              + File.separator) == 0);
+          UnqaulifiedFinalDestDirRoot) == 0);
 
       String FinalDestDir = cluster.getRootDir() + "streams" + File.separator;
 
