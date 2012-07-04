@@ -62,6 +62,8 @@ public class Cluster {
     this.hadoopConf.set("mapred.job.tracker",jtUrl);
     this.hadoopConf.set("databus.tmp.path", getTmpPath().toString());
     this.hadoopConf.set("fs.default.name", hdfsUrl);
+    this.hadoopConf.set("mapred.job.queue.name",
+    		clusterjobqueuename);
   }
 
   private void Validate(String element, String objType) throws ParseException {
@@ -90,6 +92,13 @@ public class Cluster {
   private static String getDateAsYYYYMMDDHHPath(long commitTime) {
     return clusterdateHourFormat.format(commitTime);
   }
+
+	public static String getDestDir(String destDir, String category,
+	    long commitTime) {
+		String dest = destDir + File.separator + category + File.separator
+		    + getDateAsYYYYMMDDHHMNPath(commitTime);
+		return dest;
+	}
 
   public String getLocalDestDir(String category, long commitTime)
       throws IOException {

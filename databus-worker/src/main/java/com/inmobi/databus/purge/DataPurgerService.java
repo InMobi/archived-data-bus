@@ -18,7 +18,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.TreeSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -150,7 +150,7 @@ public class DataPurgerService extends AbstractService {
   protected void execute() throws Exception {
     try {
       streamRetention = new HashMap<String, Integer>();
-      streamsToPurge = new HashSet<Path>();
+      streamsToPurge = new TreeSet<Path>();
 
       // populates - streamRetention
       // Map of streams and their retention period at this cluster (Partial +

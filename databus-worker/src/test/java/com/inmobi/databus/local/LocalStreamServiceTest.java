@@ -578,10 +578,12 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
   }
 
   private class TestLocalStreamService extends LocalStreamService {
+		private Cluster srcCluster = null;
 
     public TestLocalStreamService(DatabusConfig config, Cluster cluster,
         CheckpointProvider provider) {
       super(config, cluster, provider);
+			this.srcCluster = cluster;
     }
 
     public void runOnce() throws Exception {
@@ -596,7 +598,8 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
 
     public void publishMissingPaths(FileSystem fs, long commitTime,
         String categoryName) throws Exception {
-      super.publishMissingPaths(fs, commitTime, categoryName);
+			super.publishMissingPaths(fs, srcCluster.getLocalFinalDestDirRoot(),
+			    commitTime, categoryName);
     }
   }
 }
