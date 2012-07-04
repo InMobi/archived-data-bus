@@ -16,13 +16,12 @@ package com.inmobi.databus.purge;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -34,9 +33,8 @@ import com.inmobi.databus.AbstractService;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.DatabusConfigParser;
-import com.inmobi.databus.Stream;
-import com.inmobi.databus.Stream.DestinationStreamCluster;
-import com.inmobi.databus.Stream.StreamCluster;
+import com.inmobi.databus.DestinationStream;
+import com.inmobi.databus.SourceStream;
 import com.inmobi.databus.utils.CalendarHelper;
 
 /*
@@ -85,40 +83,37 @@ public class DataPurgerService extends AbstractService {
   }
 
   private void addMergedStreams() {
-    Set<String> destinationStreams = cluster.getDestinationStreams();
-    for (String destStreamName : destinationStreams) {
-      Integer mergedStreamRetentionInHours = -1;
-
-      for (StreamCluster destClusters : getConfig().getAllStreams()
-          .get(destStreamName).getDestinationStreamClusters()) {
-        DestinationStreamCluster destCluster = (DestinationStreamCluster) destClusters;
-        if(destCluster.getCluster().getName().compareTo(cluster.getName())==0)
-          mergedStreamRetentionInHours = destCluster.getRetentionPeriod();
-
-      }
-      LOG.debug("Merged Stream :: streamName [" + destStreamName
+    Map<String, DestinationStream> destinationStreamMapStreamMap = cluster
+        .getDestinationStreams();
+    Set<Map.Entry<String, DestinationStream>> entrySet = destinationStreamMapStreamMap
+        .entrySet();
+    Iterator it = entrySet.iterator();
+    while (it.hasNext()) {
+      Map.Entry entry = (Map.Entry) it.next();
+      String streamName = (String) entry.getKey();
+      DestinationStream consumeStream = (DestinationStream) entry.getValue();
+      Integer mergedStreamRetentionInHours = consumeStream
+          .getRetentionInHours();
+      LOG.debug("Merged Stream :: streamName [" + streamName
           + "] mergedStreamRetentionInHours [" + mergedStreamRetentionInHours
           + "]");
-      if (streamRetention.get(destStreamName) == null) {
-        streamRetention.put(destStreamName, mergedStreamRetentionInHours);
-        LOG.debug("Adding Merged Stream [" + destStreamName
+      if (streamRetention.get(streamName) == null) {
+        streamRetention.put(streamName, mergedStreamRetentionInHours);
+        LOG.debug("Adding Merged Stream [" + streamName
             + "] retentionInHours [" + mergedStreamRetentionInHours + "]");
       } else {
         // Partial & Merged stream are produced at this cluster
         // choose max retention period
-        Integer partialStreamRetentionInHours = streamRetention
-            .get(destStreamName);
+        Integer partialStreamRetentionInHours = streamRetention.get(streamName);
         if (partialStreamRetentionInHours
             .compareTo(mergedStreamRetentionInHours) > 0) {
-          streamRetention.put(destStreamName, partialStreamRetentionInHours);
-          LOG.debug("Overriding Stream [" + destStreamName
-              + "] retentionInHours ["
+          streamRetention.put(streamName, partialStreamRetentionInHours);
+          LOG.debug("Overriding Stream [" + streamName + "] retentionInHours ["
               + partialStreamRetentionInHours + "]");
 
         } else {
-          streamRetention.put(destStreamName, mergedStreamRetentionInHours);
-          LOG.debug("Overriding Stream [" + destStreamName
-              + "] retentionInHours ["
+          streamRetention.put(streamName, mergedStreamRetentionInHours);
+          LOG.debug("Overriding Stream [" + streamName + "] retentionInHours ["
               + mergedStreamRetentionInHours + "]");
 
         }
@@ -128,16 +123,14 @@ public class DataPurgerService extends AbstractService {
   }
 
   private void addLocalStreams() {
-    for (Stream s : getConfig().getAllStreams().values()) {
-      for (StreamCluster sourceCluster : s.getSourceStreamClusters()) {
-        if (sourceCluster.getCluster().getName().compareTo(cluster.getName()) == 0) {
-          String streamName = s.getName();
-          Integer retentionInHours = new Integer(
-              sourceCluster.getRetentionPeriod());
-          streamRetention.put(streamName, retentionInHours);
-          LOG.debug("Adding Partial Stream [" + streamName
-              + "] with retentionPeriod [" + retentionInHours + " Hours]");
-        }
+    for (SourceStream s : getConfig().getSourceStreams().values()) {
+      if (s.getSourceClusters().contains(cluster.getName())) {
+        String streamName = s.getName();
+        Integer retentionInHours = new Integer(s.getRetentionInHours(cluster
+            .getName()));
+        streamRetention.put(streamName, retentionInHours);
+        LOG.debug("Adding Partial Stream [" + streamName
+            + "] with retentionPeriod [" + retentionInHours + " Hours]");
       }
     }
   }
@@ -157,7 +150,7 @@ public class DataPurgerService extends AbstractService {
   protected void execute() throws Exception {
     try {
       streamRetention = new HashMap<String, Integer>();
-      streamsToPurge = new TreeSet<Path>();
+      streamsToPurge = new HashSet<Path>();
 
       // populates - streamRetention
       // Map of streams and their retention period at this cluster (Partial +
@@ -243,7 +236,9 @@ public class DataPurgerService extends AbstractService {
   private void getStreamsPathToPurge(Map<String, Path> streamPathMap)
       throws Exception {
     Set<Map.Entry<String, Path>> streamsToProcess = streamPathMap.entrySet();
-    for (Map.Entry<String, Path> entry : streamsToProcess) {
+    Iterator it = streamsToProcess.iterator();
+    while (it.hasNext()) {
+      Map.Entry<String, Path> entry = (Map.Entry<String, Path>) it.next();
       String streamName = entry.getKey();
       Path streamRootPath = entry.getValue();
       LOG.debug("Find Paths to purge for stream [" + streamName
@@ -321,7 +316,9 @@ public class DataPurgerService extends AbstractService {
   }
 
   private void purge() throws Exception {
-    for (Path purgePath : streamsToPurge) {
+    Iterator it = streamsToPurge.iterator();
+    while (it.hasNext()) {
+      Path purgePath = (Path) it.next();
       fs.delete(purgePath, true);
       LOG.info("Purging [" + purgePath + "]");
     }

@@ -15,8 +15,13 @@ package com.inmobi.databus;
 
 import java.io.File;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -31,11 +36,11 @@ import org.w3c.dom.NodeList;
 public class DatabusConfigParser implements DatabusConfigParserTags {
 
   private static Logger logger = Logger.getLogger(DatabusConfigParser.class);
+  private Map<String, SourceStream> streamMap = new HashMap<String, SourceStream>();
+  private Map<String, Cluster> clusterMap = new HashMap<String, Cluster>();
+  private Map<String, List<DestinationStream>> clusterConsumeStreams = new HashMap<String, List<DestinationStream>>();
 
-  private Map<String, Stream> streams = new HashMap<String, Stream>();
-  private Map<String, Cluster> clusters = new HashMap<String, Cluster>();
   private Map<String, String> defaults = new HashMap<String, String>();
-
   private int defaultRetentionInHours = 48;
   private int defaultTrashRetentionInHours = 24;
 
@@ -44,7 +49,7 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
   }
 
   public DatabusConfig getConfig() {
-    DatabusConfig config = new DatabusConfig(streams, clusters, defaults);
+    DatabusConfig config = new DatabusConfig(streamMap, clusterMap, defaults);
     return config;
   }
 
@@ -63,18 +68,20 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
       dom = db.parse(ClassLoader.getSystemResourceAsStream(fileName));
     }
     if (dom != null)
-      parseDocument(dom.getDocumentElement());
+      parseDocument(dom);
     else
       throw new Exception("databus.xml file not found");
   }
 
-  private void parseDocument(Element docEle) throws Exception {
+  private void parseDocument(Document dom) throws Exception {
+    Element docEle = dom.getDocumentElement();
     // read configs
     readDefaultPaths(docEle);
-    // read all clusterinfo
-    readAllClusters(docEle);
     // read the streams now
     readAllStreams(docEle);
+    // read all clusterinfo
+    readAllClusters(docEle);
+
   }
 
   private void readDefaultPaths(Element docEle) throws Exception {
@@ -110,8 +117,8 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
     if (tmpClusterList != null && tmpClusterList.getLength() > 0) {
       for (int i = 0; i < tmpClusterList.getLength(); i++) {
         Element el = (Element) tmpClusterList.item(i);
-        Cluster cluster = getCluster(el);
-        clusters.put(cluster.getName(), cluster);
+        Cluster Cluster = getCluster(el);
+        clusterMap.put(Cluster.getName(), Cluster);
       }
     }
 
@@ -119,12 +126,12 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
 
   private Cluster getCluster(Element el) throws Exception {
     NamedNodeMap elementsmap = el.getAttributes();
-    Map<String, String> clusterConfiguration = new HashMap<String, String>(
+    Map<String, String> clusterelementsmap = new HashMap<String, String>(
         elementsmap.getLength());
     for (int i = 0; i < elementsmap.getLength(); ++i) {
       Attr attribute = (Attr) elementsmap.item(i);
       logger.info(attribute.getName() + ":" + attribute.getValue());
-      clusterConfiguration.put(attribute.getName(), attribute.getValue());
+      clusterelementsmap.put(attribute.getName(), attribute.getValue());
     }
 
     String cRootDir = defaults.get(ROOTDIR);
@@ -134,12 +141,38 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
       cRootDir = elem.getTextContent();
     }
 
+    Map<String, DestinationStream> consumeStreams = new HashMap<String, DestinationStream>();
+    logger.debug("getting consume streams for Cluster ::"
+        + clusterelementsmap.get(NAME));
+    List<DestinationStream> consumeStreamList = getConsumeStreams(clusterelementsmap
+        .get(NAME));
+    if (consumeStreamList != null && consumeStreamList.size() > 0) {
+      for (DestinationStream consumeStream : consumeStreamList) {
+        consumeStreams.put(consumeStream.getName(), consumeStream);
+      }
+    }
+
     if (cRootDir == null)
       cRootDir = defaults.get(ROOTDIR);
 
-    clusterConfiguration.put(ROOTDIR, cRootDir);
+    return new Cluster(clusterelementsmap, cRootDir, consumeStreams,
+        getSourceStreams(clusterelementsmap.get(NAME)));
+  }
 
-    return new Cluster(clusterConfiguration);
+  private Set<String> getSourceStreams(String clusterName) throws Exception {
+    Set<String> srcStreams = new HashSet<String>();
+    Set<Map.Entry<String, SourceStream>> entrySet = streamMap.entrySet();
+    Iterator it = entrySet.iterator();
+    while (it.hasNext()) {
+      Map.Entry entry = (Map.Entry) it.next();
+      String streamName = (String) entry.getKey();
+      SourceStream streamDetails = (SourceStream) entry.getValue();
+      if (streamDetails.getSourceClusters().contains(clusterName)) {
+        srcStreams.add(streamName);
+      }
+
+    }
+    return srcStreams;
   }
 
   private void readAllStreams(Element docEle) throws Exception {
@@ -148,67 +181,68 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
       for (int i = 0; i < tmpstreamList.getLength(); i++) {
         // for each stream
         Element el = (Element) tmpstreamList.item(i);
-        String streamName = el.getAttribute(NAME);
-        Stream stream = getStream(streamName, el);
-        streams.put(streamName, stream);
+        SourceStream stream = getStream(el);
+        streamMap.put(stream.getName(), stream);
       }
     }
 
   }
 
-  private Stream getStream(String streamName, Element el) throws Exception {
-    Stream stream = new Stream(streamName);
+  private SourceStream getStream(Element el) throws Exception {
+    Map<String, Integer> sourceStreams = new HashMap<String, Integer>();
     // get sources for each stream
-    readSourceStreams(stream, el);
-    // get all destinations for this stream
-    readDestinationStreams(stream, el);
-    return stream;
-  }
-
-  private void readSourceStreams(Stream stream, Element el) throws Exception {
+    String streamName = el.getAttribute(NAME);
     NodeList sourceList = el.getElementsByTagName(SOURCE);
     for (int i = 0; i < sourceList.getLength(); i++) {
       Element source = (Element) sourceList.item(i);
       // for each source
       String clusterName = getTextValue(source, NAME);
-      Cluster sourceCluster = clusters.get(clusterName);
-      if (sourceCluster == null)
-        throw new ParseException(clusterName
-            + " Not Found in Clusters Configration", 0);
-      int retentionInHours = getRetention(source, RETENTION_IN_HOURS);
-      logger.debug(" StreamSource :: streamname " + stream.getName()
-          + " retentioninhours " + retentionInHours + " " + "clusterName "
+      int rententionInHours = getRetention(source, RETENTION_IN_HOURS);
+      logger.debug(" StreamSource :: streamname " + streamName
+          + " retentioninhours " + rententionInHours + " " + "clusterName "
           + clusterName);
-      stream.addSourceCluster(retentionInHours, sourceCluster);
+      sourceStreams.put(clusterName, new Integer(rententionInHours));
     }
+    // get all destinations for this stream
+    readConsumeStreams(streamName, el);
+    return new SourceStream(streamName, sourceStreams);
   }
 
-  private void readDestinationStreams(Stream stream, Element el)
+  private void readConsumeStreams(String streamName, Element el)
       throws Exception {
-    NodeList destinationStreamNodeList = el.getElementsByTagName(DESTINATION);
-    for (int i = 0; i < destinationStreamNodeList.getLength(); i++) {
-      Element replicatedDestinationStream = (Element) destinationStreamNodeList
-          .item(i);
+    NodeList consumeStreamNodeList = el.getElementsByTagName(DESTINATION);
+    for (int i = 0; i < consumeStreamNodeList.getLength(); i++) {
+      Element replicatedConsumeStream = (Element) consumeStreamNodeList.item(i);
       // for each source
-      String clusterName = getTextValue(replicatedDestinationStream, NAME);
-      Cluster destinationCluster = clusters.get(clusterName);
-      if (destinationCluster == null)
-        throw new ParseException(clusterName
-            + " Not Found in Clusters Configration", 0);
-      int retentionInHours = getRetention(replicatedDestinationStream,
+      String clusterName = getTextValue(replicatedConsumeStream, NAME);
+      int retentionInHours = getRetention(replicatedConsumeStream,
           RETENTION_IN_HOURS);
-      String isPrimaryVal = getTextValue(replicatedDestinationStream, PRIMARY);
+      String isPrimaryVal = getTextValue(replicatedConsumeStream, PRIMARY);
       Boolean isPrimary;
       if (isPrimaryVal != null && isPrimaryVal.equalsIgnoreCase("true"))
         isPrimary = new Boolean(true);
       else
         isPrimary = new Boolean(false);
       logger.info("Reading Stream Destination Details :: Stream Name "
-          + stream.getName() + " cluster " + clusterName + " retentionInHours "
+          + streamName + " cluster " + clusterName + " retentionInHours "
           + retentionInHours + " isPrimary " + isPrimary);
-      stream.addDestinationCluster(retentionInHours, destinationCluster,
-          isPrimary);
+      DestinationStream consumeStream = new DestinationStream(streamName,
+          retentionInHours, isPrimary);
+      if (clusterConsumeStreams.get(clusterName) == null) {
+        List<DestinationStream> consumeStreamList = new ArrayList<DestinationStream>();
+        consumeStreamList.add(consumeStream);
+        clusterConsumeStreams.put(clusterName, consumeStreamList);
+      } else {
+        List<DestinationStream> consumeStreamList = clusterConsumeStreams
+            .get(clusterName);
+        consumeStreamList.add(consumeStream);
+        clusterConsumeStreams.put(clusterName, consumeStreamList);
+      }
     }
+  }
+
+  private List<DestinationStream> getConsumeStreams(String clusterName) {
+    return clusterConsumeStreams.get(clusterName);
   }
 
   private String getTextValue(Element ele, String tagName) {
@@ -231,4 +265,36 @@ public class DatabusConfigParser implements DatabusConfigParserTags {
     }
     return Integer.parseInt(ob);
   }
+
+  public static void main(String[] args) {
+    try {
+      DatabusConfigParser databusConfigParser;
+      if (args.length >= 1)
+        databusConfigParser = new DatabusConfigParser(args[0]);
+      else
+        databusConfigParser = new DatabusConfigParser(null);
+
+      DatabusConfig config = databusConfigParser.getConfig();
+
+      Map<String, Cluster> clustermap = config.getClusters();
+
+      for (Map.Entry<String, Cluster> clusterentry : clustermap.entrySet()) {
+        Cluster cluster = clusterentry.getValue();
+        logger.debug("Cluster: " + clusterentry.getKey());
+        logger.debug("Cluster Name: " + cluster.getName());
+        logger.debug("HDFS URL: " + cluster.getHdfsUrl());
+        logger.debug("JT Url: "
+            + cluster.getHadoopConf().get("mapred.job.tracker"));
+        logger.debug("Job Queue Name: " + cluster.getJobQueueName());
+        logger.debug("Root Directory: " + cluster.getRootDir());
+      }
+
+      // databusConfigParser.parseXmlFile();
+    } catch (Exception e) {
+      e.printStackTrace();
+      logger.debug(e);
+      logger.debug(e.getMessage());
+    }
+  }
+
 }

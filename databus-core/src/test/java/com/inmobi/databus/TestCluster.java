@@ -25,7 +25,7 @@ public class TestCluster {
 
     DatabusConfig config = databusConfigParser.getConfig();
 
-    Map<String, Cluster> clusterMap = config.getAllClusters();
+    Map<String, Cluster> clusterMap = config.getClusters();
 
     for (Cluster cluster : clusterMap.values()) {
 
@@ -59,15 +59,13 @@ public class TestCluster {
 
       LOG.info("Testing getDateAsYYYYMMDDHHMNPath with long " + formattedDate
           + " "
-          + CalendarHelper.getDateAsYYYYMMDDHHMNPath(startTime
-              .getTimeInMillis()));
-      Assert.assertTrue(CalendarHelper.getDateAsYYYYMMDDHHMNPath(
+          + Cluster.getDateAsYYYYMMDDHHMNPath(startTime.getTimeInMillis()));
+      Assert.assertTrue(Cluster.getDateAsYYYYMMDDHHMNPath(
           startTime.getTimeInMillis()).compareTo(formattedDate) == 0);
 
       LOG.info("Testing getDateAsYYYYMMDDHHMNPath with Date " + formattedDate
-          + " " + CalendarHelper.getDateAsYYYYMMDDHHMNPath(startTime.getTime()));
-      Assert.assertTrue(CalendarHelper.getDateAsYYYYMMDDHHMNPath(
-          startTime.getTime())
+          + " " + Cluster.getDateAsYYYYMMDDHHMNPath(startTime.getTime()));
+      Assert.assertTrue(Cluster.getDateAsYYYYMMDDHHMNPath(startTime.getTime())
           .compareTo(formattedDate) == 0);
 
       DateFormat clusterdateHourFormat = new SimpleDateFormat("yyyy"
@@ -91,15 +89,14 @@ public class TestCluster {
               .compareTo(
                   LocalFinalDestDir + "dummy" + File.separator + formattedDate) == 0);
 
-      Path absolutePath = new Path(hdfsUrl);
-      String UnqaulifiedFinalDestDirRoot = File.separator
-          + absolutePath.toUri().getPath() + rootDir + File.separator
-          + "streams" + File.separator;
-      LOG.info("Testing getUnqaulifiedFinalDestDirRoot "
-          + UnqaulifiedFinalDestDirRoot);
+      LOG.info("Testing getUnqaulifiedFinalDestDirRoot " + File.separator
+          + rootDir + File.separator + "streams" + File.separator
+          + " "
+          + cluster.getUnqaulifiedFinalDestDirRoot());
 
       Assert.assertTrue(cluster.getUnqaulifiedFinalDestDirRoot().compareTo(
-          UnqaulifiedFinalDestDirRoot) == 0);
+          File.separator + rootDir + File.separator + "streams"
+              + File.separator) == 0);
 
       String FinalDestDir = cluster.getRootDir() + "streams" + File.separator;
 

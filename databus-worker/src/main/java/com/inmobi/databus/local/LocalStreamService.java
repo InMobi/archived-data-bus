@@ -18,12 +18,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -44,7 +42,7 @@ import com.inmobi.databus.AbstractService;
 import com.inmobi.databus.CheckpointProvider;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.Stream;
+import com.inmobi.databus.SourceStream;
 import com.inmobi.databus.utils.CalendarHelper;
 
 /*
@@ -62,7 +60,12 @@ public class LocalStreamService extends AbstractService {
   private Path tmpJobInputPath;
   private Path tmpJobOutputPath;
   private final int FILES_TO_KEEP = 6;
-  
+  private Map<String, Long> prevRuntimeForCategory = new HashMap<String, Long>();
+  private final SimpleDateFormat LogDateFormat = new SimpleDateFormat(
+      "yyyy/MM/dd, hh:mm");
+  private final static long MILLISECONDS_IN_MINUTE = 60 * 1000;
+  private final static long MILLISECONDS_IN_HOUR = 60 * MILLISECONDS_IN_MINUTE;
+
 
   public LocalStreamService(DatabusConfig config, Cluster cluster,
       CheckpointProvider provider) {
@@ -81,6 +84,10 @@ public class LocalStreamService extends AbstractService {
     }
   }
 
+  private String getLogDateString(long commitTime) {
+    return LogDateFormat.format(commitTime);
+  }
+
   @Override
   public long getMSecondsTillNextRun(long currentTime) {
     return (long) (DEFAULT_RUN_INTERVAL - (long) (currentTime % DEFAULT_RUN_INTERVAL));
@@ -95,9 +102,6 @@ public class LocalStreamService extends AbstractService {
       // any old data being used in this run if the old run was aborted
       cleanUpTmp(fs);
       LOG.info("TmpPath is [" + tmpPath + "]");
-      
-      publishMissingPaths(fs, cluster.getLocalFinalDestDirRoot());
-
       Map<FileStatus, String> fileListing = new TreeMap<FileStatus, String>();
       Set<FileStatus> trashSet = new HashSet<FileStatus>();
       // checkpointKey, CheckPointPath
@@ -126,6 +130,56 @@ public class LocalStreamService extends AbstractService {
     }
   }
 
+  private Path getLatestDir(FileSystem fs, Path Dir) throws Exception {
+    FileStatus[] fileStatus = fs.listStatus(Dir);
+    
+    if (fileStatus != null && fileStatus.length > 0) {
+      FileStatus latestfile = fileStatus[0];
+      for (FileStatus currentfile : fileStatus) {
+        if (currentfile.getPath().getName()
+            .compareTo(latestfile.getPath().getName()) > 0)
+          latestfile = currentfile;
+      }
+      return latestfile.getPath();
+    }
+    return null;
+  }
+
+  private long getPreviousRuntime(FileSystem fs, String category)
+      throws Exception {
+    String localDestDir = cluster.getLocalFinalDestDirRoot() + File.separator
+        + category;
+    LOG.warn("Querying Directory [" + localDestDir + "]");
+    Path latestyeardir = getLatestDir(fs, new Path(localDestDir));
+    int latestyear = 0, latestmonth = 0, latestday = 0, latesthour = 0, latestminute = 0;
+
+    if (latestyeardir != null) {
+      latestyear = Integer.parseInt(latestyeardir.getName());
+      Path latestmonthdir = getLatestDir(fs, latestyeardir);
+      if (latestmonthdir != null) {
+        latestmonth = Integer.parseInt(latestmonthdir.getName());
+        Path latestdaydir = getLatestDir(fs, latestmonthdir);
+        if (latestdaydir != null) {
+          latestday = Integer.parseInt(latestdaydir.getName());
+          Path latesthourdir = getLatestDir(fs, latestdaydir);
+          if (latesthourdir != null) {
+            latesthour = Integer.parseInt(latesthourdir.getName());
+            Path latestminutedir = getLatestDir(fs, latesthourdir);
+            if (latestminutedir != null) {
+              latestminute = Integer.parseInt(latestminutedir.getName());
+            }
+          }
+        }
+      }
+    } else
+      return -1;
+    LOG.debug("Date Found " + latestyear + File.separator + latestmonth
+        + File.separator + latestday + File.separator + latesthour
+        + File.separator + latestminute);
+    return CalendarHelper.getDateHourMinute(latestyear, latestmonth, latestday,
+        latesthour, latestminute).getTimeInMillis();
+  }
+
   private void checkPoint(Map<String, FileStatus> checkPointPaths) {
     Set<Entry<String, FileStatus>> entries = checkPointPaths.entrySet();
     for (Entry<String, FileStatus> entry : entries) {
@@ -136,6 +190,64 @@ public class LocalStreamService extends AbstractService {
     }
   }
   
+  private long getRetentionTimeinMillis(long commitTime, int retentioninhours) {
+    return (commitTime - (retentioninhours * MILLISECONDS_IN_HOUR));
+  }
+  
+  private long getRetentionTimeForCategory(long commitTime, String categoryName) {
+    SourceStream categorystream = getConfig().getSourceStreams().get(categoryName);
+    if (categorystream != null) {
+      int retentioninhours = categorystream.getRetentionInHours(cluster
+          .getName());
+      long retentionTime = getRetentionTimeinMillis(commitTime,
+          retentioninhours);
+      LOG.debug("Retention Runtime: [" + getLogDateString(retentionTime)
+          + "] for RetentioninHours [" + retentioninhours + "]");
+      return retentionTime;
+    } else {
+      LOG.debug("SourceStream " + categoryName + " not found in configuration");
+    }
+    return -1;
+  }
+  
+  private boolean shouldCreate(long commitTime, long prevRuntime) {
+    return ((commitTime - prevRuntime) > MILLISECONDS_IN_MINUTE);
+  }
+
+  void publishMissingPaths(FileSystem fs, long commitTime,
+      String categoryName) throws Exception {
+    Long prevRuntime = new Long(-1);
+    if (!prevRuntimeForCategory.containsKey(categoryName)) {
+      LOG.debug("Calculating Previous Runtime from Directory Listing");
+      prevRuntime = getPreviousRuntime(fs, categoryName);
+    } else {
+      LOG.debug("Reading Previous Runtime from Cache");
+      prevRuntime = prevRuntimeForCategory.get(categoryName);
+    }
+
+    if (prevRuntime != -1) {
+      if (shouldCreate(commitTime, prevRuntime)) {
+        LOG.debug("Previous Runtime: [" + getLogDateString(prevRuntime) + "]");
+        long retentionTime = getRetentionTimeForCategory(commitTime,
+            categoryName);
+        if (retentionTime != -1) {
+          if (prevRuntime < retentionTime)
+            prevRuntime = retentionTime;
+          while (shouldCreate(commitTime, prevRuntime)) {
+            String missingPath = cluster.getLocalDestDir(categoryName,
+                prevRuntime);
+            LOG.debug("Creating Missing Directory [" + missingPath + "]");
+            fs.mkdirs(new Path(missingPath));
+            prevRuntime += MILLISECONDS_IN_MINUTE;
+          }
+        }
+      } else {
+        prevRuntime = commitTime;
+      }
+      prevRuntimeForCategory.put(categoryName, prevRuntime);
+    }
+  }
+
   private Map<Path, Path> prepareForCommit(long commitTime,
       Map<FileStatus, String> fileListing) throws Exception {
     FileSystem fs = FileSystem.get(cluster.getHadoopConf());
@@ -152,47 +264,40 @@ public class LocalStreamService extends AbstractService {
         LOG.debug("Moving [" + file.getPath() + "] to [" + destPath + "]");
         mvPaths.put(file.getPath(), destPath);
       }
-      publishMissingPaths(fs, cluster.getLocalFinalDestDirRoot(), commitTime,
-          categoryName);
+      publishMissingPaths(fs, commitTime, categoryName);
     }
 
     // find input files for consumer
     Map<Path, Path> consumerCommitPaths = new HashMap<Path, Path>();
-    List<String> primaryClusters = new ArrayList<String>();
-    for (String streamName : cluster.getSourceStreams()) {
-      Stream primaryStream = getConfig().getAllStreams().get(streamName);
-      if (primaryStream != null) {
-        Cluster primaryCluster = primaryStream.getPrimaryDestinationCluster();
-        boolean consumeCluster = false;
-        if ((primaryCluster != null)
-            && !primaryClusters.contains(primaryCluster.getName())) {
+    for (Cluster clusterEntry : getConfig().getClusters().values()) {
+      Set<String> destStreams = clusterEntry.getDestinationStreams().keySet();
+      boolean consumeCluster = false;
+      for (String destStream : destStreams) {
+        if (clusterEntry.getPrimaryDestinationStreams().contains(destStream)
+            && cluster.getSourceStreams().contains(destStream)) {
           consumeCluster = true;
-          LOG.debug("Consuming the Local Stream output for Cluster "
-              + cluster.getName());
-          primaryClusters.add(primaryCluster.getName());
         }
+      }
 
-        if (consumeCluster) {
-          Path tmpConsumerPath = new Path(tmpPath, primaryCluster.getName());
-          FSDataOutputStream out = fs.create(tmpConsumerPath);
-          for (Path destPath : mvPaths.values()) {
-            String category = getCategoryFromDestPath(destPath);
-            if (primaryCluster.getDestinationStreams().contains(category)) {
-              out.writeBytes(destPath.toString());
-              LOG.debug("Adding [" + destPath + "]  for consumer ["
-                  + primaryCluster.getName() + "] to commit Paths in ["
-                  + tmpConsumerPath + "]");
-              out.writeBytes("\n");
-            }
+      if (consumeCluster) {
+        Path tmpConsumerPath = new Path(tmpPath, clusterEntry.getName());
+        FSDataOutputStream out = fs.create(tmpConsumerPath);
+        for (Path destPath : mvPaths.values()) {
+          String category = getCategoryFromDestPath(destPath);
+          if (clusterEntry.getDestinationStreams().containsKey(category)) {
+            out.writeBytes(destPath.toString());
+            LOG.debug("Adding [" + destPath + "]  for consumer ["
+                + clusterEntry.getName() + "] to commit Paths in ["
+                + tmpConsumerPath + "]");
+            out.writeBytes("\n");
           }
-          out.close();
-          Path finalConsumerPath = new Path(
-              cluster.getConsumePath(primaryCluster), Long.toString(System
-                  .currentTimeMillis()));
-          LOG.debug("Moving [" + tmpConsumerPath + "] to [ "
-              + finalConsumerPath + "]");
-          consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
         }
+        out.close();
+        Path finalConsumerPath = new Path(cluster.getConsumePath(clusterEntry),
+            Long.toString(System.currentTimeMillis()));
+        LOG.debug("Moving [" + tmpConsumerPath + "] to [ " + finalConsumerPath
+            + "]");
+        consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
       }
     }
 
@@ -207,7 +312,9 @@ public class LocalStreamService extends AbstractService {
     // find trash paths
     Map<Path, Path> trashPaths = new LinkedHashMap<Path, Path>();
     Path trash = cluster.getTrashPathWithDateHour();
-    for (FileStatus src : trashSet) {
+    Iterator<FileStatus> it = trashSet.iterator();
+    while (it.hasNext()) {
+      FileStatus src = it.next();
       Path target = null;
       target = new Path(trash, src.getPath().getParent().getName() + "-"
           + src.getPath().getName());
@@ -242,8 +349,10 @@ public class LocalStreamService extends AbstractService {
         trashSet, checkpointPaths);
 
     FSDataOutputStream out = fs.create(inputPath);
+    Iterator<Entry<FileStatus, String>> it = fileListing.entrySet().iterator();
 
-    for (Entry<FileStatus, String> entry : fileListing.entrySet()) {
+    while (it.hasNext()) {
+      Entry<FileStatus, String> entry = it.next();
       out.writeBytes(entry.getKey().getPath().toString());
       out.writeBytes("\t");
       out.writeBytes(entry.getValue());

@@ -110,8 +110,7 @@ public class ClusterTest {
     clusterElementsMap.put("hdfsurl", "hdfs://localhost:8020");
     clusterElementsMap.put("jturl", "http://localhost:8021");
     clusterElementsMap.put("jobqueuename", "default");
-    clusterElementsMap.put("rootdir", "databus");
-    return new Cluster(clusterElementsMap);
+    return new Cluster(clusterElementsMap, "databus", null, null);
   }
 
   public static Cluster buildLocalCluster() throws Exception {
@@ -119,7 +118,8 @@ public class ClusterTest {
   }
 
   public static Cluster buildLocalCluster(String rootdir, String clusterName,
-      String hdfsUrl, String jtUrl) throws Exception {
+      String hdfsUrl, String jtUrl, Set<String> sourcestreams,
+      Map<String, DestinationStream> consumestreams) throws Exception {
     if (jtUrl == null)
       jtUrl = "http://localhost:8021";
 
@@ -134,12 +134,15 @@ public class ClusterTest {
     clusterElementsMap.put("hdfsurl", hdfsUrl);
     clusterElementsMap.put("jturl", jtUrl);
     clusterElementsMap.put("jobqueuename", "default");
-    clusterElementsMap.put("rootdir", "databus");
-    return new Cluster(clusterElementsMap);
+    return new Cluster(clusterElementsMap, rootdir,
+        ((consumestreams == null) ? (new HashMap<String, DestinationStream>())
+            : consumestreams),
+        ((sourcestreams == null) ? (new HashSet<String>())
+            : sourcestreams));
   }
 
   public static Cluster buildLocalCluster(String clusterName, String hdfsUrl,
       String jtUrl) throws Exception {
-    return buildLocalCluster("databus", clusterName, hdfsUrl, jtUrl);
+    return buildLocalCluster("databus", clusterName, hdfsUrl, jtUrl, null, null);
   }
 }

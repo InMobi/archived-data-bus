@@ -13,11 +13,8 @@
 */
 package com.inmobi.databus.utils;
 
-import java.io.File;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.GregorianCalendar;
 
 import org.apache.log4j.Logger;
@@ -26,12 +23,6 @@ public class CalendarHelper {
   static Logger logger = Logger.getLogger(CalendarHelper.class);
   private final static SimpleDateFormat CalenderHelperformat = new SimpleDateFormat(
       "yyyy-MM-dd-HH-mm");
-  private final static DateFormat dateHourMinutePathFormat = new SimpleDateFormat(
-      "yyyy" + File.separator + "MM" + File.separator + "dd" + File.separator
-          + "HH" + File.separator + "mm" + File.separator);
-  private final static DateFormat dateHourPathFormat = new SimpleDateFormat(
-      "yyyy" + File.separator + "MM" + File.separator + "dd" + File.separator
-          + "HH" + File.separator);
 
   // TODO - all date/time should be returned in a common time zone GMT
 
@@ -137,18 +128,6 @@ public class CalendarHelper {
     } catch(Exception e){
     }
     return calendar;
-  }
-
-  public static String getDateAsYYYYMMDDHHMNPath(long commitTime) {
-    return dateHourMinutePathFormat.format(commitTime);
-  }
-
-  public static String getDateAsYYYYMMDDHHMNPath(Date date) {
-    return dateHourMinutePathFormat.format(date);
-  }
-
-  public static String getDateAsYYYYMMDDHHPath(long commitTime) {
-    return dateHourPathFormat.format(commitTime);
   }
 
 }

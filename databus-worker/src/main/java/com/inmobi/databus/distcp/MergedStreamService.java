@@ -15,10 +15,6 @@ package com.inmobi.databus.distcp;
 
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.Stream;
-import com.inmobi.databus.Stream.DestinationStreamCluster;
-import com.inmobi.databus.Stream.StreamCluster;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -73,8 +69,6 @@ public class MergedStreamService extends DistcpBaseService {
         return;
       }
 
-      publishMissingPaths(getDestFs(), getDestCluster().getFinalDestDirRoot());
-
       Path inputFilePath = getInputFilePath(consumePaths, tmp);
       if (inputFilePath == null) {
         LOG.warn("No data to pull from " + "Cluster ["
@@ -103,10 +97,6 @@ public class MergedStreamService extends DistcpBaseService {
         synchronized (getDestCluster()) {
           long commitTime = getDestCluster().getCommitTime();
           // category, Set of Paths to commit
-          for (String category : categoriesToCommit.keySet()) {
-            publishMissingPaths(getDestFs(), getDestCluster()
-                .getFinalDestDirRoot(), commitTime, category);
-          }
           committedPaths = doLocalCommit(commitTime, categoriesToCommit);
         }
         // Prepare paths for MirrorStreamConsumerService
@@ -136,48 +126,45 @@ public class MergedStreamService extends DistcpBaseService {
     // for each stream in committedPaths
     for (String stream : committedPaths.keySet()) {
       // for each cluster
-      if (getConfig().getAllStreams().get(stream) != null) {
-      for (DestinationStreamCluster destCluster : getConfig().getAllStreams()
-          .get(stream).getMirroredClusters()) {
+      for (Cluster cluster : getConfig().getClusters().values()) {
         // is this stream to be mirrored on this cluster
-            Set<Cluster> mirrorConsumers = mirrorStreamConsumers.get(stream);
-            if (mirrorConsumers == null)
-              mirrorConsumers = new HashSet<Cluster>();
-        mirrorConsumers.add(destCluster.getCluster());
-            mirrorStreamConsumers.put(stream, mirrorConsumers);
+        if (cluster.getMirroredStreams().contains(stream)) {
+          Set<Cluster> mirrorConsumers = mirrorStreamConsumers.get(stream);
+          if (mirrorConsumers == null)
+            mirrorConsumers = new HashSet<Cluster>();
+          mirrorConsumers.add(cluster);
+          mirrorStreamConsumers.put(stream, mirrorConsumers);
         }
       }
-    }
+    } // for each stream
 
     // Commit paths for each consumer
     for (String stream : committedPaths.keySet()) {
       // consumers for this stream
       Set<Cluster> consumers = mirrorStreamConsumers.get(stream);
       Path tmpConsumerPath;
-      if (consumers != null) {
-        for (Cluster consumer : consumers) {
-          // commit paths for this consumer, this stream
-          // adding srcCluster avoids two Remote Copiers creating same filename
-          String tmpPath = "src_" + getSrcCluster().getName() + "_via_"
-              + getDestCluster().getName() + "_mirrorto_" + consumer.getName()
-              + "_" + stream;
-          tmpConsumerPath = new Path(tmp, tmpPath);
-          FSDataOutputStream out = getDestFs().create(tmpConsumerPath);
-          for (Path path : committedPaths.get(stream)) {
-            out.writeBytes(path.toString());
-            out.writeBytes("\n");
-          }
-          out.close();
-          // Two MergedStreamConsumers will write file for same consumer within
-          // the same time
-          // adding srcCLuster name avoids that conflict
-          Path finalMirrorPath = new Path(getDestCluster()
-              .getMirrorConsumePath(consumer), tmpPath + "_"
-              + new Long(System.currentTimeMillis()).toString());
-          consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
+      for (Cluster consumer : consumers) {
+        // commit paths for this consumer, this stream
+        // adding srcCluster avoids two Remote Copiers creating same filename
+        String tmpPath = "src_" + getSrcCluster().getName() + "_via_"
+                + getDestCluster().getName() + "_mirrorto_" + consumer.getName()
+                + "_" + stream;
+        tmpConsumerPath = new Path(tmp, tmpPath);
+        FSDataOutputStream out = getDestFs().create(tmpConsumerPath);
+        for (Path path : committedPaths.get(stream)) {
+          out.writeBytes(path.toString());
+          out.writeBytes("\n");
+        }
+        out.close();
+        // Two MergedStreamConsumers will write file for same consumer within
+        // the same time
+        // adding srcCLuster name avoids that conflict
+        Path finalMirrorPath = new Path(getDestCluster().getMirrorConsumePath(
+                consumer), tmpPath + "_"
+                + new Long(System.currentTimeMillis()).toString());
+        consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
 
-        } // for each consumer
-      }
+      } // for each consumer
     } // for each stream
 
     // Do the final mirrorCommit
@@ -246,7 +233,12 @@ public class MergedStreamService extends DistcpBaseService {
   private Map<String, Set<Path>> doLocalCommit(long commitTime,
                                                Map<String, List<Path>> categoriesToCommit) throws Exception {
     Map<String, Set<Path>> comittedPaths = new HashMap<String, Set<Path>>();
-    for (Map.Entry<String, List<Path>> entry : categoriesToCommit.entrySet()) {
+    Set<Map.Entry<String, List<Path>>> commitEntries = categoriesToCommit
+            .entrySet();
+    Iterator it = commitEntries.iterator();
+    while (it.hasNext()) {
+      Map.Entry<String, List<Path>> entry = (Map.Entry<String, List<Path>>) it
+              .next();
       String category = entry.getKey();
       List<Path> filesInCategory = entry.getValue();
       for (Path filePath : filesInCategory) {

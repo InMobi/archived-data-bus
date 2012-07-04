@@ -13,7 +13,6 @@
 */
 package com.inmobi.databus;
 
-import com.inmobi.databus.Stream.StreamCluster;
 import com.inmobi.databus.distcp.MergedStreamService;
 import com.inmobi.databus.distcp.MirrorStreamService;
 import com.inmobi.databus.local.LocalStreamService;
@@ -30,6 +29,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -56,7 +56,7 @@ public class Databus implements Service, DatabusConstants {
   }
 
   private void init() throws Exception {
-    for (Cluster cluster : config.getAllClusters().values()) {
+    for (Cluster cluster : config.getClusters().values()) {
       if (!clustersToProcess.contains(cluster.getName())) {
         continue;
       }
@@ -66,47 +66,43 @@ public class Databus implements Service, DatabusConstants {
         new FSCheckpointProvider(cluster.getCheckpointDir())));
       }
 
-      Set<String> mergedStreamRemoteClusters = new HashSet<String>();
-      Set<String> mirroredRemoteClusters = new HashSet<String>();
-      for (String cStream : cluster.getSourceStreams()) {
+      List<Cluster> mergedStreamRemoteClusters = new ArrayList<Cluster>();
+      List<Cluster> mirroredRemoteClusters = new ArrayList<Cluster>();
+      for (DestinationStream cStream : cluster.getDestinationStreams().values()) {
         //Start MergedStreamConsumerService instances for this cluster for each cluster
         //from where it has to fetch a partial stream and is hosting a primary stream
         //Start MirroredStreamConsumerService instances for this cluster for each cluster
         //from where it has to mirror mergedStreams
-        Cluster primaryDestinationCluster = config.getAllStreams().get(cStream).getPrimaryDestinationCluster();
-        if (primaryDestinationCluster != null) {
-          if (primaryDestinationCluster.getName().compareTo(cluster.getName()) == 0) {
-            for (StreamCluster cName : config.getAllStreams().get(cStream)
-                .getSourceStreamClusters()) {
-              if (!mergedStreamRemoteClusters.contains(cName.getCluster()
-                  .getName()))
-                mergedStreamRemoteClusters.add(cName.getCluster().getName());
-            }
-          } else {
-            if (!mirroredRemoteClusters.contains(primaryDestinationCluster))
-              mirroredRemoteClusters.add(primaryDestinationCluster.getName());
-          }
+
+        for (String cName : config.getSourceStreams().get(cStream.getName())
+        .getSourceClusters()) {
+          if (cStream.isPrimary())
+            mergedStreamRemoteClusters.add(config.getClusters().get(cName));
+        }
+        if (!cStream.isPrimary())  {
+          Cluster primaryCluster = config.getPrimaryClusterForDestinationStream(cStream.getName());
+          if (primaryCluster != null)
+            mirroredRemoteClusters.add(primaryCluster);
         }
       }
 
-      for (String remote : mergedStreamRemoteClusters) {
-        services.add(new MergedStreamService(config, config.getAllClusters()
-            .get(remote), cluster));
+
+      for (Cluster remote : mergedStreamRemoteClusters) {
+        services.add(new MergedStreamService(config, remote, cluster));
       }
-      for (String remote : mirroredRemoteClusters) {
-        services.add(new MirrorStreamService(config, config.getAllClusters()
-            .get(remote), cluster));
+      for (Cluster remote : mirroredRemoteClusters) {
+        services.add(new MirrorStreamService(config, remote, cluster));
       }
     }
 
     //Start a DataPurgerService for this Cluster/Clusters to process
-    for (String clusterName : clustersToProcess) {
-      Cluster purgecluster = config.getAllClusters().get(clusterName);
-      if (purgecluster != null) {
-        LOG.info("Starting Purger for Cluster [" + clusterName + "]");
-        //Start a purger per cluster
-        services.add(new DataPurgerService(config, purgecluster));
-      }
+    Iterator<String> it = clustersToProcess.iterator();
+    while(it.hasNext()) {
+      String  clusterName = it.next();
+      Cluster cluster =  config.getClusters().get(clusterName);
+      LOG.info("Starting Purger for Cluster [" + clusterName + "]");
+      //Start a purger per cluster
+      services.add(new DataPurgerService(config, cluster));
     }
   }
 
@@ -219,12 +215,12 @@ public class Databus implements Service, DatabusConstants {
       StringBuffer databusClusterId = new StringBuffer();
       Set<String> clustersToProcess = new HashSet<String>();
       if (clusters.length == 1 && "ALL".equalsIgnoreCase(clusters[0])) {
-        for (Cluster c : config.getAllClusters().values()) {
+        for (Cluster c : config.getClusters().values()) {
           clustersToProcess.add(c.getName());
         }
       } else {
         for (String c : clusters) {
-          if (config.getAllClusters().get(c) == null) {
+          if (config.getClusters().get(c) == null) {
             LOG.warn("Cluster name is not found in the config - " + c);
             return;
           }

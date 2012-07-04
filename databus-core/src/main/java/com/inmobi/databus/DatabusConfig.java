@@ -17,22 +17,34 @@ import java.util.Map;
 
 public class DatabusConfig {
 
-  private Map<String, Stream> streams;
-  private Map<String, Cluster> clusters;
-  private Map<String, String> defaults;
+  private final Map<String, Cluster> clusters;
+  private final Map<String, SourceStream> streams;
+  private final Map<String, String> defaults;
   
-  public DatabusConfig(Map<String, Stream> streams,
-      Map<String, Cluster> clusters, Map<String, String> defaults) {
+  public DatabusConfig( 
+      Map<String, SourceStream> streams,
+      Map<String, Cluster> clusterMap, Map<String, String> defaults) {
     this.streams = streams;
-    this.clusters = clusters;
+    this.clusters = clusterMap;
     this.defaults = defaults;
   }
 
-  public Map<String, Cluster> getAllClusters() {
+  public Cluster getPrimaryClusterForDestinationStream(String streamName) {
+   for(Cluster cluster : getClusters().values()) {
+     if (cluster.getDestinationStreams().containsKey(streamName)) {
+       DestinationStream consumeStream = cluster.getDestinationStreams().get(streamName);
+       if (consumeStream.isPrimary())
+         return cluster;
+     }
+   }
+    return null;
+  }
+
+  public Map<String, Cluster> getClusters() {
     return clusters;
   }
 
-  public Map<String, Stream> getAllStreams() {
+  public Map<String, SourceStream> getSourceStreams() {
     return streams;
   }
 
