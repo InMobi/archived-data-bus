@@ -85,9 +85,8 @@ public class MergedStreamService extends DistcpBaseService {
               + " to Cluster [" + getDestCluster().getHdfsUrl() + "] " + " Path ["
               + tmpOut.toString() + "]");
 
-      String[] args = { "-f", inputFilePath.toString(), tmpOut.toString()};
       try {
-        if (!executeDistCp(args))
+        if (!executeDistCp(getDistCpOptions(inputFilePath, tmpOut)))
           skipCommit = true;
       } catch (Throwable e) {
         LOG.warn("Error in distcp", e);
