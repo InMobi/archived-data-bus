@@ -13,13 +13,8 @@
  */
 package com.inmobi.databus.local;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.IOException;
 import java.net.URI;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -36,18 +31,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.log4j.Logger;
-import org.testng.Assert;
-import org.testng.annotations.AfterSuite;
-import org.testng.annotations.BeforeSuite;
-import org.testng.annotations.Test;
-
 import com.inmobi.databus.CheckpointProvider;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.ClusterTest;
@@ -57,6 +40,24 @@ import com.inmobi.databus.DestinationStream;
 import com.inmobi.databus.FSCheckpointProvider;
 import com.inmobi.databus.SourceStream;
 import com.inmobi.databus.TestMiniClusterUtil;
+import com.inmobi.databus.local.LocalStreamService.CollectorPathFilter;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathFilter;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.log4j.Logger;
+import org.testng.Assert;
+import org.testng.annotations.AfterSuite;
+import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.Test;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @Test
 public class LocalStreamServiceTest extends TestMiniClusterUtil {
@@ -170,23 +171,27 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     when(fs.getUri()).thenReturn(new URI("localhost"));
     when(fs.listStatus(cluster.getDataDir())).thenReturn(files);
     when(fs.listStatus(new Path("/databus/data/stream1"))).thenReturn(stream1);
-    when(fs.listStatus(new Path("/databus/data/stream1/collector1")))
-        .thenReturn(stream3);
-    when(fs.listStatus(new Path("/databus/data/stream2"))).thenReturn(stream2);
-    when(fs.listStatus(new Path("/databus/data/stream1/collector2")))
-        .thenReturn(stream4);
 
-    when(fs.listStatus(new Path("/databus/data/stream2/collector1")))
-        .thenReturn(stream5);
-    when(fs.listStatus(new Path("/databus/data/stream2/collector2")))
-        .thenReturn(stream6);
+		when(
+		    fs.listStatus(new Path("/databus/data/stream1/collector1"),
+		        any(CollectorPathFilter.class))).thenReturn(stream3);
+    when(fs.listStatus(new Path("/databus/data/stream2"))).thenReturn(stream2);
+		when(
+		    fs.listStatus(new Path("/databus/data/stream1/collector2"),
+		        any(CollectorPathFilter.class))).thenReturn(stream4);
+		when(
+		    fs.listStatus(new Path("/databus/data/stream2/collector1"),
+		        any(CollectorPathFilter.class))).thenReturn(stream5);
+		when(
+		    fs.listStatus(new Path("/databus/data/stream2/collector2"),
+		        any(CollectorPathFilter.class))).thenReturn(stream6);
 
     Path file = mock(Path.class);
     when(file.makeQualified(any(FileSystem.class))).thenReturn(
         new Path("/databus/data/stream1/collector1/"));
   }
 
-  public void testCreateListing() {
+	private void testCreateListing() {
     try {
       Cluster cluster = ClusterTest.buildLocalCluster();
       FileSystem fs = mock(FileSystem.class);
@@ -568,12 +573,6 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
 
     public void runOnce() throws Exception {
       super.execute();
-    }
-
-    @Override
-    protected String getCurrentFile(FileSystem fs, FileStatus[] files)
-        throws IOException {
-      return new String("file" + new Integer(number_files).toString());
     }
 
     public void publishMissingPaths(FileSystem fs, long commitTime,

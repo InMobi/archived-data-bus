@@ -13,13 +13,8 @@
  */
 package com.inmobi.databus.local;
 
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -28,7 +23,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
+import com.inmobi.databus.AbstractService;
+import com.inmobi.databus.CheckpointProvider;
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.DatabusConfig;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -36,16 +36,10 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
-
-import com.inmobi.databus.AbstractService;
-import com.inmobi.databus.CheckpointProvider;
-import com.inmobi.databus.Cluster;
-import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.SourceStream;
-import com.inmobi.databus.utils.CalendarHelper;
 
 /*
  * Handles Local Streams for a Cluster
@@ -64,9 +58,9 @@ public class LocalStreamService extends AbstractService {
   private final int FILES_TO_KEEP = 6;
 
   public LocalStreamService(DatabusConfig config, Cluster cluster,
-      CheckpointProvider provider) {
+                            CheckpointProvider provider) {
     super(LocalStreamService.class.getName(), config, DEFAULT_RUN_INTERVAL,
-        provider);
+    provider);
     this.cluster = cluster;
     this.tmpPath = new Path(cluster.getTmpPath(), getName());
     this.tmpJobInputPath = new Path(tmpPath, "jobIn");
@@ -94,7 +88,7 @@ public class LocalStreamService extends AbstractService {
       // any old data being used in this run if the old run was aborted
       cleanUpTmp(fs);
       LOG.info("TmpPath is [" + tmpPath + "]");
-      
+
       publishMissingPaths(fs, cluster.getLocalFinalDestDirRoot());
 
       Map<FileStatus, String> fileListing = new TreeMap<FileStatus, String>();
@@ -130,13 +124,13 @@ public class LocalStreamService extends AbstractService {
     for (Entry<String, FileStatus> entry : entries) {
       String value = entry.getValue().getPath().getName();
       LOG.debug("Check Pointing Key [" + entry.getKey() + "] with value ["
-          + value + "]");
+      + value + "]");
       checkpointProvider.checkpoint(entry.getKey(), value.getBytes());
     }
   }
-  
+
   private Map<Path, Path> prepareForCommit(long commitTime,
-      Map<FileStatus, String> fileListing) throws Exception {
+                                           Map<FileStatus, String> fileListing) throws Exception {
     FileSystem fs = FileSystem.get(cluster.getHadoopConf());
 
     // find final destination paths
@@ -151,8 +145,8 @@ public class LocalStreamService extends AbstractService {
         LOG.debug("Moving [" + file.getPath() + "] to [" + destPath + "]");
         mvPaths.put(file.getPath(), destPath);
       }
-			publishMissingPaths(fs, cluster.getLocalFinalDestDirRoot(), commitTime,
-			    categoryName);
+      publishMissingPaths(fs, cluster.getLocalFinalDestDirRoot(), commitTime,
+      categoryName);
     }
 
     // find input files for consumer
@@ -162,7 +156,7 @@ public class LocalStreamService extends AbstractService {
       boolean consumeCluster = false;
       for (String destStream : destStreams) {
         if (clusterEntry.getPrimaryDestinationStreams().contains(destStream)
-            && cluster.getSourceStreams().contains(destStream)) {
+        && cluster.getSourceStreams().contains(destStream)) {
           consumeCluster = true;
         }
       }
@@ -175,16 +169,16 @@ public class LocalStreamService extends AbstractService {
           if (clusterEntry.getDestinationStreams().containsKey(category)) {
             out.writeBytes(destPath.toString());
             LOG.debug("Adding [" + destPath + "]  for consumer ["
-                + clusterEntry.getName() + "] to commit Paths in ["
-                + tmpConsumerPath + "]");
+            + clusterEntry.getName() + "] to commit Paths in ["
+            + tmpConsumerPath + "]");
             out.writeBytes("\n");
           }
         }
         out.close();
         Path finalConsumerPath = new Path(cluster.getConsumePath(clusterEntry),
-            Long.toString(System.currentTimeMillis()));
+        Long.toString(System.currentTimeMillis()));
         LOG.debug("Moving [" + tmpConsumerPath + "] to [ " + finalConsumerPath
-            + "]");
+        + "]");
         consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
       }
     }
@@ -205,7 +199,7 @@ public class LocalStreamService extends AbstractService {
       FileStatus src = it.next();
       Path target = null;
       target = new Path(trash, src.getPath().getParent().getName() + "-"
-          + src.getPath().getName());
+      + src.getPath().getName());
       LOG.debug("Trashing [" + src.getPath() + "] to [" + target + "]");
       trashPaths.put(src.getPath(), target);
     }
@@ -220,21 +214,21 @@ public class LocalStreamService extends AbstractService {
       fs.mkdirs(entry.getValue().getParent());
       if (fs.rename(entry.getKey(), entry.getValue()) == false) {
         LOG.warn("Rename failed, aborting transaction COMMIT to avoid "
-            + "dataloss. Partial data replay could happen in next run");
+        + "dataloss. Partial data replay could happen in next run");
         throw new Exception("Abort transaction Commit. Rename failed from ["
-            + entry.getKey() + "] to [" + entry.getValue() + "]");
+        + entry.getKey() + "] to [" + entry.getValue() + "]");
       }
     }
 
   }
 
   private void createMRInput(Path inputPath,
-      Map<FileStatus, String> fileListing, Set<FileStatus> trashSet,
-      Map<String, FileStatus> checkpointPaths) throws IOException {
+                             Map<FileStatus, String> fileListing, Set<FileStatus> trashSet,
+                             Map<String, FileStatus> checkpointPaths) throws IOException {
     FileSystem fs = FileSystem.get(cluster.getHadoopConf());
 
     createListing(fs, fs.getFileStatus(cluster.getDataDir()), fileListing,
-        trashSet, checkpointPaths);
+    trashSet, checkpointPaths);
 
     FSDataOutputStream out = fs.create(inputPath);
     Iterator<Entry<FileStatus, String>> it = fileListing.entrySet().iterator();
@@ -249,9 +243,29 @@ public class LocalStreamService extends AbstractService {
     out.close();
   }
 
+
+
   public void createListing(FileSystem fs, FileStatus fileStatus,
-      Map<FileStatus, String> results, Set<FileStatus> trashSet,
-      Map<String, FileStatus> checkpointPaths) throws IOException {
+                            Map<FileStatus, String> results, Set<FileStatus> trashSet,
+                            Map<String, FileStatus> checkpointPaths) throws
+  IOException {
+    createListing(fs, fileStatus, results, trashSet, checkpointPaths,
+    300000);
+  }
+
+	static class CollectorPathFilter implements PathFilter {
+		public boolean accept(Path path) {
+			if (path.getName().endsWith("current")
+			    || path.getName().equalsIgnoreCase("scribe_stats"))
+				return false;
+			return true;
+		}
+	}
+
+  public void createListing(FileSystem fs, FileStatus fileStatus,
+                            Map<FileStatus, String> results, Set<FileStatus> trashSet,
+                            Map<String, FileStatus> checkpointPaths,
+                            long lastFileTimeout) throws IOException {
     FileStatus[] streams = fs.listStatus(fileStatus.getPath());
     for (FileStatus stream : streams) {
       String streamName = stream.getPath().getName();
@@ -267,34 +281,41 @@ public class LocalStreamService extends AbstractService {
         if (value != null)
           checkPointValue = new String(value);
         LOG.debug("CheckPoint Key [" + checkPointKey + "] value [ "
-            + checkPointValue + "]");
+        + checkPointValue + "]");
 
-        FileStatus[] files = fs.listStatus(collector.getPath());
-        String currentFile = getCurrentFile(fs, files);
+				FileStatus[] files = fs.listStatus(collector.getPath(),
+				    new CollectorPathFilter());
+
+				if(files == null) {
+					LOG.warn("No Files Found in the Collector " + collector.getPath()
+					    + " Skipping Directory");
+					continue;
+				}
+
+				String currentFile = getCurrentFile(fs, files, lastFileTimeout);
 
         for (FileStatus file : files) {
           processFile(file, currentFile, checkPointValue, fs, results,
-              collectorPaths);
+          collectorPaths);
         }
         populateTrash(collectorPaths, trashSet);
         populateCheckpointPathForCollector(checkpointPaths, collectorPaths,
-            checkPointKey);
+        checkPointKey);
       } // all files in a collector
     }
   }
 
   private void processFile(FileStatus file, String currentFile,
-      String checkPointValue, FileSystem fs, Map<FileStatus, String> results,
-      Map<String, FileStatus> collectorPaths) throws IOException {
+                           String checkPointValue, FileSystem fs, Map<FileStatus, String> results,
+                           Map<String, FileStatus> collectorPaths) throws IOException {
 
     String fileName = file.getPath().getName();
-    if (fileName != null && !fileName.endsWith("current")
-        && !fileName.equalsIgnoreCase(currentFile)
-        && !fileName.equalsIgnoreCase("scribe_stats")) {
+    if (fileName != null
+    && !fileName.equalsIgnoreCase(currentFile)) {
       if (file.getLen() > 0) {
         Path src = file.getPath().makeQualified(fs);
         String destDir = getCategoryJobOutTmpPath(getCategoryFromSrcPath(src))
-            .toString();
+        .toString();
         if (aboveCheckpoint(checkPointValue, fileName))
           results.put(file, destDir);
         collectorPaths.put(fileName, file);
@@ -306,8 +327,8 @@ public class LocalStreamService extends AbstractService {
   }
 
   private void populateCheckpointPathForCollector(
-      Map<String, FileStatus> checkpointPaths,
-      TreeMap<String, FileStatus> collectorPaths, String checkpointKey) {
+  Map<String, FileStatus> checkpointPaths,
+  TreeMap<String, FileStatus> collectorPaths, String checkpointKey) {
     // Last file in sorted ascending order to be checkpointed for this collector
     if (collectorPaths != null && collectorPaths.size() > 0) {
       Entry<String, FileStatus> entry = collectorPaths.lastEntry();
@@ -316,7 +337,7 @@ public class LocalStreamService extends AbstractService {
   }
 
   private void populateTrash(Map<String, FileStatus> collectorPaths,
-      Set<FileStatus> trashSet) {
+                             Set<FileStatus> trashSet) {
     if (collectorPaths.size() <= FILES_TO_KEEP)
       return;
     else {
@@ -341,18 +362,49 @@ public class LocalStreamService extends AbstractService {
       return false;
   }
 
-  protected String getCurrentFile(FileSystem fs, FileStatus[] files)
-      throws IOException {
-    for (FileStatus fileStatus : files) {
-      if (fileStatus.getPath().getName().endsWith("current")) {
-        BufferedReader in = new BufferedReader(new InputStreamReader(
-            fs.open(fileStatus.getPath())));
-        String currentFileName = in.readLine().trim();
-        in.close();
-        return currentFileName;
+  /*
+   * @returns null: if there are no files or the most significant timestamped
+    * file is 5 min back.
+   */
+  protected String getCurrentFile(FileSystem fs, FileStatus[] files,
+                                  long lastFileTimeout)
+  {
+    //Proposed Algo :-> Sort files based on timestamp
+    //if ((currentTimeStamp - last file's timestamp) > 5min ||
+    //     if there are no files)
+    // then null (implying process this file as non-current file)
+    // else
+    // return last file as the current file
+    class FileTimeStampComparator implements Comparator {
+      public int compare(Object o, Object o1) {
+        FileStatus file1 = (FileStatus)o;
+        FileStatus file2 = (FileStatus)o1;
+        long file1Time = file1.getModificationTime();
+        long file2Time = file2.getModificationTime();
+        if ((file1Time < file2Time))
+          return -1;
+        else
+          return 1;
       }
     }
-    return null;
+
+    if (files == null || files.length == 0)
+      return null;
+    TreeSet<FileStatus> sortedFiles = new TreeSet<FileStatus>(new
+    FileTimeStampComparator());
+    for (FileStatus file : files) {
+      sortedFiles.add(file);
+    }
+
+    //get last file from set
+    FileStatus lastFile = sortedFiles.last();
+
+    long currentTime = System.currentTimeMillis();
+    long lastFileTime = lastFile.getModificationTime();
+    if (currentTime - lastFileTime >= lastFileTimeout) {
+      return null;
+    } else
+      return lastFile.getPath().getName();
   }
 
   private String getCategoryFromSrcPath(Path src) {
@@ -361,7 +413,7 @@ public class LocalStreamService extends AbstractService {
 
   private String getCategoryFromDestPath(Path dest) {
     return dest.getParent().getParent().getParent().getParent().getParent()
-        .getParent().getName();
+    .getParent().getName();
   }
 
   private Path getCategoryJobOutTmpPath(String category) {
@@ -382,7 +434,7 @@ public class LocalStreamService extends AbstractService {
 
     job.setOutputFormatClass(NullOutputFormat.class);
     job.getConfiguration().set("mapred.map.tasks.speculative.execution",
-        "false");
+    "false");
     job.getConfiguration().set("localstream.tmp.path", tmpPath.toString());
 
     return job;
