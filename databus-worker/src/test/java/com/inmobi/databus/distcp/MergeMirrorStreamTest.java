@@ -1,5 +1,14 @@
 package com.inmobi.databus.distcp;
 
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.DatabusConfig;
+import com.inmobi.databus.DatabusConfigParser;
+import com.inmobi.databus.DestinationStream;
+import com.inmobi.databus.FSCheckpointProvider;
+import com.inmobi.databus.SourceStream;
+import com.inmobi.databus.TestMiniClusterUtil;
+import com.inmobi.databus.local.LocalStreamServiceTest;
+import com.inmobi.databus.local.LocalStreamServiceTest.TestLocalStreamService;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -11,7 +20,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -21,16 +29,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-
-import com.inmobi.databus.Cluster;
-import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.DatabusConfigParser;
-import com.inmobi.databus.DestinationStream;
-import com.inmobi.databus.FSCheckpointProvider;
-import com.inmobi.databus.SourceStream;
-import com.inmobi.databus.TestMiniClusterUtil;
-import com.inmobi.databus.local.LocalStreamServiceTest;
-import com.inmobi.databus.local.LocalStreamServiceTest.TestLocalStreamService;
 
 @Test(groups = { "integration" })
 public class MergeMirrorStreamTest extends TestMiniClusterUtil {
@@ -171,16 +169,17 @@ filename);
         }
 
         try {
-          Integer.parseInt(mindir.getPath().getName());
-          String streams_local_dir = commitpath + mindir.getPath().getName()
+            Integer.parseInt(mindir.getPath().getName());
+            String streams_local_dir = commitpath + mindir.getPath().getName()
               + File.separator + cluster.getName();
 
-          LOG.debug("Checking in Path for mapred Output: " + streams_local_dir);
+            LOG.debug("Checking in Path for mapred Output: "
+                + streams_local_dir);
 
-          for (int j = 0; j < NUM_OF_FILES; ++j) {
-            Assert.assertTrue(fs.exists(new Path(streams_local_dir + "-"
-                + files.get(j) + ".gz")));
-          }
+            for (int j = 0; j < NUM_OF_FILES - 1; ++j) {
+              Assert.assertTrue(fs.exists(new Path(streams_local_dir + "-"
+                  + files.get(j) + ".gz")));
+            }
         } catch (NumberFormatException e) {
 
         }
@@ -260,7 +259,7 @@ filename);
         
           for (String tmpcluster : primaryCluster) {
             List<String> files = filesList.get(tmpcluster);
-            for (int j = 0; j < NUM_OF_FILES; ++j) {
+            for (int j = 0; j < NUM_OF_FILES - 1; ++j) {
               String checkpath = tmpcluster + "-" + files.get(j)
                   + ".gz";
               LOG.debug("Merged Checking file: " + checkpath);
@@ -296,7 +295,7 @@ filename);
             for (Map.Entry<String, List<String>> checkFiles : filesList
                 .entrySet()) {
               List<String> files = checkFiles.getValue();
-              for (int j = 0; j < NUM_OF_FILES; ++j) {
+              for (int j = 0; j < NUM_OF_FILES - 1; ++j) {
                 String checkpath = checkFiles.getKey() + "-"
                     + files.get(j) + ".gz";
                 LOG.debug("Mirror Checking file: " + checkpath);
