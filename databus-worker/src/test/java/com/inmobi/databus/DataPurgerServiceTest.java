@@ -11,7 +11,7 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-package com.inmobi.databus.purge;
+package com.inmobi.databus;
 
 import java.io.File;
 import java.text.DateFormat;
@@ -28,10 +28,8 @@ import org.apache.log4j.Logger;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import com.inmobi.databus.Cluster;
-import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.DatabusConfigParser;
 import com.inmobi.databus.local.LocalStreamServiceTest;
+import com.inmobi.databus.purge.DataPurgerService;
 import com.inmobi.databus.utils.CalendarHelper;
 
 
@@ -132,52 +130,6 @@ public class DataPurgerServiceTest {
       super.execute();
     }
 
-    public Integer getRetentionTimes(String streamName) {
-      return super.getRetentionPeriod(streamName);
-    }
-
-  }
-
-  public void testDefaultRetentionTimes() throws Exception {
-
-    LOG.info("Parsing XML test-retention-databus.xml");
-    DatabusConfigParser configparser = new DatabusConfigParser(
-        "test-retention-databus.xml");
-    DatabusConfig config = configparser.getConfig();
-
-    for (Cluster cluster : config.getClusters().values()) {
-
-      LOG.info("Creating Service for Cluster " + cluster.getName());
-      TestDataPurgerService service = new TestDataPurgerService(config, cluster);
-      
-      service.runOnce();
-
-      LOG.info("Getting Retention Period for test1");
-      Integer Retention = service.getRetentionTimes("test1");
-
-      LOG.info("Retention Period for " + cluster.getName()
-          + " test1 stream is " + Retention);
-
-      if (cluster.getName().compareTo("testcluster1") == 0) {
-        LOG.info("Testing for testcluster1 " + Retention.intValue());
-        Assert.assertEquals(Retention.intValue(), 48);
-      }
-
-      if (cluster.getName().compareTo("testcluster2") == 0) {
-        LOG.info("Testing for testcluster2 " + Retention.intValue());
-        Assert.assertEquals(Retention.intValue(), 46);
-      }
-
-      if (cluster.getName().compareTo("testcluster3") == 0) {
-        LOG.info("Testing for testcluster2 " + Retention.intValue());
-        Assert.assertEquals(Retention.intValue(), 50);
-      }
-
-      Retention = service.getRetentionTimes("dummydummyname");
-
-      LOG.info("Testing for dummydummyname " + Retention.intValue());
-      Assert.assertEquals(Retention.intValue(), 48);
-    }
   }
 
   final static int NUM_OF_FILES = 35;
@@ -187,8 +139,8 @@ public class DataPurgerServiceTest {
       throws Exception {
     for(String streamname: cluster.getSourceStreams()) {
       String[] files = new String[NUM_OF_FILES];
-      String datapath = Cluster
-          .getDateAsYYYYMMDDHHMNPath(date.getTime());
+      String datapath = LocalStreamServiceTest.getDateAsYYYYMMDDHHMMPath(date
+          .getTime());
       String commitpath = cluster.getLocalFinalDestDirRoot() + File.separator
           + streamname + File.separator + datapath;
       String mergecommitpath = cluster.getFinalDestDirRoot() + File.separator
@@ -238,8 +190,8 @@ public class DataPurgerServiceTest {
   private void verifyPurgefiles(FileSystem fs, Cluster cluster, Calendar date,
       boolean checkexists, boolean checktrashexists) throws Exception {
     for (String streamname : cluster.getSourceStreams()) {
-      String datapath = Cluster
-          .getDateAsYYYYMMDDHHMNPath(date.getTime());
+      String datapath = LocalStreamServiceTest.getDateAsYYYYMMDDHHMMPath(date
+          .getTime());
       String commitpath = cluster.getLocalFinalDestDirRoot() + File.separator
           + streamname + File.separator + datapath;
       String mergecommitpath = cluster.getFinalDestDirRoot() + File.separator

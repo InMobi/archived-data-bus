@@ -35,41 +35,39 @@ public class Cluster {
   private final String clusterjobqueuename;
   private final Map<String, DestinationStream> consumeStreams;
   private final Set<String> sourceStreams;
-  private final Configuration hadoopConf = new Configuration();
-  private final static DateFormat clusterdateHourMinuteFormat = new SimpleDateFormat(
-      "yyyy" + File.separator + "MM" + File.separator + "dd" + File.separator
-          + "HH" + File.separator + "mm" + File.separator);
-  private final static DateFormat clusterdateHourFormat = new SimpleDateFormat(
-      "yyyy" + File.separator + "MM" + File.separator + "dd" + File.separator
-          + "HH" + File.separator);
+  private final Configuration hadoopConf;
 
   public Cluster(Map<String, String> clusterElementsMap, String rootDir,
       Map<String, DestinationStream> consumeStreams, Set<String> sourceStreams)
       throws Exception {
     this.rootDir = rootDir;
-    this.consumeStreams = consumeStreams;
-    this.sourceStreams = sourceStreams;
     this.clustername = clusterElementsMap.get(DatabusConfigParser.NAME);
-    Validate(clustername, "Cluster Name");
+    if (clustername == null)
+      throw new ParseException(
+          "Cluster Name element not found in cluster configuration", 0);
     this.hdfsUrl = clusterElementsMap.get(DatabusConfigParser.HDFS_URL);
-    Validate(hdfsUrl, "In Cluster " + clustername + " hdfsUrl");
+    if (hdfsUrl == null)
+      throw new ParseException(
+          "hdfsurl element not found in cluster configuration " + clustername,
+          0);
     this.clusterjobqueuename = clusterElementsMap
         .get(DatabusConfigParser.JOB_QUEUE_NAME);
-    Validate(clusterjobqueuename, "In Cluster " + clustername
-        + " clusterjobqueuename");
-    String jtUrl = clusterElementsMap.get(DatabusConfigParser.JT_URL);
-    Validate(clusterjobqueuename, "In Cluster " + clustername + " jtUrl");
-    this.hadoopConf.set("mapred.job.tracker",jtUrl);
+    if (clusterjobqueuename == null)
+      throw new ParseException(
+          "Cluster jobqueuename element not found in cluster configuration "
+              + clustername, 0);
+    if (clusterElementsMap.get(DatabusConfigParser.JT_URL) == null)
+      throw new ParseException(
+          "jturl element not found in cluster configuration " + clustername, 0);
+    this.hadoopConf = new Configuration();
+    this.hadoopConf.set("mapred.job.tracker",
+        clusterElementsMap.get(DatabusConfigParser.JT_URL));
     this.hadoopConf.set("databus.tmp.path", getTmpPath().toString());
+    this.consumeStreams = consumeStreams;
+    this.sourceStreams = sourceStreams;
     this.hadoopConf.set("fs.default.name", hdfsUrl);
     this.hadoopConf.set("mapred.job.queue.name",
     		clusterjobqueuename);
-  }
-
-  private void Validate(String element, String objType) throws ParseException {
-    if (element == null)
-      throw new ParseException(objType
-          + " element not found in cluster configuration", 0);
   }
 
   public String getRootDir() {
@@ -77,20 +75,28 @@ public class Cluster {
   }
 
   public String getLocalFinalDestDirRoot() {
-    String dest = getRootDir() + "streams_local" + File.separator;
+    String dest = hdfsUrl + File.separator + rootDir + File.separator
+        + "streams_local" + File.separator;
     return dest;
   }
 
-  public static String getDateAsYYYYMMDDHHMNPath(long commitTime) {
-    return clusterdateHourMinuteFormat.format(commitTime);
+	public static String getDateAsYYYYMMDDHHMNPath(long commitTime) {
+    Date date = new Date(commitTime);
+    return getDateAsYYYYMMDDHHMNPath(date);
   }
 
-  public static String getDateAsYYYYMMDDHHMNPath(Date date) {
-    return clusterdateHourMinuteFormat.format(date);
+	public static String getDateAsYYYYMMDDHHMNPath(Date date) {
+    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator + "MM"
+        + File.separator + "dd" + File.separator + "HH" + File.separator + "mm"
+        + File.separator);
+    return dateFormat.format(date);
   }
 
-  private static String getDateAsYYYYMMDDHHPath(long commitTime) {
-    return clusterdateHourFormat.format(commitTime);
+  private String getDateAsYYYYMMDDHHPath(long commitTime) {
+    Date date = new Date(commitTime);
+    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator + "MM"
+        + File.separator + "dd" + File.separator + "HH" + File.separator);
+    return dateFormat.format(date);
   }
 
 	public static String getDestDir(String destDir, String category,
@@ -102,13 +108,13 @@ public class Cluster {
 
   public String getLocalDestDir(String category, long commitTime)
       throws IOException {
-    String dest = getLocalFinalDestDirRoot() + category + File.separator
-        + getDateAsYYYYMMDDHHMNPath(commitTime);
-    return dest;
+    Date date = new Date(commitTime);
+    return getLocalDestDir(category, date);
   }
 
   public String getLocalDestDir(String category, Date date) throws IOException {
-    String dest = getLocalFinalDestDirRoot() + category + File.separator
+    String dest = hdfsUrl + File.separator + rootDir + File.separator
+        + "streams_local" + File.separator + category + File.separator
         + getDateAsYYYYMMDDHHMNPath(date);
     return dest;
   }
@@ -130,14 +136,14 @@ public class Cluster {
   }
 
   public String getUnqaulifiedFinalDestDirRoot() {
-    Path absolutePath = new Path(hdfsUrl);
-    String dest = File.separator + absolutePath.toUri().getPath() + rootDir
-        + File.separator + "streams" + File.separator;
+    String dest = File.separator + rootDir + File.separator + "streams"
+        + File.separator;
     return dest;
   }
 
   public String getFinalDestDirRoot() {
-    String dest = getRootDir() + "streams" + File.separator;
+    String dest = hdfsUrl + File.separator + rootDir + File.separator
+        + "streams" + File.separator;
     return dest;
   }
 
@@ -149,14 +155,16 @@ public class Cluster {
 
   public String getFinalDestDir(String category, long commitTime)
       throws IOException {
-    String dest = getFinalDestDirRoot() + category + File.separator
+    String dest = hdfsUrl + File.separator + rootDir + File.separator
+        + "streams" + File.separator + category + File.separator
         + getDateAsYYYYMMDDHHMNPath(commitTime);
     return dest;
   }
 
   public String getFinalDestDirTillHour(String category, long commitTime)
       throws IOException {
-    String dest = getFinalDestDirRoot() + category + File.separator
+    String dest = hdfsUrl + File.separator + rootDir + File.separator
+        + "streams" + File.separator + category + File.separator
         + getDateAsYYYYMMDDHHPath(commitTime);
     return dest;
   }
@@ -203,7 +211,8 @@ public class Cluster {
   }
 
   public Path getDataDir() {
-    return new Path(getRootDir() + "data");
+    return new Path(hdfsUrl + File.separator + rootDir + File.separator
+        + "data");
   }
 
   public Path getConsumePath(Cluster consumeCluster) {
@@ -225,7 +234,7 @@ public class Cluster {
   }
 
   private String getSystemDir() {
-    return getRootDir() + "system";
+    return hdfsUrl + File.separator + rootDir + File.separator + "system";
   }
 
   public String getJobQueueName() {

@@ -13,10 +13,6 @@
  */
 package com.inmobi.databus.local;
 
-import com.inmobi.databus.AbstractService;
-import com.inmobi.databus.CheckpointProvider;
-import com.inmobi.databus.Cluster;
-import com.inmobi.databus.DatabusConfig;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -28,6 +24,11 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+
+import com.inmobi.databus.AbstractService;
+import com.inmobi.databus.CheckpointProvider;
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.DatabusConfig;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -252,14 +253,14 @@ public class LocalStreamService extends AbstractService {
     300000);
   }
 
-  static class CollectorPathFilter implements PathFilter {
-    public boolean accept(Path path) {
-      if (path.getName().endsWith("current")
-          || path.getName().equalsIgnoreCase("scribe_stats"))
-        return false;
-      return true;
-    }
-  }
+	static class CollectorPathFilter implements PathFilter {
+		public boolean accept(Path path) {
+			if (path.getName().endsWith("current")
+			    || path.getName().equalsIgnoreCase("scribe_stats"))
+				return false;
+			return true;
+		}
+	}
 
   public void createListing(FileSystem fs, FileStatus fileStatus,
                             Map<FileStatus, String> results, Set<FileStatus> trashSet,
@@ -282,16 +283,16 @@ public class LocalStreamService extends AbstractService {
         LOG.debug("CheckPoint Key [" + checkPointKey + "] value [ "
         + checkPointValue + "]");
 
-        FileStatus[] files = fs.listStatus(collector.getPath(),
-            new CollectorPathFilter());
-        
-        if (files == null) {
-          LOG.warn("No Files Found in the Collector " + collector.getPath()
-              + " Skipping Directory");
-          continue;
-        }
+				FileStatus[] files = fs.listStatus(collector.getPath(),
+				    new CollectorPathFilter());
 
-        String currentFile = getCurrentFile(fs, files, lastFileTimeout);
+				if(files == null) {
+					LOG.warn("No Files Found in the Collector " + collector.getPath()
+					    + " Skipping Directory");
+					continue;
+				}
+
+				String currentFile = getCurrentFile(fs, files, lastFileTimeout);
 
         for (FileStatus file : files) {
           processFile(file, currentFile, checkPointValue, fs, results,

@@ -17,17 +17,15 @@ import com.inmobi.databus.AbstractService;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.tools.DistCp;
-import org.apache.hadoop.tools.DistCpConstants;
-import org.apache.hadoop.tools.DistCpOptions;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -49,7 +47,7 @@ public abstract class DistcpBaseService extends AbstractService {
   private final Cluster destCluster;
   private final FileSystem srcFs;
   private final FileSystem destFs;
-  protected static final int DISTCP_SUCCESS = DistCpConstants.SUCCESS;
+  protected static final int DISTCP_SUCCESS = 0;
 
   protected static final Log LOG = LogFactory.getLog(DistcpBaseService
           .class);
@@ -85,39 +83,16 @@ public abstract class DistcpBaseService extends AbstractService {
   protected FileSystem getDestFs() {
     return destFs;
   }
-
-  /**
-   * Set Common or default DistCp options here.
-   * 
-   * @param inputPathListing
-   * @param target
-   * @return options instance
-   */
-
-  protected DistCpOptions getDistCpOptions(Path inputPathListing, Path target) {
-    DistCpOptions options = new DistCpOptions(inputPathListing, target);
-    options.setBlocking(true);
-    // If more command line options need to be passed to DistCP then, 
-    // Create options instance using OptionParser.parse and set default options
-    // on the returned instance.
-    //with the arguments as sent in by the Derived Service
-    return options;
-   }
-
-  protected Boolean executeDistCp(DistCpOptions options)
-      throws Exception
+  
+  protected Boolean executeDistCp(String[] args) throws Exception
   {
+	  Boolean distcpExecuteSuccess = false;
 	  //Add Additional Default arguments to the array below which gets merged
 	  //with the arguments as sent in by the Derived Service
-    Configuration conf = destCluster.getHadoopConf();
-    DistCp distCp = new DistCp(conf, options);
-    try {
-      distCp.execute();
-    } catch (Exception e) {
-      LOG.error("Exception encountered ", e);
-      throw e;
-    }
-    return true;
+		if (DistCp.runDistCp(args, destCluster.getHadoopConf()) == DISTCP_SUCCESS)
+		  distcpExecuteSuccess = true;
+	  
+	  return distcpExecuteSuccess;
   }
 
   /*
