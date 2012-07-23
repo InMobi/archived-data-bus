@@ -136,8 +136,9 @@ public class Cluster {
   }
 
   public String getUnqaulifiedFinalDestDirRoot() {
-    String dest = File.separator + rootDir + File.separator + "streams"
-        + File.separator;
+    Path absolutePath = new Path(hdfsUrl);
+    String dest = File.separator + absolutePath.toUri().getPath() + rootDir
+        + File.separator + "streams" + File.separator;
     return dest;
   }
 

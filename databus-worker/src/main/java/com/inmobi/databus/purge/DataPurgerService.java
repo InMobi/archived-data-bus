@@ -143,7 +143,7 @@ public class DataPurgerService extends AbstractService {
     return defaulttrashPathRetentioninHours;
   }
 
-  private Integer getRetentionPeriod(String streamName) {
+  Integer getRetentionPeriod(String streamName) {
     Integer retentionInHours = streamRetention.get(streamName);
     if (retentionInHours == null)
       return getDefaultStreamRetentionInHours();
