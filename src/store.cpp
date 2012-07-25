@@ -542,7 +542,7 @@ void FileStoreBase::printStats() {
     return;
   }
 
-  time_t rawtime = time(NULL);
+  /*time_t rawtime = time(NULL);
   struct tm timeinfo;
   localtime_r(&rawtime, &timeinfo);
 
@@ -556,7 +556,7 @@ void FileStoreBase::printStats() {
   msg << " wrote <" << currentSize << "> bytes in <" << eventsWritten
       << "> events to file <" << currentFilename << ">" << endl;
 
-  stats_file->write(msg.str());
+  stats_file->write(msg.str());*/
   stats_file->close();
 }
 

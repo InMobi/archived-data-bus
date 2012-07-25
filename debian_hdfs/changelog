@@ -1,3 +1,9 @@
+scribe-server-hdfs-orig (0.2.4-1) lucid; urgency=low
+
+  * Don't Write Scribe_stats file even when the setting contains to write it, since append is disabled in HDFS
+
+ -- Platform Engineering <platform-engg@inmobi.com>  Wed, 25 Jul 2012 17:57:45 +0530
+
 scribe-server-hdfs-orig (0.2.3-1) lucid; urgency=low
 
   * change flush to HFlush which calls sync for hadoop to flush all changes to disk at max_write_size intervals
