@@ -404,7 +404,6 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
     return dateFormat.format(date);
   }
 
-  @Test(groups = { "integration" })
   public void testMapReduce() throws Exception {
 
     final int NUM_OF_FILES = 35;

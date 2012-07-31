@@ -294,7 +294,6 @@ public class DataPurgerServiceTest {
     }
   }
 
-  @Test(groups = { "integration" })
   public void testPurgerService() throws Exception {
 
     LOG.info("Working for file test-dps-databus_X_1.xml");

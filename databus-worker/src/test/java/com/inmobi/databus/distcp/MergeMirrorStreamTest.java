@@ -32,7 +32,7 @@ import com.inmobi.databus.TestMiniClusterUtil;
 import com.inmobi.databus.local.LocalStreamServiceTest;
 import com.inmobi.databus.local.LocalStreamServiceTest.TestLocalStreamService;
 
-@Test(groups = { "integration" })
+@Test
 public class MergeMirrorStreamTest extends TestMiniClusterUtil {
 
   private static final Log LOG = LogFactory.getLog(MergeMirrorStreamTest.class);
