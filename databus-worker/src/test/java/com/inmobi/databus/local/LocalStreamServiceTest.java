@@ -406,7 +406,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
 
   public void testMapReduce() throws Exception {
 
-    final int NUM_OF_FILES = 35;
+    final int NUM_OF_FILES = 15;
 
     DatabusConfigParser configParser = new DatabusConfigParser(
         "test-lss-databus.xml");
@@ -434,8 +434,9 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
             .getName() + File.separator + cluster.getName() + File.separator);
         fs.mkdirs(createPath);
         for (int j = 0; j < NUM_OF_FILES; ++j) {
-          files[j] = new String(sstream.getValue().getName() + "-"
-              + getDateAsYYYYMMDDHHMMSS(new Date()));
+          Thread.sleep(1000);
+          files[j] = sstream.getValue().getName() + "-"
+              + getDateAsYYYYMMDDHHMMSS(new Date());
           Path path = new Path(createPath, files[j]);
 
           FSDataOutputStream streamout = fs.create(path);

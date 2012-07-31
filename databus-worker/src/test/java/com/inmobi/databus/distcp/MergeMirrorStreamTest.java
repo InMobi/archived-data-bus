@@ -94,7 +94,7 @@ public class MergeMirrorStreamTest extends TestMiniClusterUtil {
   }
 
   private void testMergeMirrorStream(String filename) throws Exception {
-    final int NUM_OF_FILES = 35;
+    final int NUM_OF_FILES = 15;
 
     DatabusConfigParser configParser = new DatabusConfigParser(
 filename);
@@ -138,6 +138,7 @@ filename);
             .getName() + File.separator + cluster.getName() + File.separator);
         fs.mkdirs(createPath);
           for (int j = 0; j < NUM_OF_FILES; ++j) {
+            Thread.sleep(1000);
           files.add(j,new String(sstream.getValue().getName() + "-"
               + cluster.getName() + "-"
               + LocalStreamServiceTest.getDateAsYYYYMMDDHHMMSS(new Date())));
