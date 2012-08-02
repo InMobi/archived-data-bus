@@ -510,7 +510,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
             LOG.debug("Checking in Path for mapred Output: "
                 + streams_local_dir);
 
-            for (int j = 0; j < NUM_OF_FILES; ++j) {
+            for (int j = 0; j < NUM_OF_FILES - 1; ++j) {
               Assert.assertTrue(fs.exists(new Path(streams_local_dir + "-"
                   + files[j] + ".gz")));
             }
@@ -532,14 +532,14 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
             LOG.debug("Checkpoint for " + checkpointfile + " is " + checkpoint);
 
             LOG.debug("Comparing Checkpoint " + checkpoint + " and "
-                + files[NUM_OF_FILES - 1]);
+                + files[NUM_OF_FILES - 2]);
             Assert
-                .assertTrue(checkpoint.compareTo(files[NUM_OF_FILES - 1]) == 0);
+                .assertTrue(checkpoint.compareTo(files[NUM_OF_FILES - 2]) == 0);
 
             LOG.debug("Verifying Trash Paths");
 
             // Here 6 is the number of files - trash paths which are excluded
-            for (int j = 0; j < NUM_OF_FILES - 6; ++j) {
+            for (int j = 0; j < NUM_OF_FILES - 7; ++j) {
               if (files[j].compareTo(checkpoint) <= 0) {
                 String trashfilename = cluster.getName() + "-" + files[j];
                 LOG.debug("Verifying Trash Path " + trashpath + "File "
