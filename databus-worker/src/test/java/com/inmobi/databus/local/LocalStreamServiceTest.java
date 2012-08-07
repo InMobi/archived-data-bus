@@ -413,7 +413,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
 
   private void testMapReduce(String filename) throws Exception {
 
-    final int NUM_OF_FILES = 40;
+    final int NUM_OF_FILES = 20;
 
     DatabusConfigParser configParser = new DatabusConfigParser(filename);
     DatabusConfig config = configParser.getConfig();
@@ -452,12 +452,10 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
         fs.mkdirs(createPath);
         List<String> filesList = new ArrayList<String>();
 
-        Calendar nowDate = new GregorianCalendar();
-
         for (int j = 0; j < NUM_OF_FILES; ++j) {
-          nowDate.add(Calendar.SECOND, 1);
+          Thread.sleep(1000);
           filesList.add(j, new String(sstream.getValue().getName() + "-"
-              + getDateAsYYYYMMDDHHMMSS(nowDate.getTime())));
+              + getDateAsYYYYMMDDHHMMSS(new Date())));
           Path path = new Path(createPath, filesList.get(j));
 
           LOG.debug("Creating Test Data with filename [" + filesList.get(j)
