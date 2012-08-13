@@ -1,5 +1,11 @@
 package com.inmobi.databus.distcp;
 
+import org.testng.annotations.BeforeSuite;
+
+import org.testng.annotations.AfterSuite;
+
+import com.inmobi.databus.local.LocalStreamServiceTest.TestService;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -37,47 +43,6 @@ public class MergeMirrorStreamTest extends TestMiniClusterUtil {
 
   private static final Log LOG = LogFactory.getLog(MergeMirrorStreamTest.class);
 
-  private void testPublishMissingPaths(TestService service) throws Exception {
-
-    FileSystem fs = FileSystem.getLocal(new Configuration());
-    Calendar behinddate = new GregorianCalendar();
-    Calendar todaysdate = new GregorianCalendar();
-    String basepublishPaths = service.getDestCluster().getFinalDestDirRoot()
-        + "streams_publish" + File.separator;
-    String publishPaths = basepublishPaths
-        + Cluster.getDateAsYYYYMMDDHHMNPath(behinddate.getTime());
-
-    fs.mkdirs(new Path(publishPaths));
-
-    service.publishMissingPaths(fs);
-
-    VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
-        basepublishPaths);
-
-    todaysdate.add(Calendar.HOUR_OF_DAY, 2);
-
-    service.publishMissingPaths(fs);
-
-    VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
-        basepublishPaths);
-
-    fs.delete(new Path(basepublishPaths), true);
-  }
-
-  private void VerifyMissingPublishPaths(FileSystem fs, long todaysdate,
-      Calendar behinddate, String basepublishPaths)
-      throws Exception {
-    long diff = todaysdate - behinddate.getTimeInMillis();
-    while (diff > 60000) {
-      String checkcommitpath = basepublishPaths
-          + Cluster.getDateAsYYYYMMDDHHMNPath(behinddate.getTime());
-      LOG.debug("Checking for Created Missing Path: " + checkcommitpath);
-      fs.exists(new Path(checkcommitpath));
-      behinddate.add(Calendar.MINUTE, 1);
-      diff = todaysdate - behinddate.getTimeInMillis();
-    }
-  }
-
   /*
    * Here is the basic idea, create two clusters of different rootdir paths run
    * the local stream service to create all the files in streams_local directory
@@ -91,13 +56,26 @@ public class MergeMirrorStreamTest extends TestMiniClusterUtil {
     testMergeMirrorStream("test-mss-databus.xml");
     // Test with 2 mirror sites
     testMergeMirrorStream("test-mss-databus_mirror.xml");
+    // Test with 1 merged stream only
+    testMergeMirrorStream("test-mergedss-databus.xml");
+    // Test with 1 source and 1 merged stream only
+    testMergeMirrorStream("test-mergedss-databus_2.xml");
+  }
+  
+  @BeforeSuite
+  public void setup() throws Exception {
+    super.setup(2, 6, 1);
+  }
+  
+  @AfterSuite
+  public void cleanup() throws Exception {
+    super.cleanup();
   }
 
   private void testMergeMirrorStream(String filename) throws Exception {
     final int NUM_OF_FILES = 15;
 
-    DatabusConfigParser configParser = new DatabusConfigParser(
-filename);
+    DatabusConfigParser configParser = new DatabusConfigParser(filename);
     DatabusConfig config = configParser.getConfig();
 
     FileSystem fs = FileSystem.getLocal(new Configuration());
@@ -105,6 +83,11 @@ filename);
     List<TestLocalStreamService> services = new ArrayList<TestLocalStreamService>();
 
     for (Map.Entry<String, Cluster> cluster : config.getClusters().entrySet()) {
+      cluster
+          .getValue()
+          .getHadoopConf()
+          .set("mapred.job.tracker",
+              super.CreateJobConf().get("mapred.job.tracker"));
       services.add(new TestLocalStreamService(config, cluster.getValue(),
           new FSCheckpointProvider(cluster.getValue().getCheckpointDir())));
     }
@@ -123,7 +106,6 @@ filename);
 
       for (TestLocalStreamService service : services) {
         boolean processCluster = false;
-        List<String> files = new ArrayList<String>(NUM_OF_FILES);
         Cluster cluster = service.getCluster();
         for (String sourceCluster : sstream.getValue()
             .getSourceClusters()) {
@@ -134,23 +116,13 @@ filename);
         if (processCluster) {
 
         fs.delete(new Path(cluster.getRootDir()), true);
-        Path createPath = new Path(cluster.getDataDir(), sstream.getValue()
-            .getName() + File.separator + cluster.getName() + File.separator);
-        fs.mkdirs(createPath);
-          for (int j = 0; j < NUM_OF_FILES; ++j) {
-            Thread.sleep(1000);
-          files.add(j,new String(sstream.getValue().getName() + "-"
-              + cluster.getName() + "-"
-              + LocalStreamServiceTest.getDateAsYYYYMMDDHHMMSS(new Date())));
-          Path path = new Path(createPath, files.get(j));
-
-          FSDataOutputStream streamout = fs.create(path);
-          streamout.writeBytes("Creating Test data for cluster "
-              + cluster.getName() + " data -> " + files.get(j));
-          streamout.close();
-
-          Assert.assertTrue(fs.exists(path));
-        }
+          
+          String pathName = cluster.getDataDir() + File.separator
+              + sstream.getValue().getName() + File.separator
+              + cluster.getName() + File.separator;
+          
+          List<String> files = LocalStreamServiceTest.createLocalStreamData(fs,
+              sstream.getValue().getName(), pathName, NUM_OF_FILES);
 
         filesList.put(cluster.getName(), files);
 
@@ -185,10 +157,13 @@ filename);
         } catch (NumberFormatException e) {
 
         }
-        //fs.delete(new Path(testRootDir), true);
       }
       }
       
+      for (Map.Entry<String, Cluster> cluster : config.getClusters().entrySet()) {
+        cluster.getValue().getHadoopConf().set("mapred.job.tracker", "local");
+      }
+
       Cluster primaryDestinationCluster = config
           .getPrimaryClusterForDestinationStream(sstream.getValue().getName());
       Set<String> primaryCluster = new HashSet<String>();
@@ -196,7 +171,7 @@ filename);
       for (String cluster : sstream.getValue().getSourceClusters()) {
         TestMergeStreamService service = new TestMergeStreamService(config,
             config.getClusters().get(cluster), primaryDestinationCluster);
-        testPublishMissingPaths(service);
+        LocalStreamServiceTest.testPublishMissingPaths(service);
       }
 
       for (String cluster : sstream.getValue().getSourceClusters()) {
@@ -218,7 +193,7 @@ filename);
               TestMirrorStreamService service = new TestMirrorStreamService(
                   config, primaryDestinationCluster, config.getClusters().get(
                     srcCluster));
-              testPublishMissingPaths(service);
+            LocalStreamServiceTest.testPublishMissingPaths(service);
             }
           }
 
@@ -316,12 +291,10 @@ filename);
     fs.close();
   }
   
-  static interface TestService {
-    Cluster getDestCluster();
-    void publishMissingPaths(FileSystem fs) throws Exception;
-  }
 
-  public static class TestMergeStreamService extends MergedStreamService implements TestService{
+
+  public static class TestMergeStreamService extends MergedStreamService
+      implements TestService {
     
     private Cluster destinationCluster = null;
 
@@ -338,13 +311,14 @@ filename);
     }
 
     @Override
-    public Cluster getDestCluster() {
+    public Cluster getCluster() {
       return destinationCluster;
     }
 
   }
 
-  public static class TestMirrorStreamService extends MirrorStreamService implements TestService{
+  public static class TestMirrorStreamService extends MirrorStreamService
+      implements TestService {
 
     private Cluster destinationCluster = null;
 
@@ -361,7 +335,7 @@ filename);
     }
 
     @Override
-    public Cluster getDestCluster() {
+    public Cluster getCluster() {
       return destinationCluster;
     }
   }
