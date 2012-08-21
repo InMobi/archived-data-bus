@@ -13,6 +13,10 @@
 */
 package com.inmobi.databus.distcp;
 
+import java.util.TreeMap;
+
+import java.util.TreeSet;
+
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
 import org.apache.commons.logging.Log;
@@ -52,6 +56,7 @@ public class MergedStreamService extends DistcpBaseService {
     try {
       boolean skipCommit = false;
       Map<Path, FileSystem> consumePaths = new HashMap<Path, FileSystem>();
+      Map<String, Set<Path>> missingDirsCommittedPaths = new HashMap<String, Set<Path>>();
 
       Path tmpOut = new Path(getDestCluster().getTmpPath(),
               "distcp_mergedStream_" + getSrcCluster().getName() + "_"
@@ -69,9 +74,7 @@ public class MergedStreamService extends DistcpBaseService {
         return;
       }
 
-			synchronized (getDestCluster()) {
-				publishMissingPaths(getDestFs(), getDestCluster().getFinalDestDirRoot());
-			}
+      addMissingPaths(missingDirsCommittedPaths, -1, null);
 
       Path inputFilePath = getInputFilePath(consumePaths, tmp);
       if (inputFilePath == null) {
@@ -93,18 +96,24 @@ public class MergedStreamService extends DistcpBaseService {
         LOG.warn("Problem in MergedStream distcp PULL..skipping commit for this run");
         skipCommit = true;
       }
-      Map<String, Set<Path>> committedPaths;
+      Map<String, Set<Path>> committedPaths = null;
+
       // if success
       if (!skipCommit) {
         Map<String, List<Path>> categoriesToCommit = prepareForCommit(tmpOut);
         synchronized (getDestCluster()) {
           long commitTime = getDestCluster().getCommitTime();
-					// publish Missing Paths if any until now
-					for (String category : categoriesToCommit.keySet())
-						publishMissingPaths(getDestFs(), getDestCluster()
-						    .getFinalDestDirRoot(), commitTime, category);
+          addMissingPaths(missingDirsCommittedPaths, commitTime,
+              categoriesToCommit.keySet());
+
           // category, Set of Paths to commit
           committedPaths = doLocalCommit(commitTime, categoriesToCommit);
+          for (Map.Entry<String, Set<Path>> entry : committedPaths
+              .entrySet()) {
+            Set<Path> filesList = missingDirsCommittedPaths.get(entry.getKey());
+            if (filesList != null)
+              entry.getValue().addAll(filesList);
+          }
         }
         // Prepare paths for MirrorStreamConsumerService
         commitMirroredConsumerPaths(committedPaths, tmp);
@@ -118,6 +127,42 @@ public class MergedStreamService extends DistcpBaseService {
     } catch (Exception e) {
 			LOG.warn("Error in run ", e);
       throw new Exception(e);
+    }
+  }
+  
+  private void addMissingPaths(
+      Map<String, Set<Path>> missingDirsCommittedPaths, long commitTime,
+      Set<String> categoriesToCommit)
+      throws Exception {
+    synchronized (getDestCluster()) {
+      Map<String, Set<Path>> missingDirsforCategory = null;
+      
+      if(categoriesToCommit!=null) {
+        missingDirsforCategory = new HashMap<String, Set<Path>>();
+        for (String category : categoriesToCommit) {
+          Set<Path> missingDirectories = publishMissingPaths(getDestFs(),
+              getDestCluster().getFinalDestDirRoot(), commitTime, category);
+          missingDirsforCategory.put(category, missingDirectories);
+        }
+      } else {
+        missingDirsforCategory = publishMissingPaths(
+          getDestFs(), getDestCluster().getFinalDestDirRoot());
+      }
+
+      if (missingDirsforCategory != null) {
+        for (Map.Entry<String, Set<Path>> entry : missingDirsforCategory
+            .entrySet()) {
+          LOG.debug("Add Missing Directories to Commit Path: "
+              + entry.getValue().size());
+            if (missingDirsCommittedPaths.get(entry.getKey()) != null) {
+              Set<Path> missingPaths = missingDirsCommittedPaths.get(entry
+                  .getKey());
+              missingPaths.addAll(entry.getValue());
+            } else {
+              missingDirsCommittedPaths.put(entry.getKey(), entry.getValue());
+          }
+        }
+      }
     }
   }
 
@@ -163,6 +208,7 @@ public class MergedStreamService extends DistcpBaseService {
         tmpConsumerPath = new Path(tmp, tmpPath);
         FSDataOutputStream out = getDestFs().create(tmpConsumerPath);
         for (Path path : committedPaths.get(stream)) {
+          LOG.debug("Writing Mirror Commit Path [" + path.toString() + "]");
           out.writeBytes(path.toString());
           out.writeBytes("\n");
         }

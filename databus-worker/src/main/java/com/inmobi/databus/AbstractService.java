@@ -13,6 +13,14 @@
 */
 package com.inmobi.databus;
 
+import java.util.TreeSet;
+
+import java.util.Set;
+
+import java.util.ArrayList;
+
+import java.util.List;
+
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -74,7 +82,7 @@ public abstract class AbstractService implements Service, Runnable {
   public abstract long getMSecondsTillNextRun(long currentTime);
 
   protected abstract void execute() throws Exception;
-
+  
   @Override
   public void run() {
     LOG.info("Starting Service [" + Thread.currentThread().getName() + "]");
@@ -186,8 +194,9 @@ public abstract class AbstractService implements Service, Runnable {
 		return ((commitTime - prevRuntime) >= MILLISECONDS_IN_MINUTE);
 	}
 
-	protected void publishMissingPaths(FileSystem fs, String destDir,
+  protected Set<Path> publishMissingPaths(FileSystem fs, String destDir,
 	    long commitTime, String categoryName) throws Exception {
+    Set<Path> missingDirectories = new TreeSet<Path>();
 		Calendar commitTimeMinutes = new GregorianCalendar();
 		commitTimeMinutes.set(Calendar.MILLISECOND, 0);
 		commitTimeMinutes.set(Calendar.SECOND, 0);
@@ -208,25 +217,33 @@ public abstract class AbstractService implements Service, Runnable {
 					String missingPath = Cluster.getDestDir(destDir, categoryName,
 					    prevRuntime);
 					LOG.debug("Creating Missing Directory [" + missingPath + "]");
+          missingDirectories.add(new Path(missingPath));
 					fs.mkdirs(new Path(missingPath));
 					prevRuntime += MILLISECONDS_IN_MINUTE;
 				}
 			}
 			prevRuntimeForCategory.put(categoryName, commitTime);
 		}
+    return missingDirectories;
 	}
 
-	protected void publishMissingPaths(FileSystem fs, String destDir)
+  protected Map<String, Set<Path>> publishMissingPaths(FileSystem fs,
+      String destDir)
 	    throws Exception {
+    Map<String, Set<Path>> missingDirectories = new HashMap<String, Set<Path>>();
+    Set<Path> missingdirsinstream = null;
 		FileStatus[] fileStatus = fs.listStatus(new Path(destDir));
 		LOG.info("Create All the Missing Paths in " + destDir);
 		if (fileStatus != null) {
 			for (FileStatus file : fileStatus) {
-				publishMissingPaths(fs, destDir, System.currentTimeMillis(), file
+        missingdirsinstream = publishMissingPaths(fs, destDir,
+            System.currentTimeMillis(), file
 				    .getPath().getName());
+        missingDirectories.put(file.getPath().getName(), missingdirsinstream);
 			}
 		}
 		LOG.info("Done Creating All the Missing Paths in " + destDir);
+    return missingDirectories;
 	}
 
 } 
