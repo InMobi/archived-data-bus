@@ -1,3 +1,10 @@
+scribe-server-hdfs-orig (0.2.5-1) lucid; urgency=low
+
+  * write stats to scribe server log
+
+ -- Platform Engineering <platform-engg@inmobi.com>  Wed, 25 Jul 2012 17:57:45 +0530
+
+
 scribe-server-hdfs-orig (0.2.4-1) lucid; urgency=low
 
   * Don't Write Scribe_stats file even when the setting contains to write it, since append is disabled in HDFS
