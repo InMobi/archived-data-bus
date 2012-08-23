@@ -123,7 +123,11 @@ bool HdfsFile::write(const std::string& data) {
                                  (tSize) data.length());
   bool retVal = (bytesWritten == (tSize) data.length()) ? true : false;
   if (retVal) {
-    hdfsHFlush(fileSys, hfile);
+    int val = hdfsHFlush(fileSys, hfile);
+    if (val == -1) {
+       LOG_OPER("[hdfs] flush failed"); 
+       retVal = false;
+    }
   }
   return retVal;
 }
