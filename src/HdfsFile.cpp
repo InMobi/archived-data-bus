@@ -97,7 +97,9 @@ void HdfsFile::close() {
   if (fileSys) {
     if (hfile) {
       LOG_OPER("[hdfs] closing %s", filename.c_str());
-      hdfsCloseFile(fileSys, hfile );
+      int ret = hdfsCloseFile(fileSys, hfile );
+      if (ret == -1)
+        LOG_OPER("[hdfs] Failed to close [%s]", filename.c_str());
     }
     hfile = 0;
 
