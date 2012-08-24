@@ -32,6 +32,7 @@ import com.inmobi.databus.DatabusConfig;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -321,7 +322,7 @@ public class LocalStreamService extends AbstractService {
     String fileName = file.getPath().getName();
     if (fileName != null
     && !fileName.equalsIgnoreCase(currentFile)) {
-      if (file.getLen() > 0) {
+      if (!isEmptyFile(file, fs)) {
         Path src = file.getPath().makeQualified(fs);
         String destDir = getCategoryJobOutTmpPath(getCategoryFromSrcPath(src))
         .toString();
@@ -329,10 +330,47 @@ public class LocalStreamService extends AbstractService {
           results.put(file, destDir);
         collectorPaths.put(fileName, file);
       } else {
-        LOG.info("File [" + fileName + "] of size 0 bytes found. Deleting it");
+        LOG.info("Empty File [" + fileName + "] found. " +
+        "Deleting it");
         fs.delete(file.getPath(), false);
       }
     }
+  }
+
+  /*
+   * Try reading a byte from a file to declare whether it's empty
+   * or not as filesize isn't a right indicator in hadoop to say
+   * whether file has data or not
+   */
+  private boolean isEmptyFile(FileStatus fileStatus, FileSystem fs){
+    boolean retVal=false;
+    FSDataInputStream in=null;
+    try {
+      in = fs.open(fileStatus.getPath());
+      byte[] data = new byte[1];
+      //try reading 1 byte
+      int bytesRead = in.read(data);
+      if (bytesRead == 1) {
+        //not empty file
+        retVal=false;
+      } else {
+        //not able to read 1 bytes also then empty file
+        retVal=true;
+      }
+    } catch (IOException e) {
+      LOG.error("Unable to find if file is empty or not ["+ fileStatus
+      .getPath() + "]", e);
+    }
+    finally {
+      if (in != null) {
+        try {
+          in.close();
+        }catch (IOException e1) {
+          LOG.error("Error in closing file [" + fileStatus.getPath()+ "]", e1);
+        }
+      }
+    }
+    return retVal;
   }
 
   private void populateCheckpointPathForCollector(
