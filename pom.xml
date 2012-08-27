@@ -10,7 +10,7 @@
 
   <groupId>com.inmobi.databus</groupId>
   <artifactId>databus-parent</artifactId>
-  <version>1.1.5</version>
+  <version>1.1.6</version>
   <name>Databus</name>
   <packaging>pom</packaging>
 
