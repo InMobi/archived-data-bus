@@ -68,6 +68,11 @@ public class FSCheckpointProvider implements CheckpointProvider {
     Path newCheckpoint = getNewCheckpointPath(key);
     try {
 
+      if (fs.exists(newCheckpoint)) {
+        LOG.info("Old Temporary checkpoint file exists. Deleting [" +
+        newCheckpoint +"]");
+        fs.delete(newCheckpoint, true);
+      }
       FSDataOutputStream out = fs.create(newCheckpoint);
       out.write(checkpoint);
       out.close();
