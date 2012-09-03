@@ -25,6 +25,11 @@
       <name>mvn central repo</name>
       <url>http://repo1.maven.org maven2/</url>
     </repository>
+    <repository>
+      <id>InMobiRepository</id>
+      <name>InMobi Internal Repository</name>
+      <url>http://build.corp.inmobi.com/nexus/content/repositories/releases</url>
+    </repository>
   </repositories>
 
   <profiles>
@@ -127,9 +132,9 @@
         <version>1.1</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hadoop.tools</groupId>
+        <groupId>org.apache.hadoop.inmobi.tools</groupId>
         <artifactId>hadoop-distcp</artifactId>
-        <version>0.1-SNAPSHOT</version>
+        <version>0.2</version>
       </dependency>
       <dependency>
         <groupId>org.codehaus.jackson</groupId>
