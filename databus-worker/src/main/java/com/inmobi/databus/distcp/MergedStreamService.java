@@ -70,7 +70,9 @@ public class MergedStreamService extends DistcpBaseService {
         return;
       }
 
-      addMissingPaths(missingDirsCommittedPaths, -1, null);
+      synchronized (getDestCluster()) {
+        addPublishMissingPaths(missingDirsCommittedPaths, -1, null);
+      }
 
       Path inputFilePath = getInputFilePath(consumePaths, tmp);
       if (inputFilePath == null) {
@@ -104,16 +106,18 @@ public class MergedStreamService extends DistcpBaseService {
         Map<String, List<Path>> categoriesToCommit = prepareForCommit(tmpOut);
         synchronized (getDestCluster()) {
           long commitTime = getDestCluster().getCommitTime();
-          addMissingPaths(missingDirsCommittedPaths, commitTime,
+          addPublishMissingPaths(missingDirsCommittedPaths, commitTime,
               categoriesToCommit.keySet());
 
           // category, Set of Paths to commit
           committedPaths = doLocalCommit(commitTime, categoriesToCommit);
-          for (Map.Entry<String, Set<Path>> entry : committedPaths
+          for (Map.Entry<String, Set<Path>> entry : missingDirsCommittedPaths
               .entrySet()) {
-            Set<Path> filesList = missingDirsCommittedPaths.get(entry.getKey());
+            Set<Path> filesList = committedPaths.get(entry.getKey());
             if (filesList != null)
-              entry.getValue().addAll(filesList);
+              filesList.addAll(entry.getValue());
+            else
+              committedPaths.put(entry.getKey(), entry.getValue());
           }
         }
         // Prepare paths for MirrorStreamConsumerService
@@ -131,11 +135,10 @@ public class MergedStreamService extends DistcpBaseService {
     }
   }
   
-  private void addMissingPaths(
+  private void addPublishMissingPaths(
       Map<String, Set<Path>> missingDirsCommittedPaths, long commitTime,
       Set<String> categoriesToCommit)
       throws Exception {
-    synchronized (getDestCluster()) {
       Map<String, Set<Path>> missingDirsforCategory = null;
       
       if(categoriesToCommit!=null) {
@@ -164,7 +167,6 @@ public class MergedStreamService extends DistcpBaseService {
           }
         }
       }
-    }
   }
 
   /*
