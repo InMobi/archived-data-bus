@@ -13,36 +13,10 @@
  */
 package com.inmobi.databus;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
-import org.apache.log4j.Logger;
-import org.testng.annotations.Test;
+public interface AbstractServiceTest {
 
-import com.inmobi.databus.local.LocalStreamService;
+  public abstract Cluster getCluster();
 
-@Test
-public class AbstractServiceTest {
-
-  private static Logger LOG = Logger.getLogger(ClusterTest.class);
-
-  public void getMSecondsTillNextRun() {
-
-    Date date = new Date(12819279812l);
-    SimpleDateFormat format = new SimpleDateFormat("yyyy:MM:dd:HH:mm:ss:SS");
-    LOG.info("Test Date [" + format.format(date) + "]");
-    try {
-      LocalStreamService service = new LocalStreamService(null,
-          ClusterTest.buildLocalCluster(), null);
-
-      long mSecondsTillNextMin = service.getMSecondsTillNextRun(date.getTime());
-      LOG.info("mSecondsTillNextMin = [" + mSecondsTillNextMin + "]");
-      long roundedDate = date.getTime() + mSecondsTillNextMin;
-      LOG.info("Rounded Date to next MIN [" + format.format(roundedDate) + "]");
-      assert (roundedDate % 60000) == 0;
-    } catch (Exception e) {
-      LOG.warn(e.getMessage());
-    }
-  }
-
+  public abstract void publishMissingPaths() throws Exception;
 }

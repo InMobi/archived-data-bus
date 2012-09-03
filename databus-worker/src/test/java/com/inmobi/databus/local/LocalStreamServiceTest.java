@@ -13,31 +13,15 @@
  */
 package com.inmobi.databus.local;
 
-import java.text.NumberFormat;
-
-import java.util.TreeSet;
-
-import java.io.IOException;
-
-import java.io.BufferedInputStream;
-import java.io.File;
 import java.net.URI;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.inmobi.databus.CheckpointProvider;
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.ClusterTest;
 import com.inmobi.databus.DatabusConfig;
@@ -47,13 +31,9 @@ import com.inmobi.databus.FSCheckpointProvider;
 import com.inmobi.databus.SourceStream;
 import com.inmobi.databus.TestMiniClusterUtil;
 import com.inmobi.databus.local.LocalStreamService.CollectorPathFilter;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.log4j.Logger;
 import org.testng.Assert;
@@ -317,398 +297,123 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
 
     return new DatabusConfig(streamMap, clusterMap, defaults);
   }
-
+  
   @Test
-  public void testPublishMissingPaths() throws Exception {
-    DatabusConfigParser configParser = new DatabusConfigParser(
-        "test-lss-pub-databus.xml");
-
-    DatabusConfig config = configParser.getConfig();
-
-    FileSystem fs = FileSystem.getLocal(new Configuration());
-
-    ArrayList<Cluster> clusterList = new ArrayList<Cluster>(config
-        .getClusters().values());
-    Cluster cluster = clusterList.get(0);
-    TestLocalStreamService service = new TestLocalStreamService(config,
-        cluster, new FSCheckpointProvider(cluster.getCheckpointDir()));
-
-    ArrayList<SourceStream> sstreamList = new ArrayList<SourceStream>(config
-        .getSourceStreams().values());
-
-    SourceStream sstream = sstreamList.get(0);
-
-    Calendar behinddate = new GregorianCalendar();
-    Calendar todaysdate = new GregorianCalendar();
-    behinddate.add(Calendar.HOUR_OF_DAY, -2);
-    behinddate.set(Calendar.SECOND, 0);
-
-    String basepublishPaths = cluster.getLocalFinalDestDirRoot()
-        + sstream.getName() + File.separator;
-    String publishPaths = basepublishPaths
-        + getDateAsYYYYMMDDHHMMPath(behinddate.getTime());
-
-    fs.mkdirs(new Path(publishPaths));
-
-    service.publishMissingPaths(fs);
-
-    VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
-        basepublishPaths);
-
-    todaysdate.add(Calendar.HOUR_OF_DAY, 2);
-
-    service.publishMissingPaths(fs);
-
-    VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
-        basepublishPaths);
-
-    fs.delete(new Path(cluster.getRootDir()), true);
-
-    fs.close();
-  }
-
-  private String getDateAsYYYYMMDD(Date date) {
-    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    return dateFormat.format(date);
-  }
-
-  public static String getDateAsYYYYMMDDHHPath(Date date) {
-    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator + "MM"
-        + File.separator + "dd" + File.separator + "HH" + File.separator);
-    return dateFormat.format(date);
-  }
-
-  public static String getDateAsYYYYMMDDHHMMSS(Date date) {
-    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm");
-    return dateFormat.format(date);
-  }
-
-  public static String getDateAsYYYYMMDDHHMMPath(Date date) {
-    DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator + "MM"
-        + File.separator + "dd" + File.separator + "HH" + File.separator + "mm");
-    return dateFormat.format(date);
-  }
-  
-  public static void testPublishMissingPaths(TestService service)
-      throws Exception {
+  public void testPopulateTrashPaths() throws Exception {
+    FileStatus[] status = new FileStatus[10];
+    String[] expectedstatus = new String[10];
     
-    FileSystem fs = FileSystem.getLocal(new Configuration());
-    Calendar behinddate = new GregorianCalendar();
-    Calendar todaysdate = new GregorianCalendar();
-    String basepublishPaths = service.getCluster().getFinalDestDirRoot()
-        + "streams_publish" + File.separator;
-    String publishPaths = basepublishPaths
-        + Cluster.getDateAsYYYYMMDDHHMNPath(behinddate.getTime());
+    status[0] = new FileStatus(20, false, 3, 23823, 2438232, new Path(
+        "/databus/data/test1/testcluster1/test1-2012-08-29-07-09_00000"));
+    status[1] = new FileStatus(20, false, 3, 23823, 2438232, new Path(
+        "/databus/data/test1/testcluster1/test1-2012-08-29-07-04_00000"));
+    status[2] = new FileStatus(20, false, 3, 23823, 2438232, new Path(
+        "/databus/data/test2/testcluster1/test2-2012-08-29-07-09_00003"));
+    status[3] = new FileStatus(20, false, 3, 23823, 2438232, new Path(
+        "/databus/data/test1/testcluster2/test1-2012-08-13-07-09_00000"));
+    status[4] = new FileStatus(20, false, 3, 23823, 2438232, new Path(
+        "/databus/data/test1/testcluster1/test1-2012-08-29-07-09_00009"));
+    status[5] = new FileStatus(20, false, 3, 23823, 2438232, new Path(
+        "/databus/data/test1/testcluster1/test1-2012-08-29-07-12_00000"));
+    status[6] = new FileStatus(20, false, 3, 23823, 2438232, new Path(
+        "/databus/data/test1/testcluster1/test1-2012-08-29-07-10_00000"));
+    status[7] = new FileStatus(20, false, 3, 23823, 2438232, new Path(
+        "/databus/data/test2/testcluster1/test2-2012-08-29-07-45_00000"));
+    status[8] = new FileStatus(20, false, 3, 23823, 2438232, new Path(
+        "/databus/data/test1/testcluster2/test1-2012-08-29-07-09_00078"));
+    status[9] = new FileStatus(20, false, 3, 23823, 2438232, new Path(
+        "/databus/data/test1/testcluster2/test1-2012-08-29-07-04_00034"));
     
-    fs.mkdirs(new Path(publishPaths));
+    expectedstatus[0] = "/databus/data/test1/testcluster1/test1-2012-08-29-07-04_00000";
+    expectedstatus[1] = "/databus/data/test1/testcluster1/test1-2012-08-29-07-09_00000";
+    expectedstatus[2] = "/databus/data/test1/testcluster1/test1-2012-08-29-07-09_00009";
+    expectedstatus[3] = "/databus/data/test1/testcluster1/test1-2012-08-29-07-10_00000";
+    expectedstatus[4] = "/databus/data/test1/testcluster1/test1-2012-08-29-07-12_00000";
     
-    service.publishMissingPaths(fs);
+    expectedstatus[5] = "/databus/data/test1/testcluster2/test1-2012-08-13-07-09_00000";
+    expectedstatus[6] = "/databus/data/test1/testcluster2/test1-2012-08-29-07-04_00034";
+    expectedstatus[7] = "/databus/data/test1/testcluster2/test1-2012-08-29-07-09_00078";
     
-    VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
-        basepublishPaths);
     
-    todaysdate.add(Calendar.HOUR_OF_DAY, 2);
+    expectedstatus[8] = "/databus/data/test2/testcluster1/test2-2012-08-29-07-09_00003";
+    expectedstatus[9] = "/databus/data/test2/testcluster1/test2-2012-08-29-07-45_00000";
+
+    Set<FileStatus> trashSet = new HashSet<FileStatus>();
+    for (int i = 0; i < 10; ++i) {
+      trashSet.add(status[i]);
+    }
     
-    service.publishMissingPaths(fs);
+    Cluster cluster = ClusterTest.buildLocalCluster();
+    TestLocalStreamService service = new TestLocalStreamService(
+        buildTestDatabusConfig(), cluster, new FSCheckpointProvider(
+            cluster.getCheckpointDir()));
     
-    VerifyMissingPublishPaths(fs, todaysdate.getTimeInMillis(), behinddate,
-        basepublishPaths);
+    Map<Path, Path> trashCommitPaths = service
+        .populateTrashCommitPaths(trashSet);
+
+    Set<Path> srcPaths = trashCommitPaths.keySet();
     
-    fs.delete(new Path(basepublishPaths), true);
-  }
-  
-  public static void VerifyMissingPublishPaths(FileSystem fs, long todaysdate,
-      Calendar behinddate, String basepublishPaths) throws Exception {
-    long diff = todaysdate - behinddate.getTimeInMillis();
-    while (diff > 60000) {
-      String checkcommitpath = basepublishPaths
-          + Cluster.getDateAsYYYYMMDDHHMNPath(behinddate.getTime());
-      LOG.debug("Checking for Created Missing Path: " + checkcommitpath);
-      fs.exists(new Path(checkcommitpath));
-      behinddate.add(Calendar.MINUTE, 1);
-      diff = todaysdate - behinddate.getTimeInMillis();
+    Iterator<Path> it = srcPaths.iterator();
+    int i = 0;
+    
+    while (it.hasNext()) {
+      String actualPath = it.next().toString();
+      String expectedPath = expectedstatus[i];
+      
+      LOG.debug("Comparing Trash Paths Actual [" + actualPath + "] Expected ["
+          + expectedPath + "]");
+      Assert.assertEquals(actualPath, expectedPath);
+      
+      i++;
     }
   }
-
+  
   @Test
   public void testMapReduce() throws Exception {
     LOG.info("Running LocalStreamIntegration for filename test-lss-databus.xml");
-    testMapReduce("test-lss-databus.xml", true);
+    testMapReduce("test-lss-databus.xml", 1);
   }
   
   @Test(groups = { "integration" })
   public void testMultipleStreamMapReduce() throws Exception {
     LOG.info("Running LocalStreamIntegration for filename test-lss-multiple-databus.xml");
-    testMapReduce("test-lss-multiple-databus.xml", true);
+    testMapReduce("test-lss-multiple-databus.xml", 1);
     LOG.info("Running LocalStreamIntegration for filename test-lss-multiple-databus.xml, Running Twice");
-    testMapReduce("test-lss-multiple-databus.xml", false);
-    testMapReduce("test-lss-multiple-databus.xml", true);
+    testMapReduce("test-lss-multiple-databus.xml", 2);
   }
   
-  private static final NumberFormat idFormat = NumberFormat.getInstance();
-  
-  static {
-    idFormat.setGroupingUsed(false);
-    idFormat.setMinimumIntegerDigits(5);
-  }
-
-  public static List<String> createLocalStreamData(FileSystem fs,
-      String streamName,
-      String pathName, int filesCount) throws Exception {
+  private void testMapReduce(String fileName, int timesToRun) throws Exception {
+    DatabusConfigParser parser = new DatabusConfigParser(fileName);
+    DatabusConfig config = parser.getConfig();
     
-    Path createPath = new Path(pathName);
-    fs.mkdirs(createPath);
-    List<String> filesList = new ArrayList<String>();
+    Set<String> clustersToProcess = new HashSet<String>();
+    Set<TestLocalStreamService> services = new HashSet<TestLocalStreamService>();
     
-    for (int j = 0; j < filesCount; ++j) {
-      Thread.sleep(1000);
-      String filenameStr = new String(streamName + "-"
-          + getDateAsYYYYMMDDHHMMSS(new Date()) + "_" + idFormat.format(j));
-      filesList.add(j, filenameStr);
-      Path path = new Path(createPath, filesList.get(j));
-      
-      LOG.debug("Creating Test Data with filename [" + filesList.get(j) + "]");
-      FSDataOutputStream streamout = fs.create(path);
-      streamout.writeBytes("Creating Test data for teststream "
-          + filesList.get(j));
-      
-      streamout.close();
-
-      Assert.assertTrue(fs.exists(path));
-    }
-    
-    return filesList;
-  }
-  
-  private void testMapReduce(String filename, boolean runOnce) throws Exception {
-
-    final int NUM_OF_FILES = 25;
-
-    DatabusConfigParser configParser = new DatabusConfigParser(filename);
-    DatabusConfig config = configParser.getConfig();
-
-    FileSystem fs = FileSystem.getLocal(new Configuration());
-
-    List<TestLocalStreamService> services = new ArrayList<TestLocalStreamService>();
-
-    for (Map.Entry<String, Cluster> cluster : config.getClusters().entrySet()) {
-      cluster
-          .getValue()
-          .getHadoopConf()
-          .set("mapred.job.tracker",
-              super.CreateJobConf().get("mapred.job.tracker"));
-
-      services.add(new TestLocalStreamService(config, cluster.getValue(),
-          new FSCheckpointProvider(cluster.getValue().getCheckpointDir())));
-    }
-    
-    Iterator<TestLocalStreamService> serviceItr = services.iterator();
-
-    for (Cluster cluster : config.getClusters().values()) {
-      TestLocalStreamService service = serviceItr.next();
-      testPublishMissingPaths(service);
-      String testRootDir = cluster.getRootDir();
-      if (!runOnce)
-        fs.delete(new Path(testRootDir), true);
-
-      Calendar behinddate = new GregorianCalendar();
-      behinddate.add(Calendar.HOUR_OF_DAY, -2);
-      Map<String, List<String>> files = new HashMap<String, List<String>>();
-      Map<String, Set<String>> prevfiles = new HashMap<String, Set<String>>();
-
-      for (Map.Entry<String, SourceStream> sstream : config.getSourceStreams()
-          .entrySet()) {
-        
-        Set<String> prevfilesList = new TreeSet<String>();
-        String pathName = cluster.getDataDir() + File.separator
-            + sstream.getValue().getName() + File.separator + cluster.getName()
-            + File.separator;
-        
-        FileStatus[] fStats = fs.listStatus(new Path(pathName));
-        
-        LOG.debug("Adding Previous Run Files in Path: " + pathName);
-        for (FileStatus fStat : fStats) {
-          LOG.debug("Previous File: " + fStat.getPath().getName());
-          prevfilesList.add(fStat.getPath().getName());
-        }
-
-        List<String> filesList = createLocalStreamData(fs, sstream.getValue()
-            .getName(), pathName, NUM_OF_FILES);
-        
-        files.put(sstream.getValue().getName(), filesList);
-        prevfiles.put(sstream.getValue().getName(), prevfilesList);
-
-        String dummycommitpath = cluster.getLocalFinalDestDirRoot()
-            + sstream.getValue().getName() + File.separator
-            + getDateAsYYYYMMDDHHMMPath(behinddate.getTime());
-        fs.mkdirs(new Path(dummycommitpath));
+    for (SourceStream sStream : config.getSourceStreams().values()) {
+      for (String cluster : sStream.getSourceClusters()) {
+        clustersToProcess.add(cluster);
       }
-
-      {
-        List<String> tmpFilesList = null;
-        
-        LOG.debug("Creating Tmp Files for LocalStream");
-        String pathName = cluster.getTmpPath() + File.separator
-              + service.getName() + File.separator;
-        tmpFilesList = createLocalStreamData(fs, service.getName(), pathName,
-              NUM_OF_FILES);
-        
-        service.runOnce();
-        
-        LOG.debug("Verifying Tmp Files for LocalStream");
-        for (int j = 0; j < tmpFilesList.size(); ++j) {
-          Path tmppath = new Path(pathName + File.separator
-              + tmpFilesList.get(j));
-          Assert.assertFalse(fs.exists(tmppath));
-        }
-
-      }
-
-      LOG.info("Tmp Path does not exist for cluster " + cluster.getName());
-
-      for (Map.Entry<String, SourceStream> sstream : config.getSourceStreams()
-          .entrySet()) {
-        
-        List<String> filesList = files.get(sstream.getValue().getName());
-        Set<String> prevfilesList = prevfiles.get(sstream.getValue().getName());
-
-          Date todaysdate = new Date();
-          Path trashpath = cluster.getTrashPathWithDateHour();
-          String commitpath = cluster.getLocalFinalDestDirRoot()
-              + sstream.getValue().getName() + File.separator
-              + getDateAsYYYYMMDDHHPath(todaysdate);
-          FileStatus[] mindirs = fs.listStatus(new Path(commitpath));
-
-          FileStatus mindir = mindirs[0];
-
-          for (FileStatus minutedir : mindirs) {
-            if (mindir.getPath().getName()
-                .compareTo(minutedir.getPath().getName()) < 0) {
-              mindir = minutedir;
-            }
-          }
-          // Make sure all the paths from dummy to mindir are created
-        VerifyMissingPublishPaths(fs, todaysdate.getTime(), behinddate,
-            cluster.getLocalFinalDestDirRoot() + sstream.getValue().getName());
-
-          try {
-            Integer.parseInt(mindir.getPath().getName());
-            String streams_local_dir = commitpath + mindir.getPath().getName()
-              + File.separator + cluster.getName();
-
-            LOG.debug("Checking in Path for mapred Output: "
-                + streams_local_dir);
-          
-          // First check for the previous current file
-            if(!prevfilesList.isEmpty()) {
-              String prevcurrentFile = (String) prevfilesList.toArray()[prevfilesList
-                                                                        .size() - 1];
-            LOG.debug("Checking Previous Run Current file in mapred Output ["
-                + prevcurrentFile + "]");
-              Assert.assertTrue(fs.exists(new Path(streams_local_dir + "-"
-                  + prevcurrentFile + ".gz")));
-            }
-          
-          
-            for (int j = 0; j < NUM_OF_FILES - 1; ++j) {
-            LOG.debug("Checking file in mapred Output [" + filesList.get(j)
-                + "]");
-              Assert.assertTrue(fs.exists(new Path(streams_local_dir + "-"
-                + filesList.get(j) + ".gz")));
-            }
-
-          CheckpointProvider provider = service.getCheckpointProvider();
-
-          String checkpoint = new String(provider.read(sstream.getValue()
-              .getName() + cluster.getName()));
-
-          LOG.debug("Checkpoint for " + sstream.getValue().getName()
-              + cluster.getName() + " is " + checkpoint);
-
-            LOG.debug("Comparing Checkpoint " + checkpoint + " and "
-              + filesList.get(NUM_OF_FILES - 2));
-          Assert.assertTrue(checkpoint.compareTo(filesList
-              .get(NUM_OF_FILES - 2)) == 0);
-          
-          LOG.debug("Verifying Collector Paths");
-          
-          Path collectorPath = new Path(cluster.getDataDir(), sstream
-              .getValue().getName() + File.separator + cluster.getName());
-          
-          for (int j = NUM_OF_FILES - 7; j < NUM_OF_FILES; ++j) {
-            LOG.debug("Verifying Collector Path " + collectorPath
-                + " Previous File " + filesList.get(j));
-            Assert.assertTrue(fs.exists(new Path(collectorPath, filesList
-                .get(j))));
-          }
-
-          LOG.debug("Verifying Trash Paths");
-
-          for (String trashfile : prevfilesList) {
-            String trashfilename = cluster.getName() + "-" + trashfile;
-            LOG.debug("Verifying Trash Path " + trashpath + " Previous File "
-                + trashfilename);
-            Assert.assertTrue(fs.exists(new Path(trashpath, trashfilename)));
-          }
-
-          // Here 6 is the number of files - trash paths which are excluded
-          for (int j = 0; j < NUM_OF_FILES - 7; ++j) {
-            if (filesList.get(j).compareTo(checkpoint) <= 0) {
-              String trashfilename = cluster.getName() + "-" + filesList.get(j);
-              LOG.debug("Verifying Trash Path " + trashpath + "File "
-                  + trashfilename);
-              Assert.assertTrue(fs.exists(new Path(trashpath, trashfilename)));
-            } else
-              break;
-          }
-
-          } catch (NumberFormatException e) {
-
-          }
-      }
-      fs.delete(cluster.getTrashPathWithDateHour(), true);
-      if (runOnce)
-        fs.delete(new Path(testRootDir), true);
-    }
-
-    fs.close();
-  }
-  
-  public static interface TestService {
-    Cluster getCluster();
-    
-    void publishMissingPaths(FileSystem fs) throws Exception;
-  }
-
-  public static class TestLocalStreamService extends LocalStreamService
-      implements TestService {
-		private Cluster srcCluster = null;
-    private CheckpointProvider provider = null;
-
-    public TestLocalStreamService(DatabusConfig config, Cluster cluster,
-        CheckpointProvider provider) {
-      super(config, cluster, provider);
-			this.srcCluster = cluster;
-      this.provider = provider;
-    }
-
-    public void runOnce() throws Exception {
-      super.execute();
-    }
-
-    public void publishMissingPaths(FileSystem fs) throws Exception {
-      super.publishMissingPaths(fs, srcCluster.getLocalFinalDestDirRoot());
-    }
-
-    @Override
-    public Cluster getCluster() {
-      return srcCluster;
     }
     
-    public CheckpointProvider getCheckpointProvider() {
-      return provider;
+    for (String clusterName : clustersToProcess) {
+      Cluster cluster = config.getClusters().get(clusterName);
+      cluster.getHadoopConf().set("mapred.job.tracker",
+          super.CreateJobConf().get("mapred.job.tracker"));
+      services.add(new TestLocalStreamService(config, cluster,
+          new FSCheckpointProvider(cluster.getCheckpointDir())));
     }
+    
+    for (TestLocalStreamService service : services) {
+      for (int i = 0; i < timesToRun; ++i) {
+        service.preExecute();
+        service.execute();
+        service.postExecute();
+        Thread.sleep(60000);
+      }
+      service.getFileSystem().delete(
+          new Path(service.getCluster().getRootDir()), true);
+    }
+    
   }
-  
 
 }

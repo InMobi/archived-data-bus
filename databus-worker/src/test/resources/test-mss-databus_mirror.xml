@@ -1,6 +1,6 @@
 <databus>
   <defaults>
-    <rootdir>/mergeservice</rootdir>
+    <rootdir>/merge_mirrorservice</rootdir>
     <retentioninhours>24</retentioninhours>
     <trashretentioninhours>48</trashretentioninhours>
   </defaults>

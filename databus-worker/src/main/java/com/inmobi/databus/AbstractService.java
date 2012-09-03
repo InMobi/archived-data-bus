@@ -83,14 +83,24 @@ public abstract class AbstractService implements Service, Runnable {
 
   protected abstract void execute() throws Exception;
   
+  protected void preExecute() throws Exception {
+  }
+  
+  protected void postExecute() throws Exception {
+  }
+
   @Override
   public void run() {
     LOG.info("Starting Service [" + Thread.currentThread().getName() + "]");
     while (!stopped && !thread.isInterrupted()) {
       long startTime = System.currentTimeMillis();
       try {
+        LOG.info("Performing Pre Execute Step before a run...");
+        preExecute();
         LOG.info("Starting a run...");
         execute();
+        LOG.info("Performing Post Execute Step after a run...");
+        postExecute();
         if (stopped || thread.isInterrupted())
           return;
       } catch (Exception e) {

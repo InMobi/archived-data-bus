@@ -62,8 +62,7 @@ public class Databus implements Service, DatabusConstants {
       }
       //Start LocalStreamConsumerService for this cluster if it's the source of any stream
       if (cluster.getSourceStreams().size() > 0) {
-        services.add(new LocalStreamService(config, cluster,
-        new FSCheckpointProvider(cluster.getCheckpointDir())));
+        services.add(getLocalStreamService(config, cluster));
       }
 
 			Set<String> mergedStreamRemoteClusters = new HashSet<String>();
@@ -88,12 +87,12 @@ public class Databus implements Service, DatabusConstants {
 
 
 			for (String remote : mergedStreamRemoteClusters) {
-				services.add(new MergedStreamService(config, config.getClusters().get(
-				    remote), cluster));
+        services.add(getMergedStreamService(config,
+            config.getClusters().get(remote), cluster));
       }
 			for (String remote : mirroredRemoteClusters) {
-				services.add(new MirrorStreamService(config, config.getClusters().get(
-				    remote), cluster));
+        services.add(getMirrorStreamService(config,
+            config.getClusters().get(remote), cluster));
       }
     }
 
@@ -106,6 +105,22 @@ public class Databus implements Service, DatabusConstants {
       //Start a purger per cluster
       services.add(new DataPurgerService(config, cluster));
     }
+  }
+  
+  protected LocalStreamService getLocalStreamService(DatabusConfig config,
+      Cluster cluster) {
+    return new LocalStreamService(config, cluster, new FSCheckpointProvider(
+        cluster.getCheckpointDir()));
+  }
+  
+  protected MergedStreamService getMergedStreamService(DatabusConfig config,
+      Cluster srcCluster, Cluster dstCluster) throws Exception {
+    return new MergedStreamService(config, srcCluster, dstCluster);
+  }
+  
+  protected MirrorStreamService getMirrorStreamService(DatabusConfig config,
+      Cluster srcCluster, Cluster dstCluster) throws Exception {
+    return new MirrorStreamService(config, srcCluster, dstCluster);
   }
 
   @Override
@@ -127,21 +142,24 @@ public class Databus implements Service, DatabusConstants {
 
   @Override
   public void start() throws Exception{
+    startDatabus();
+    //If all threads are finished release leadership
+    System.exit(0);
+  }
+  
+  public void startDatabus() throws Exception {
     try {
       init();
       for (AbstractService service : services) {
         service.start();
       }
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       LOG.warn("Error is starting service", e);
     }
-    //Block this method to avoid losing leadership of current work
+    // Block this method to avoid losing leadership of current work
     join();
-    //If all threads are finished release leadership
-    System.exit(0);
   }
-  
+
   private static String getProperty(Properties prop, String property) {
     String propvalue = prop.getProperty(property);
     if (new File(propvalue).exists()) {

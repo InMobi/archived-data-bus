@@ -13,6 +13,10 @@
 */
 package com.inmobi.databus.purge;
 
+import com.inmobi.databus.local.TestLocalStreamService;
+
+import java.text.NumberFormat;
+
 import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -181,6 +185,13 @@ public class DataPurgerServiceTest {
   }
 
   final static int NUM_OF_FILES = 35;
+  
+  private static final NumberFormat idFormat = NumberFormat.getInstance();
+  
+  static {
+    idFormat.setGroupingUsed(false);
+    idFormat.setMinimumIntegerDigits(5);
+  }
 
   private void createTestPurgefiles(FileSystem fs, Cluster cluster,
       Calendar date)
@@ -199,7 +210,8 @@ public class DataPurgerServiceTest {
 
       for (int j = 0; j < NUM_OF_FILES; ++j) {
         files[j] = new String(cluster.getName() + "-"
-            + LocalStreamServiceTest.getDateAsYYYYMMDDHHMMSS(new Date()));
+            + TestLocalStreamService.getDateAsYYYYMMDDHHmm(new Date()) + "_"
+            + idFormat.format(j));
         {
           Path path = new Path(commitpath + File.separator + files[j]);
           // LOG.info("Creating streams_local File " + path.getName());

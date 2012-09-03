@@ -92,7 +92,7 @@ public class Cluster {
     return dateFormat.format(date);
   }
 
-  private String getDateAsYYYYMMDDHHPath(long commitTime) {
+  public static String getDateAsYYYYMMDDHHPath(long commitTime) {
     Date date = new Date(commitTime);
     DateFormat dateFormat = new SimpleDateFormat("yyyy" + File.separator + "MM"
         + File.separator + "dd" + File.separator + "HH" + File.separator);
