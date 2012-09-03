@@ -13,19 +13,6 @@
 */
 package com.inmobi.databus.distcp;
 
-import java.util.TreeMap;
-
-import java.util.TreeSet;
-
-import com.inmobi.databus.Cluster;
-import com.inmobi.databus.DatabusConfig;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,6 +23,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.DatabusConfig;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
 /*
  * Handles MergedStreams for a Cluster
@@ -81,6 +77,11 @@ public class MergedStreamService extends DistcpBaseService {
         LOG.warn("No data to pull from " + "Cluster ["
                 + getSrcCluster().getHdfsUrl() + "]" + " to Cluster ["
                 + getDestCluster().getHdfsUrl() + "]");
+        if (missingDirsCommittedPaths.size() > 0) {
+          LOG.warn("Adding Missing Directories for Pull "
+              + missingDirsCommittedPaths.size());
+          commitMirroredConsumerPaths(missingDirsCommittedPaths, tmp);
+        }
         return;
       }
       LOG.warn("Starting a distcp pull from [" + inputFilePath.toString()

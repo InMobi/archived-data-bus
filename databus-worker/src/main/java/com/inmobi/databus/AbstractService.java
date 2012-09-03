@@ -216,9 +216,12 @@ public abstract class AbstractService implements Service, Runnable {
 				while (isMissingPaths(commitTime, prevRuntime)) {
 					String missingPath = Cluster.getDestDir(destDir, categoryName,
 					    prevRuntime);
-					LOG.debug("Creating Missing Directory [" + missingPath + "]");
-          missingDirectories.add(new Path(missingPath));
-					fs.mkdirs(new Path(missingPath));
+          Path missingDir = new Path(missingPath);
+          if (!fs.exists(missingDir)) {
+            LOG.debug("Creating Missing Directory [" + missingPath + "]");
+            missingDirectories.add(new Path(missingPath));
+            fs.mkdirs(missingDir);
+          }
 					prevRuntime += MILLISECONDS_IN_MINUTE;
 				}
 			}
@@ -239,7 +242,8 @@ public abstract class AbstractService implements Service, Runnable {
         missingdirsinstream = publishMissingPaths(fs, destDir,
             System.currentTimeMillis(), file
 				    .getPath().getName());
-        missingDirectories.put(file.getPath().getName(), missingdirsinstream);
+        if (missingdirsinstream.size() > 0)
+          missingDirectories.put(file.getPath().getName(), missingdirsinstream);
 			}
 		}
 		LOG.info("Done Creating All the Missing Paths in " + destDir);
