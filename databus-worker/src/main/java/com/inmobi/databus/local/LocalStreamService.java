@@ -163,23 +163,32 @@ public class LocalStreamService extends AbstractService {
 
       if (consumeCluster) {
         Path tmpConsumerPath = new Path(tmpPath, clusterEntry.getName());
-        FSDataOutputStream out = fs.create(tmpConsumerPath);
+        boolean isFileOpened = false;
+        FSDataOutputStream out = null;
         for (Path destPath : mvPaths.values()) {
           String category = getCategoryFromDestPath(destPath);
           if (clusterEntry.getDestinationStreams().containsKey(category)) {
+            if (!isFileOpened) {
+              out = fs.create(tmpConsumerPath);
+              isFileOpened = true;
+            }
             out.writeBytes(destPath.toString());
             LOG.debug("Adding [" + destPath + "]  for consumer ["
             + clusterEntry.getName() + "] to commit Paths in ["
             + tmpConsumerPath + "]");
+
             out.writeBytes("\n");
           }
         }
-        out.close();
-        Path finalConsumerPath = new Path(cluster.getConsumePath(clusterEntry),
-        Long.toString(System.currentTimeMillis()));
-        LOG.debug("Moving [" + tmpConsumerPath + "] to [ " + finalConsumerPath
-        + "]");
-        consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
+        if (isFileOpened) {
+          out.close();
+          Path finalConsumerPath = new Path(
+          cluster.getConsumePath(clusterEntry), Long.toString(System
+          .currentTimeMillis()));
+          LOG.debug("Moving [" + tmpConsumerPath + "] to [ "
+          + finalConsumerPath + "]");
+          consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
+        }
       }
     }
 
@@ -253,14 +262,14 @@ public class LocalStreamService extends AbstractService {
     300000);
   }
 
-	static class CollectorPathFilter implements PathFilter {
-		public boolean accept(Path path) {
-			if (path.getName().endsWith("current")
-			    || path.getName().equalsIgnoreCase("scribe_stats"))
-				return false;
-			return true;
-		}
-	}
+  static class CollectorPathFilter implements PathFilter {
+    public boolean accept(Path path) {
+      if (path.getName().endsWith("current")
+      || path.getName().equalsIgnoreCase("scribe_stats"))
+        return false;
+      return true;
+    }
+  }
 
   public void createListing(FileSystem fs, FileStatus fileStatus,
                             Map<FileStatus, String> results, Set<FileStatus> trashSet,
@@ -283,16 +292,16 @@ public class LocalStreamService extends AbstractService {
         LOG.debug("CheckPoint Key [" + checkPointKey + "] value [ "
         + checkPointValue + "]");
 
-				FileStatus[] files = fs.listStatus(collector.getPath(),
-				    new CollectorPathFilter());
+        FileStatus[] files = fs.listStatus(collector.getPath(),
+        new CollectorPathFilter());
 
-				if(files == null) {
-					LOG.warn("No Files Found in the Collector " + collector.getPath()
-					    + " Skipping Directory");
-					continue;
-				}
+        if(files == null) {
+          LOG.warn("No Files Found in the Collector " + collector.getPath()
+          + " Skipping Directory");
+          continue;
+        }
 
-				String currentFile = getCurrentFile(fs, files, lastFileTimeout);
+        String currentFile = getCurrentFile(fs, files, lastFileTimeout);
 
         for (FileStatus file : files) {
           processFile(file, currentFile, checkPointValue, fs, results,
