@@ -82,6 +82,7 @@ public class TestMirrorStreamService extends MirrorStreamService
         fs.mkdirs(new Path(dummycommitpath));
         files.put(sstream.getValue().getName(), filesList);
       }
+      behinddate.add(Calendar.HOUR_OF_DAY, -2);
     } catch (Exception e) {
       e.printStackTrace();
       Assert.assertFalse(true);

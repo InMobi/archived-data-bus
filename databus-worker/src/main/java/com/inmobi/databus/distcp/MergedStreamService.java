@@ -40,6 +40,7 @@ import org.apache.hadoop.fs.Path;
 public class MergedStreamService extends DistcpBaseService {
 
   private static final Log LOG = LogFactory.getLog(MergedStreamService.class);
+  private Map<String, Set<Path>> missingDirsCommittedPaths = new HashMap<String, Set<Path>>();
 
   public MergedStreamService(DatabusConfig config, Cluster srcCluster,
                              Cluster destinationCluster) throws Exception {
@@ -52,7 +53,7 @@ public class MergedStreamService extends DistcpBaseService {
     try {
       boolean skipCommit = false;
       Map<Path, FileSystem> consumePaths = new HashMap<Path, FileSystem>();
-      Map<String, Set<Path>> missingDirsCommittedPaths = new HashMap<String, Set<Path>>();
+      
 
       Path tmpOut = new Path(getDestCluster().getTmpPath(),
               "distcp_mergedStream_" + getSrcCluster().getName() + "_"
@@ -223,12 +224,12 @@ public class MergedStreamService extends DistcpBaseService {
                 consumer), tmpPath + "_"
                 + new Long(System.currentTimeMillis()).toString());
         consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
-
       } // for each consumer
     } // for each stream
-
+    
 		if (consumerCommitPaths == null || consumerCommitPaths.size() == 0) {
 			LOG.info("consumerCommitPaths is empty for all stream, skipping mirrorCommit");
+      missingDirsCommittedPaths.clear();
 			return;
 		}
     // Do the final mirrorCommit
@@ -247,6 +248,7 @@ public class MergedStreamService extends DistcpBaseService {
                 + entry.getValue() +"]");
       }
     }
+    missingDirsCommittedPaths.clear();
   }
 
   private Map<String, List<Path>> prepareForCommit(Path tmpOut)
