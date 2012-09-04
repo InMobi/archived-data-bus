@@ -78,8 +78,11 @@ public class MergeMirrorStreamTest extends TestMiniClusterUtil {
       Cluster cluster = config.getClusters().get(clusterName);
       cluster.getHadoopConf().set("mapred.job.tracker",
           super.CreateJobConf().get("mapred.job.tracker"));
-      localStreamServices.add(new TestLocalStreamService(config, cluster,
-          new FSCheckpointProvider(cluster.getCheckpointDir())));
+      TestLocalStreamService service = new TestLocalStreamService(config,
+          cluster, new FSCheckpointProvider(cluster.getCheckpointDir()));
+      localStreamServices.add(service);
+      service.getFileSystem().delete(
+          new Path(service.getCluster().getRootDir()), true);
     }
     
     LOG.info("Running LocalStream Service");
@@ -88,7 +91,6 @@ public class MergeMirrorStreamTest extends TestMiniClusterUtil {
       service.runPreExecute();
       service.runExecute();
       service.runPostExecute();
-
     }
 
     Set<TestMergedStreamService> mergedStreamServices = new HashSet<TestMergedStreamService>();

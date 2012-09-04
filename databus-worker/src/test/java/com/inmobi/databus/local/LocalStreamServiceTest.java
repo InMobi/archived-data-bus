@@ -399,8 +399,11 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
       Cluster cluster = config.getClusters().get(clusterName);
       cluster.getHadoopConf().set("mapred.job.tracker",
           super.CreateJobConf().get("mapred.job.tracker"));
-      services.add(new TestLocalStreamService(config, cluster,
-          new FSCheckpointProvider(cluster.getCheckpointDir())));
+      TestLocalStreamService service = new TestLocalStreamService(config,
+          cluster, new FSCheckpointProvider(cluster.getCheckpointDir()));
+      services.add(service);
+      service.getFileSystem().delete(
+          new Path(service.getCluster().getRootDir()), true);
     }
     
     for (TestLocalStreamService service : services) {
@@ -408,7 +411,7 @@ public class LocalStreamServiceTest extends TestMiniClusterUtil {
         service.preExecute();
         service.execute();
         service.postExecute();
-        Thread.sleep(60000);
+        Thread.sleep(1000);
       }
       service.getFileSystem().delete(
           new Path(service.getCluster().getRootDir()), true);
