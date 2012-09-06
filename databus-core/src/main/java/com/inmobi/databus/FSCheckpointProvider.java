@@ -36,6 +36,7 @@ public class FSCheckpointProvider implements CheckpointProvider {
   @Override
   public byte[] read(String key) {
     Path currentCheckpoint = getCheckpointPath(key);
+    BufferedInputStream in=null;
     byte[] buffer = null;
     try {
       LOG.info("checkpoint path:" + currentCheckpoint);
@@ -43,14 +44,22 @@ public class FSCheckpointProvider implements CheckpointProvider {
         LOG.info("No checkpoint to read");
         return null;
       }
-      BufferedInputStream in = new BufferedInputStream(
-          fs.open(currentCheckpoint));
+      in = new BufferedInputStream(
+      fs.open(currentCheckpoint));
       buffer = new byte[in.available()];
       in.read(buffer);
-      in.close();
     } catch (IOException e) {
       LOG.warn("Could not read checkpoint ", e);
       throw new RuntimeException(e);
+    }
+    finally {
+      try {
+        if (in != null)
+          in.close();
+      } catch(IOException e) {
+        LOG.error("Error in closing [" + currentCheckpoint + "]");
+        throw new RuntimeException(e);
+      }
     }
     return buffer;
   }
@@ -74,8 +83,12 @@ public class FSCheckpointProvider implements CheckpointProvider {
         fs.delete(newCheckpoint, true);
       }
       FSDataOutputStream out = fs.create(newCheckpoint);
-      out.write(checkpoint);
-      out.close();
+      try {
+        out.write(checkpoint);
+      }
+      finally {
+        out.close();
+      }
       Path currentCheckpoint = getCheckpointPath(key);
       fs.delete(currentCheckpoint, true);
       fs.rename(newCheckpoint, currentCheckpoint);
