@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <excluded.testng.groups>integration</excluded.testng.groups>
+<!--    <excluded.testng.groups>integration</excluded.testng.groups> -->
   </properties>
 
   <groupId>com.inmobi.databus</groupId>
