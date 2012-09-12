@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-<!--    <excluded.testng.groups>integration</excluded.testng.groups> -->
+    <excluded.testng.groups>integration</excluded.testng.groups>
   </properties>
 
   <groupId>com.inmobi.databus</groupId>
@@ -18,7 +18,7 @@
     <url>https://github.com/InMobi/data-bus</url>
     <developerConnection>scm:git:git@github.com/InMobi/data-bus.git</developerConnection>
   </scm>
-  
+
   <repositories>
     <repository>
       <id>cloudera</id>

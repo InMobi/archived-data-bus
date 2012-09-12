@@ -2,18 +2,18 @@ package com.inmobi.databus.distcp;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
 import com.inmobi.databus.Cluster;
 import com.inmobi.databus.local.TestCreateListing;
-import com.inmobi.databus.utils.DatePathComparator;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -26,18 +26,18 @@ import org.testng.annotations.Test;
 public class TestMirrorStreamPrepForCommit {
 
   private static Logger LOG = Logger.getLogger(TestCreateListing.class);
-  Random randomGenerator = new Random();
-  String databusRoot =  new Long(Math.abs(randomGenerator.nextLong())).toString();
 
   // since tests can run in parallel use a seperate databusRoot for this test
-  Set<Path> testPaths = new TreeSet<Path>();
-  Path rootDir = new Path("/tmp/");
   FileSystem localFs;
-  Path tmpOut = new Path(rootDir,
-  databusRoot + "/system/tmp/distcp_mirror_databusCluster_databusCluster/");
-  Path streamRoot = new Path(tmpOut, "tmp/streams/metric_billing/");
+  Set<String> testPaths = new TreeSet<String>();
+  Path rootDir = new Path("/tmp/");
+  String databusRoot =  this.getClass().getName();
+  Path testRoot = new Path(rootDir, databusRoot);
+  Path tmpOut = new Path(testRoot,
+      "system/tmp/distcp_mirror_databusCluster_databusCluster/");
+  Path streamRoot = new Path(tmpOut, "tmp/streams/stream1/");
   MirrorStreamService service = null;
-  TreeSet<Path> finalExpectedPaths = new TreeSet<Path>();
+  List<Path> finalExpectedPaths = new ArrayList<Path>();
 
   @BeforeTest
   private void setUP() throws Exception{
@@ -60,78 +60,70 @@ public class TestMirrorStreamPrepForCommit {
 
     //create service
     service = new MirrorStreamService(null, cluster,
-    cluster);
+        cluster);
 
     //createFinalExpectedPath
     finalExpectedPaths.add(new Path
-    ("/tmp/streams/metric_billing/2012/01/13/15/04/gs1104.grid.corp.inmobi.com-metric_billing-2012-01-15-04-24_00000.gz"));
+        ("/tmp/streams/stream1/2012/01/13/15/04/localhost-stream1-2012-01-15-04-24_00000.gz"));
     finalExpectedPaths.add(new Path
-    ("/tmp/streams/metric_billing/2012/01/13/15/06"));
+        ("/tmp/streams/stream1/2012/01/13/15/06"));
     finalExpectedPaths.add(new Path
-    ("/tmp/streams/metric_billing/2012/01/13/15/07/gs1104.grid.corp.inmobi" +
-    ".com-metric_billing-2012-01-16-07-21_00000.gz"));
+        ("/tmp/streams/stream1/2012/01/13/15/07/localhost-stream1-2012-01-16" +
+            "-07-21_00000.gz"));
     finalExpectedPaths.add(new
-    Path("/tmp/streams/metric_billing/2012/01/13/15/07" +
-    "/gs1104.grid.corp.inmobi.com-metric_billing-2012-01-16-07-23_00000.gz"));
+        Path("/tmp/streams/stream1/2012/01/13/15/07/localhost-stream1-2012-01-16-07-23_00000.gz"));
     finalExpectedPaths.add(new Path
-    ("/tmp/streams/metric_billing/2012/01/13/15/07/gs1104.grid.corp.inmobi.com-metric_billing-2012-01-16-07-24_00000.gz"));
+        ("/tmp/streams/stream1/2012/01/13/15/07/localhost-stream1-2012-01-16-07-24_00000.gz"));
 
   }
 
   @AfterTest
   private void cleanup() throws Exception{
-    localFs.delete(tmpOut, true);
+    localFs.delete(testRoot, true);
   }
 
   private void createData() throws IOException {
     Path p = new Path(tmpOut,
-    "tmp/streams/metric_billing/2012/01/13/15/07/gs1104.grid.corp.inmobi" +
-    ".com-metric_billing-2012-01-16-07-21_00000.gz");
-    testPaths.add(p);
-    localFs.create(p);
-
-    p = new Path(tmpOut,
-    "tmp/streams/metric_billing/2012/01/13/15/07/" +
-    "gs1104.grid.corp.inmobi.com-metric_billing-2012-01-16-07-23_00000.gz");
-    testPaths.add(p);
-    localFs.create(p);
-
-    p = new Path(tmpOut,
-    "tmp/streams/metric_billing/2012/01/13/15/07/" +
-    "gs1104.grid.corp.inmobi.com-metric_billing-2012-01-16-07-24_00000.gz");
-    testPaths.add(p);
+        "tmp/streams/stream1/2012/01/13/15/04/localhost-stream1-2012-01-15-04-24_00000.gz");
+    testPaths.add(p.toString());
     localFs.create(p);
 
     //one path without any data to simulate publish missing path
     p = new Path(tmpOut,
-    "tmp/streams/metric_billing/2012/01/13/15/06/");
-    testPaths.add(p);
+        "tmp/streams/stream1/2012/01/13/15/06/");
+    testPaths.add(p.toString());
     localFs.mkdirs(p);
 
     p = new Path(tmpOut,
-    "tmp/streams/metric_billing/2012/01/13/15/04/gs1104.grid.corp.inmobi" +
-    ".com-metric_billing-2012-01-15-04-24_00000.gz");
-    testPaths.add(p);
+        "tmp/streams/stream1/2012/01/13/15/07/" +
+            "localhost-stream1-2012-01-16-07-21_00000.gz");
+    testPaths.add(p.toString());
     localFs.create(p);
-  }
+
+    p = new Path(tmpOut,
+        "tmp/streams/stream1/2012/01/13/15/07/" +
+            "localhost-stream1-2012-01-16-07-23_00000.gz");
+    testPaths.add(p.toString());
+    localFs.create(p);
+
+    p = new Path(tmpOut,
+        "tmp/streams/stream1/2012/01/13/15/07/" +
+            "localhost-stream1-2012-01-16-07-24_00000.gz");
+    testPaths.add(p.toString());
+    localFs.create(p);
+
+
+     }
 
   @Test
   public void testPrepareForCommit() {
     try {
-
       //call the api of service
-      LinkedHashMap commitPaths = service.prepareForCommit
-      (tmpOut);
+      LinkedHashMap<FileStatus, Path> commitPaths = service.prepareForCommit
+          (tmpOut);
       //print the commitPaths
-      Set<FileStatus> keys = commitPaths.keySet();
-      Set<Path> results = new TreeSet<Path>();
-      //remove file://// from values before assertion
-      for (FileStatus key : keys) {
-        String p = commitPaths.get(key).toString().replaceAll("file:", "");
-        LOG.debug("Adding path [" +p + "] to resultSet");
-        results.add(new Path(p));
-      }
-      assert results.containsAll(finalExpectedPaths);
+      validateResults(commitPaths.values(), finalExpectedPaths);
+
     } catch (Exception e) {
       LOG.error("Error in test", e);
       assert false;
@@ -139,25 +131,32 @@ public class TestMirrorStreamPrepForCommit {
 
   }
 
+  private void validateResults(Collection<Path> keys,
+                               Collection<Path> finalExpectedPaths) {
+    // remove file://// from values before assertion
+    // assert that results is in order as that of expectedFinalResults
+    Iterator it = finalExpectedPaths.iterator();
+    for (Path key : keys) {
+      Path expectedPath = (Path)it.next();
+      String p = key.toUri().getPath();
+      LOG.debug("Comparing  path [" + p + "] to resultSet [" + expectedPath
+          + "]");
+      assert p.trim().equals(expectedPath.toString().trim());
+    }
+  }
+
   @Test
   public void testCreateListing() {
     ArrayList<FileStatus> streamPaths = new ArrayList<FileStatus>();
+
     try {
       service.createListing(localFs, localFs.getFileStatus(streamRoot), streamPaths);
-      Collections.sort(streamPaths, new DatePathComparator());
-      TreeSet<Path> testResults = new TreeSet<Path>();
+    //  Collections.sort(streamPaths, new DatePathComparator());
+      for (FileStatus fileStatus : streamPaths) {
 
-      for(FileStatus fileStatus : streamPaths) {
-        //since ls on local filesystem adds a file: to paths we need to remove
-        //that to do the validation
-        Path p = new Path(fileStatus.getPath().toString().replaceAll
-        ("file:", ""));
-        testResults.add(p);
-        LOG.debug("TestResult [" + p + "]");
+       assert testPaths.contains(fileStatus.getPath().toUri().getPath()
+           .toString());
       }
-      assert testResults.size() == 5;
-      assert testPaths.containsAll(testResults);
-
     } catch (Exception e) {
       LOG.error(e);
       assert false;

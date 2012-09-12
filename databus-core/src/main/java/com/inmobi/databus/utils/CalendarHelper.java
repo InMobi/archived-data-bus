@@ -28,27 +28,27 @@ public class CalendarHelper {
   static Logger logger = Logger.getLogger(CalendarHelper.class);
 
   static String minDirFormatStr = "yyyy" + File.separator + "MM" +
-  File.separator + "dd" + File.separator + "HH" + File.separator +"mm";
+      File.separator + "dd" + File.separator + "HH" + File.separator +"mm";
 
   static final ThreadLocal<DateFormat> minDirFormat =
-  new ThreadLocal<DateFormat>() {
-    @Override
-    protected SimpleDateFormat initialValue() {
-      return new SimpleDateFormat(minDirFormatStr);
-    }
-  };
+      new ThreadLocal<DateFormat>() {
+        @Override
+        protected SimpleDateFormat initialValue() {
+          return new SimpleDateFormat(minDirFormatStr);
+        }
+      };
 
   // TODO - all date/time should be returned in a common time zone GMT
 
   public static Date getDateFromStreamDir(Path streamDirPrefix, Path dir) {
     String pathStr = dir.toString();
     int startIndex = streamDirPrefix.toString().length() + 1;
-   /* logger.debug("StartIndex [" + startIndex + "] PathStr [" + pathStr
-    +"] endIndex [" +  (startIndex + minDirFormatStr.length()) + "] length ["
-    + pathStr.length() +"]");
-     */
+    /* logger.debug("StartIndex [" + startIndex + "] PathStr [" + pathStr
+   +"] endIndex [" +  (startIndex + minDirFormatStr.length()) + "] length ["
+   + pathStr.length() +"]");
+    */
     String dirString = pathStr.substring(startIndex,
-    startIndex + minDirFormatStr.length());
+        startIndex + minDirFormatStr.length());
     try {
       return minDirFormat.get().parse(dirString);
     } catch (ParseException e) {
@@ -59,25 +59,25 @@ public class CalendarHelper {
 
   public static Calendar getDate(String year, String month, String day) {
     return new GregorianCalendar(new Integer(year).intValue(), new Integer(
-    month).intValue() - 1, new Integer(day).intValue());
+        month).intValue() - 1, new Integer(day).intValue());
   }
 
   public static Calendar getDate(Integer year, Integer month, Integer day) {
     return new GregorianCalendar(year.intValue(), month.intValue() - 1,
-    day.intValue());
+        day.intValue());
   }
 
   public static Calendar getDateHour(String year, String month, String day,
                                      String hour) {
     return new GregorianCalendar(new Integer(year).intValue(), new Integer(
-    month).intValue() - 1, new Integer(day).intValue(),
-    new Integer(hour).intValue(), new Integer(0));
+        month).intValue() - 1, new Integer(day).intValue(),
+        new Integer(hour).intValue(), new Integer(0));
   }
 
   public static Calendar getDateHourMinute(Integer year, Integer month,
                                            Integer day, Integer hour, Integer minute) {
     return new GregorianCalendar(year.intValue(), month.intValue() - 1,
-    day.intValue(), hour.intValue(), minute.intValue());
+        day.intValue(), hour.intValue(), minute.intValue());
   }
 
   public static String getCurrentMinute() {
@@ -100,7 +100,7 @@ public class CalendarHelper {
 
   private static String getCurrentDayTimeAsString(boolean includeMinute) {
     return getDayTimeAsString(new GregorianCalendar(), includeMinute,
-    includeMinute);
+        includeMinute);
   }
 
   private static String getDayTimeAsString(Calendar calendar,
@@ -122,12 +122,12 @@ public class CalendarHelper {
       fileNameInnYYMMDDHRMNFormat = year + "-" + month + "-" + day + "-" + hour;
     } else if (includeMinute) {
       fileNameInnYYMMDDHRMNFormat = year + "-" + month + "-" + day + "-" + hour
-      + "-" + minute;
+          + "-" + minute;
     } else {
       fileNameInnYYMMDDHRMNFormat = year + "-" + month + "-" + day;
     }
     logger.debug("getCurrentDayTimeAsString ::  ["
-    + fileNameInnYYMMDDHRMNFormat + "]");
+        + fileNameInnYYMMDDHRMNFormat + "]");
     return fileNameInnYYMMDDHRMNFormat;
 
   }

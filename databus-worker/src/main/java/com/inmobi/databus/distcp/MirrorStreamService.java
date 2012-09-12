@@ -145,23 +145,25 @@ public class MirrorStreamService extends DistcpBaseService {
      * distcp paths inside tmpOut would be eg:
      *
      * /databus/system/distcp_mirror_ua1_uj1
-     * /databus/streams/metric_billing/2012/1/13/15/7/
-     * gs1104.grid.corp.inmobi.com-metric_billing-2012-01-16-07-21_00000.gz
+     * /databus/streams/<streamName>/2012/1/13/15/7/
+     * <hostname>-<streamName>-2012-01-16-07-21_00000.gz
      *
-     * tmpStreamRoot eg: /databus/system/distcp_mirror_ua1_uj1/databus/streams/
+     * tmpStreamRoot eg: /databus/system/distcp_mirror_<srcCluster>_
+     * <destCluster>/databus/streams/
      */
 
     Path tmpStreamRoot = new Path(tmpOut.makeQualified(getDestFs()).toString()
     + File.separator + getSrcCluster().getUnqaulifiedFinalDestDirRoot());
     LOG.debug("tmpStreamRoot [" + tmpStreamRoot + "]");
 
-    // tmpStreamRoot eg -
-    // /databus/system/tmp/distcp_mirror_ua1_uj1/databus/streams/
-    // multiple streams can get mirrored from the same cluster
-    // streams can get processed in any order but we have to retain order
-    // of paths within a stream
+     /* tmpStreamRoot eg -
+      * /databus/system/tmp/distcp_mirror_<srcCluster>_<destCluster>/databus
+      * /streams/
+      *
+      * multiple streams can get mirrored from the same cluster
+      * streams can get processed in any order but we have to retain order
+      * of paths within a stream*/
     FileStatus[] fileStatuses = getDestFs().listStatus(tmpStreamRoot);
-
 
     //Retain the order of commitPaths
     LinkedHashMap<FileStatus, Path> commitPaths = new LinkedHashMap<FileStatus, Path>();
@@ -185,15 +187,15 @@ public class MirrorStreamService extends DistcpBaseService {
 
   private void createCommitPaths(LinkedHashMap<FileStatus, Path> commitPaths,
                                  List<FileStatus> streamPaths) {
-    /* Path eg in streamPaths -
-    *  /databus/system/distcp_mirror_ua1_uj1/databus/streams/metric_billing
-    * /2012/1/13/15/7/
-    * gs1104.grid.corp.inmobi.com-metric_billing-2012-01-16-07-21_00000.gz
+   /*  Path eg in streamPaths -
+    *  /databus/system/distcp_mirror_<srcCluster>_<destCluster>/databus/streams
+    *  /<streamName>/2012/1/13/15/7/<hostname>-<streamName>-2012-01-16-07
+    *  -21_00000.gz
     *
     * or it could be an emptyDir like
     *  /* Path eg in streamPaths -
-    *  /databus/system/distcp_mirror_ua1_uj1/databus/streams/metric_billing
-    *  /2012/1/13/15/7/
+    *  /databus/system/distcp_mirror_<srcCluster>_<destCluster>/databus/streams
+    *  /<streamName>/2012/1/13/15/7/
     *
     */
 
