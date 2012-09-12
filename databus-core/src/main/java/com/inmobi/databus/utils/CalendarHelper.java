@@ -13,16 +13,49 @@
 */
 package com.inmobi.databus.utils;
 
+import java.io.File;
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 
+import org.apache.hadoop.fs.Path;
 import org.apache.log4j.Logger;
 
 public class CalendarHelper {
   static Logger logger = Logger.getLogger(CalendarHelper.class);
 
+  static String minDirFormatStr = "yyyy" + File.separator + "MM" +
+      File.separator + "dd" + File.separator + "HH" + File.separator +"mm";
+
+  static final ThreadLocal<DateFormat> minDirFormat =
+      new ThreadLocal<DateFormat>() {
+        @Override
+        protected SimpleDateFormat initialValue() {
+          return new SimpleDateFormat(minDirFormatStr);
+        }
+      };
+
   // TODO - all date/time should be returned in a common time zone GMT
+
+  public static Date getDateFromStreamDir(Path streamDirPrefix, Path dir) {
+    String pathStr = dir.toString();
+    int startIndex = streamDirPrefix.toString().length() + 1;
+    /* logger.debug("StartIndex [" + startIndex + "] PathStr [" + pathStr
+   +"] endIndex [" +  (startIndex + minDirFormatStr.length()) + "] length ["
+   + pathStr.length() +"]");
+    */
+    String dirString = pathStr.substring(startIndex,
+        startIndex + minDirFormatStr.length());
+    try {
+      return minDirFormat.get().parse(dirString);
+    } catch (ParseException e) {
+      logger.warn("Could not get date from directory passed", e);
+    }
+    return null;
+  }
 
   public static Calendar getDate(String year, String month, String day) {
     return new GregorianCalendar(new Integer(year).intValue(), new Integer(
@@ -35,14 +68,14 @@ public class CalendarHelper {
   }
 
   public static Calendar getDateHour(String year, String month, String day,
-      String hour) {
+                                     String hour) {
     return new GregorianCalendar(new Integer(year).intValue(), new Integer(
         month).intValue() - 1, new Integer(day).intValue(),
         new Integer(hour).intValue(), new Integer(0));
   }
 
   public static Calendar getDateHourMinute(Integer year, Integer month,
-      Integer day, Integer hour, Integer minute) {
+                                           Integer day, Integer hour, Integer minute) {
     return new GregorianCalendar(year.intValue(), month.intValue() - 1,
         day.intValue(), hour.intValue(), minute.intValue());
   }
@@ -71,8 +104,8 @@ public class CalendarHelper {
   }
 
   private static String getDayTimeAsString(Calendar calendar,
-      boolean includeHour,
-      boolean includeMinute) {
+                                           boolean includeHour,
+                                           boolean includeMinute) {
     String minute = null;
     String hour = null;
     String fileNameInnYYMMDDHRMNFormat = null;
@@ -124,7 +157,7 @@ public class CalendarHelper {
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd-HH-mm");
     Calendar calendar = new GregorianCalendar();
     try {
-    calendar.setTime(format.parse(dateTime));
+      calendar.setTime(format.parse(dateTime));
     } catch(Exception e){
     }
     return calendar;
