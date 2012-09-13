@@ -211,12 +211,15 @@ public class MergedStreamService extends DistcpBaseService {
                 + "_" + stream;
         tmpConsumerPath = new Path(tmp, tmpPath);
         FSDataOutputStream out = getDestFs().create(tmpConsumerPath);
-        for (Path path : committedPaths.get(stream)) {
-          LOG.debug("Writing Mirror Commit Path [" + path.toString() + "]");
-          out.writeBytes(path.toString());
-          out.writeBytes("\n");
+        try {
+          for (Path path : committedPaths.get(stream)) {
+            LOG.debug("Writing Mirror Commit Path [" + path.toString() + "]");
+            out.writeBytes(path.toString());
+            out.writeBytes("\n");
+          }
+        } finally {
+          out.close();
         }
-        out.close();
         // Two MergedStreamConsumers will write file for same consumer within
         // the same time
         // adding srcCLuster name avoids that conflict

@@ -46,27 +46,34 @@ public class CollapseFilesInDir {
           Path consumeFilePath = fileList[i].getPath().makeQualified(fs);
           sourceFiles.add(consumeFilePath);
           FSDataInputStream fsDataInputStream = fs.open(consumeFilePath);
-          while (fsDataInputStream.available() > 0) {
-            String fileName = fsDataInputStream.readLine();
-            if (fileName != null) {
-              consumePaths.add(fileName.trim());
-              System.out.println("Adding [" + fileName + "] to pull");
+          try {
+            while (fsDataInputStream.available() > 0) {
+              String fileName = fsDataInputStream.readLine();
+              if (fileName != null) {
+                consumePaths.add(fileName.trim());
+                System.out.println("Adding [" + fileName + "] to pull");
+              }
             }
+          } finally {
+            fsDataInputStream.close();
           }
-          fsDataInputStream.close();
         }
         Path finalPath = new Path(dir, new Long(System
                 .currentTimeMillis()).toString());
         FSDataOutputStream out = fs.create(finalPath);
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter
                 (out));
-        for (String consumePath : consumePaths) {
-          System.out.println("Adding sourceFile [" + consumePath + "] to distcp " +
-                  "FinalList");
-          writer.write(consumePath);
-          writer.write("\n");
+        try {
+          for (String consumePath : consumePaths) {
+            System.out.println("Adding sourceFile [" + consumePath + "] to" +
+            		" distcp " +
+                "FinalList");
+            writer.write(consumePath);
+            writer.write("\n");
+          }
+        } finally {
+          writer.close();
         }
-        writer.close();
         LOG.warn( "Final File - [" + finalPath + "]");
         for(Path deletePath : sourceFiles) {
           System.out.println("Deleting - [" + deletePath + "]");

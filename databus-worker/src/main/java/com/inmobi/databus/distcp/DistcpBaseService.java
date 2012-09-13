@@ -180,27 +180,33 @@ public abstract class DistcpBaseService extends AbstractService {
           FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
           BufferedReader reader = new BufferedReader(new InputStreamReader
                   (fsDataInputStream));
-          String fileName = reader.readLine();
-          while (fileName != null) {
-            fileName = fileName.trim();
-            LOG.debug("Adding [" + fileName + "] to pull");
-            sourceFiles.add(fileName);
-            fileName = reader.readLine();
+          try {
+            String fileName = reader.readLine();
+            while (fileName != null) {
+              fileName = fileName.trim();
+              LOG.debug("Adding [" + fileName + "] to pull");
+              sourceFiles.add(fileName);
+              fileName = reader.readLine();
+            }
+          } finally {
+            reader.close();
           }
-          reader.close();
         }
         Path tmpPath = new Path(tmp, srcCluster.getName() + new Long(System
                 .currentTimeMillis()).toString());
         FSDataOutputStream out = destFs.create(tmpPath);
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter
                 (out));
-        for (String sourceFile : sourceFiles) {
-          LOG.debug("Adding sourceFile [" + sourceFile + "] to distcp " +
-                  "FinalList");
-          writer.write(sourceFile);
-          writer.write("\n");
+        try {
+          for (String sourceFile : sourceFiles) {
+            LOG.debug("Adding sourceFile [" + sourceFile + "] to distcp " +
+                "FinalList");
+            writer.write(sourceFile);
+            writer.write("\n");
+          }
+        } finally {
+          writer.close();
         }
-        writer.close();
         LOG.warn("Source File For distCP [" + tmpPath + "]");
         consumePaths.put(tmpPath.makeQualified(destFs), destFs);
         return tmpPath.makeQualified(destFs);
@@ -209,13 +215,16 @@ public abstract class DistcpBaseService extends AbstractService {
         if (LOG.isDebugEnabled()) {
           FSDataInputStream fsDataInputStream = srcFs.open(consumePath);
           BufferedReader reader = new BufferedReader(new InputStreamReader
-                  (fsDataInputStream));
-          String file = reader.readLine();
-          while (file != null) {
-            LOG.debug("Adding File[" + file + "] to be pulled");
-            file = reader.readLine();
+              (fsDataInputStream));
+          try {
+            String file = reader.readLine();
+            while (file != null) {
+              LOG.debug("Adding File[" + file + "] to be pulled");
+              file = reader.readLine();
+            }
+          } finally {
+            reader.close();
           }
-          reader.close();
         }
         consumePaths.put(consumePath, srcFs);
         return consumePath;
