@@ -131,7 +131,7 @@ public class TestMirrorStreamPrepForCommit {
   }
 
   private void validateResults(Collection<Path> keys,
-                               Collection<Path> finalExpectedPaths) throws IOException{
+                               Collection<Path> finalExpectedPaths){
     // remove file://// from values before assertion
     // assert that results is in order as that of expectedFinalResults
     Iterator it = finalExpectedPaths.iterator();
