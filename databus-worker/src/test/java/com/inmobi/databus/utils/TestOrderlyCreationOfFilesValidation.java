@@ -1,32 +1,24 @@
 package com.inmobi.databus.utils;
 
-
-import org.apache.log4j.Logger;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.TreeMap;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import com.inmobi.databus.Cluster;
-
 import java.io.File;
 import java.io.IOException;
-import java.util.Date;
 import java.util.List;
+
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.log4j.Logger;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
-
+import com.inmobi.databus.Cluster;
 
 public class TestOrderlyCreationOfFilesValidation  {
-
   private static Logger LOG = Logger.getLogger(
       TestOrderlyCreationOfFilesValidation.class);
   private static String className = TestOrderlyCreationOfFilesValidation.class
@@ -92,7 +84,8 @@ public class TestOrderlyCreationOfFilesValidation  {
       FSDataOutputStream streamout = fs.create(path);
       streamout.writeBytes("Creating Test data for teststream "
           + filesList.get(j));
-      streamout.close();
+      streamout.close(); 
+      
     }
     return filesList;
   }
