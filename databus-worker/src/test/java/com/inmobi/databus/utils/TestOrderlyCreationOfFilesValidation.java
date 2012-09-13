@@ -52,7 +52,7 @@ public class TestOrderlyCreationOfFilesValidation  {
     } else {
       milliseconds = 60000;
     }
-    for ( int i = 0; i < 5; i++) {
+    for ( int i = 1; i < 5; i++) {
       String date = Cluster.getDateAsYYYYMMDDHHMNPath(System.currentTimeMillis()
           + i*milliseconds);
       createFilesData(fs, listPath + date, 2 );
@@ -91,7 +91,7 @@ public class TestOrderlyCreationOfFilesValidation  {
   
   public void createOutputData() {
     String date;
-    for (int i = 4; i >=1; i-- ) {
+    for (int i = 4; i > 0; i-- ) {
       date = Cluster.getDateAsYYYYMMDDHHMNPath(System.currentTimeMillis()
           - i * 60000);
       expectedResults.add(new Path( "file:/tmp/test/" +
