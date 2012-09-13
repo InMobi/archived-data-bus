@@ -187,7 +187,7 @@ public abstract class DistcpBaseService extends AbstractService {
          */
         for (int i = 0; i < fileList.length; i++) {
           Path consumeFilePath = fileList[i].getPath().makeQualified(srcFs);
-          /* put eachFile name in consumePaths.
+          /* put eachFile name in consumePaths
            * An example of data in consumePaths is
            * /databus/system/consumers/<cluster>/file1..and so on
            */
@@ -196,16 +196,21 @@ public abstract class DistcpBaseService extends AbstractService {
            * for each consumePath read all minute level paths need to be
            * pulled and add them to sourceFiles
            */
-          FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
-          BufferedReader reader = new BufferedReader(new InputStreamReader
-              (fsDataInputStream));
-          String fileName = reader.readLine();
-          while (fileName != null) {
-            fileName = fileName.trim();
-            sourceFiles.add(fileName);
-            fileName = reader.readLine();
+          BufferedReader reader=null;
+          try {
+            FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
+            reader = new BufferedReader(new InputStreamReader
+                (fsDataInputStream));
+            String fileName = reader.readLine();
+            while (fileName != null) {
+              fileName = fileName.trim();
+              sourceFiles.add(fileName);
+              fileName = reader.readLine();
+            }
+          } finally {
+            if(reader != null)
+              reader.close();
           }
-          reader.close();
         }
         Path tmpPath = createInputFileForDISCTP(destFs, srcCluster.getName(), tmp,
             sourceFiles);
@@ -272,6 +277,7 @@ public abstract class DistcpBaseService extends AbstractService {
   private Path createInputFileForDISCTP(FileSystem fs, String clusterName,
                                         Path tmp, Set<String> sourceFiles)
       throws IOException {
+    Set<String> validFiles = new HashSet<String>();
     for (String sourceFile : sourceFiles) {
       /*
        * To avoid data-loss in all services we publish the paths to
@@ -284,26 +290,31 @@ public abstract class DistcpBaseService extends AbstractService {
        */
       Path p = new Path(sourceFile);
       if (fs.exists(p)) {
-        LOG.debug("Adding sourceFile [" + sourceFile + "] to distcp " +
+        LOG.info("Adding sourceFile [" + sourceFile + "] to distcp " +
             "FinalList");
+        validFiles.add(sourceFile);
       } else {
-        sourceFiles.remove(sourceFile);
         LOG.info("Skipping [" + sourceFile + "] to pull as it's an " +
             "INVALID PATH");
       }
     }
 
-    if (sourceFiles.size() > 0) {
-      Path tmpPath = new Path(tmp, clusterName + new Long(System
+    if (validFiles.size() > 0) {
+      BufferedWriter writer = null;
+      Path tmpPath = null;
+      try {
+      tmpPath = new Path(tmp, clusterName + new Long(System
           .currentTimeMillis()).toString());
       FSDataOutputStream out = fs.create(tmpPath);
-      BufferedWriter writer = new BufferedWriter(new OutputStreamWriter
+     writer = new BufferedWriter(new OutputStreamWriter
           (out));
-      for (String sourceFile : sourceFiles) {
-        writer.write(sourceFile);
+      for (String validFile : validFiles) {
+        writer.write(validFile);
         writer.write("\n");
       }
-      writer.close();
+      } finally {
+        writer.close();
+      }
       return tmpPath;
     }
     return null;
