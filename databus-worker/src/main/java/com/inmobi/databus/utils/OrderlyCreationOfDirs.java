@@ -1,8 +1,6 @@
 package com.inmobi.databus.utils;
 
-
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -18,9 +16,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import com.inmobi.databus.utils.CalendarHelper;
 
-
 public class OrderlyCreationOfDirs {
-
   private static final Log LOG = LogFactory.getLog(
       OrderlyCreationOfDirs.class);
 
@@ -98,7 +94,7 @@ public class OrderlyCreationOfDirs {
     return outOfOrderDirs;
   }
   
-  public static void main(String[] args) throws IOException,ParseException {
+  public static void main(String[] args) throws IOException {
     if (args.length == 3) {
       String[] rootDirs     =   args[0].split(",");
       String[] baseDir      =   args[1].split(",");
