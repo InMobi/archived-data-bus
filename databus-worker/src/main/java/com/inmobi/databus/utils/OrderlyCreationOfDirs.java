@@ -59,7 +59,6 @@ public class OrderlyCreationOfDirs {
               .getPath());
           previousKeyEntry = presentKeyEntry;
         }
-        
       }
       previousKeyEntry = presentKeyEntry;
     }
@@ -73,7 +72,6 @@ public class OrderlyCreationOfDirs {
         FileStatus >();
     doRecursiveListing(streamDir, listing, fs);
     for (Path path :listing) {
-      // LOG.info(path);
       creationTimeOfFiles.put(CalendarHelper.getDateFromStreamDir(
           streamDir, path), fs.getFileStatus(path));
     }
@@ -94,26 +92,22 @@ public class OrderlyCreationOfDirs {
             break;
           }
           listingAndValidation(streamDir, fs , outOfOrderDirs);
-          
         }    
       }
     }
-    LOG.info("size of :" + outOfOrderDirs.size());
     return outOfOrderDirs;
   }
-
-
-  /**
-   * @param args
-   */
+  
   public static void main(String[] args) throws IOException,ParseException {
-    String[] rootDirs     =   args[0].split(",");
-    String[] baseDir      =   args[1].split(",");
-    String[] streamName   =   args[2].split(",");
-
-    OrderlyCreationOfDirs obj = new 
-        OrderlyCreationOfDirs();
-    //construct all paths
-    obj.pathConstruction(rootDirs, baseDir, streamName);
+    if (args.length == 3) {
+      String[] rootDirs     =   args[0].split(",");
+      String[] baseDir      =   args[1].split(",");
+      String[] streamName   =   args[2].split(",");
+      OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
+      obj.pathConstruction(rootDirs, baseDir, streamName);
+    } else {
+      System.out.println("Insufficient number of arguments: enter rootdirs," +
+      		" basedirs, streamnames ");
+    }
   }
 }
