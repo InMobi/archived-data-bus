@@ -192,18 +192,15 @@ public abstract class DistcpBaseService extends AbstractService {
            * /databus/system/consumers/<cluster>/file1..and so on
            */
           consumePaths.put(consumeFilePath, srcFs);
-          /*
-           * for each consumePath read all minute level paths need to be
-           * pulled and add them to sourceFiles
-           */
-          BufferedReader reader=null;
+
+          FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
+          BufferedReader reader = new BufferedReader(new InputStreamReader
+                  (fsDataInputStream));
           try {
-            FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
-            reader = new BufferedReader(new InputStreamReader
-                (fsDataInputStream));
             String fileName = reader.readLine();
             while (fileName != null) {
               fileName = fileName.trim();
+              LOG.debug("Adding [" + fileName + "] to pull");
               sourceFiles.add(fileName);
               fileName = reader.readLine();
             }
@@ -215,7 +212,6 @@ public abstract class DistcpBaseService extends AbstractService {
         Path tmpPath = createInputFileForDISCTP(destFs, srcCluster.getName(), tmp,
             sourceFiles);
         return getFinalPathForDistCP(tmpPath, consumePaths);
-
       } else if (fileList.length == 1) {
         /*
          * services are running in a streaming fashion,

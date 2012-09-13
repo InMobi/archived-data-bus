@@ -166,29 +166,32 @@ public class LocalStreamService extends AbstractService {
         Path tmpConsumerPath = new Path(tmpPath, clusterEntry.getName());
         boolean isFileOpened = false;
         FSDataOutputStream out = null;
-        for (Path destPath : mvPaths.values()) {
-          String category = getCategoryFromDestPath(destPath);
-          if (clusterEntry.getDestinationStreams().containsKey(category)) {
-            if (!isFileOpened) {
-              out = fs.create(tmpConsumerPath);
-              isFileOpened = true;
-            }
-            out.writeBytes(destPath.toString());
-            LOG.debug("Adding [" + destPath + "]  for consumer ["
-            + clusterEntry.getName() + "] to commit Paths in ["
-            + tmpConsumerPath + "]");
+        try {
+          for (Path destPath : mvPaths.values()) {
+            String category = getCategoryFromDestPath(destPath);
+            if (clusterEntry.getDestinationStreams().containsKey(category)) {
+              if (!isFileOpened) {
+                out = fs.create(tmpConsumerPath);
+                isFileOpened = true;
+              }
+              out.writeBytes(destPath.toString());
+              LOG.debug("Adding [" + destPath + "]  for consumer ["
+                  + clusterEntry.getName() + "] to commit Paths in ["
+                  + tmpConsumerPath + "]");
 
-            out.writeBytes("\n");
+              out.writeBytes("\n");
+            }
           }
-        }
-        if (isFileOpened) {
-          out.close();
-          Path finalConsumerPath = new Path(
-          cluster.getConsumePath(clusterEntry), Long.toString(System
-          .currentTimeMillis()));
-          LOG.debug("Moving [" + tmpConsumerPath + "] to [ "
-          + finalConsumerPath + "]");
-          consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
+        } finally {
+          if (isFileOpened) {
+            out.close();
+            Path finalConsumerPath = new Path(
+                cluster.getConsumePath(clusterEntry), Long.toString(System
+                    .currentTimeMillis()));
+            LOG.debug("Moving [" + tmpConsumerPath + "] to [ "
+                + finalConsumerPath + "]");
+            consumerCommitPaths.put(tmpConsumerPath, finalConsumerPath);
+          }
         }
       }
     }
@@ -241,16 +244,18 @@ public class LocalStreamService extends AbstractService {
     trashSet, checkpointPaths);
 
     FSDataOutputStream out = fs.create(inputPath);
-    Iterator<Entry<FileStatus, String>> it = fileListing.entrySet().iterator();
-
-    while (it.hasNext()) {
-      Entry<FileStatus, String> entry = it.next();
-      out.writeBytes(entry.getKey().getPath().toString());
-      out.writeBytes("\t");
-      out.writeBytes(entry.getValue());
-      out.writeBytes("\n");
+    try {
+      Iterator<Entry<FileStatus, String>> it = fileListing.entrySet().iterator();
+      while (it.hasNext()) {
+        Entry<FileStatus, String> entry = it.next();
+        out.writeBytes(entry.getKey().getPath().toString());
+        out.writeBytes("\t");
+        out.writeBytes(entry.getValue());
+        out.writeBytes("\n");
+      }
+    } finally { 
+      out.close();
     }
-    out.close();
   }
 
 
