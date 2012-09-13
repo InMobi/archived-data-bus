@@ -76,7 +76,7 @@ public class MirrorStreamService extends DistcpBaseService {
         return;
       }
 
-      Path inputFilePath = getInputFilePath(consumePaths, tmp);
+      Path inputFilePath = getDistCPInputFile(consumePaths, tmp);
       if (inputFilePath == null) {
         LOG.warn("No data to pull from " + "Cluster ["
         + getSrcCluster().getHdfsUrl() + "]" + " to Cluster ["
