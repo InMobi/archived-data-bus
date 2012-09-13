@@ -113,7 +113,7 @@ public class TestMirrorStreamPrepForCommit {
     localFs.create(p);
 
 
-     }
+  }
 
   @Test
   public void testPrepareForCommit() {
@@ -121,7 +121,6 @@ public class TestMirrorStreamPrepForCommit {
       //call the api of service
       LinkedHashMap<FileStatus, Path> commitPaths = service.prepareForCommit
           (tmpOut);
-      //print the commitPaths
       validateResults(commitPaths.values(), finalExpectedPaths);
 
     } catch (Exception e) {
@@ -132,16 +131,27 @@ public class TestMirrorStreamPrepForCommit {
   }
 
   private void validateResults(Collection<Path> keys,
-                               Collection<Path> finalExpectedPaths) {
+                               Collection<Path> finalExpectedPaths) throws IOException{
     // remove file://// from values before assertion
     // assert that results is in order as that of expectedFinalResults
     Iterator it = finalExpectedPaths.iterator();
     for (Path key : keys) {
-      Path expectedPath = (Path)it.next();
-      String p = key.toUri().getPath();
-      LOG.debug("Comparing  path [" + p + "] to resultSet [" + expectedPath
-          + "]");
-      assert p.trim().equals(expectedPath.toString().trim());
+      if (key.toString().contains("gz")) {
+        Path expectedPath = ((Path)it.next()).getParent();
+        String p = key.getParent().toUri().getPath();
+        LOG.debug("Comparing  path [" + p + "] to resultSet [" + expectedPath
+            + "]");
+        assert p.trim().equals(expectedPath.toString().trim());
+      } else {
+        Path expectedPath = ((Path)it.next());
+        String p = key.toUri().getPath();
+        LOG.debug("Comparing Dir path [" + p + "] to resultSet [" +
+            expectedPath
+            + "]");
+        assert p.trim().equals(expectedPath.toString().trim());
+
+      }
+
     }
   }
 
@@ -151,11 +161,10 @@ public class TestMirrorStreamPrepForCommit {
 
     try {
       service.createListing(localFs, localFs.getFileStatus(streamRoot), streamPaths);
-    //  Collections.sort(streamPaths, new DatePathComparator());
       for (FileStatus fileStatus : streamPaths) {
 
-       assert testPaths.contains(fileStatus.getPath().toUri().getPath()
-           .toString());
+        assert testPaths.contains(fileStatus.getPath().toUri().getPath()
+            .toString());
       }
     } catch (Exception e) {
       LOG.error(e);
