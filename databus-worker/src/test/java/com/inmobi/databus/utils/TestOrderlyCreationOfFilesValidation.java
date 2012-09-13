@@ -2,7 +2,6 @@ package com.inmobi.databus.utils;
 
 
 import org.apache.log4j.Logger;
-
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.text.NumberFormat;
@@ -11,7 +10,6 @@ import java.util.TreeMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import com.inmobi.databus.local.TestLocalStreamService;
 import com.inmobi.databus.Cluster;
 
 import java.io.File;
@@ -25,7 +23,7 @@ import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
-import com.inmobi.databus.utils.OrderlyCreationOfDirsForDiffStreams;
+
 
 public class TestOrderlyCreationOfFilesValidation  {
 
@@ -39,15 +37,14 @@ public class TestOrderlyCreationOfFilesValidation  {
   String rootDirs [] = ("file:///tmp/test/" + className
     + "/1/,file:///tmp/test/" + className +"/2/").split(",");
   String baseDirs[] = "streams,streams_local".split(",");
- 
   String [] emptyStream = "empty".split(",");
   String [] inorderStream = "inorder".split(",");
   String [] outoforderStream = "outoforder".split(",");
+  
   @BeforeTest
   public void setup() throws Exception {
     fs = FileSystem.getLocal(new Configuration());
     createTestData();
-    //fs = FileSystem.getLocal(new Configuration());
   }
   
   @AfterTest
@@ -78,11 +75,10 @@ public class TestOrderlyCreationOfFilesValidation  {
         + File.separator ;
     createMinDirs(listPath, false);
     createMinDirs(listPath, true);
- }
+  }
 
   public static List<String> createFilesData(FileSystem fs,
       String pathName, int filesCount) throws Exception {
-    LOG.info("inside    :"+ pathName);
     Path createPath = new Path(pathName);
     fs.mkdirs(createPath);
     List<String> filesList = new ArrayList<String>();
@@ -92,22 +88,17 @@ public class TestOrderlyCreationOfFilesValidation  {
       String filenameStr = new String("file" + j);
       filesList.add(j, filenameStr);
       Path path = new Path(createPath, filesList.get(j));
-
       LOG.debug("Creating Test Data with filename [" + filesList.get(j) + "]");
       FSDataOutputStream streamout = fs.create(path);
       streamout.writeBytes("Creating Test data for teststream "
           + filesList.get(j));
-
       streamout.close();
-
-      //  Assert.assertTrue(fs.exists(path));
     }
-
     return filesList;
   }
   
   public void createOutputData() {
-    String date ;
+    String date;
     for (int i = 4; i >=1; i-- ) {
       date = Cluster.getDateAsYYYYMMDDHHMNPath(System.currentTimeMillis()
           - i * 60000);
@@ -126,11 +117,11 @@ public class TestOrderlyCreationOfFilesValidation  {
     Assert.assertEquals( expectedResults , obj.pathConstruction(rootDirs, 
         baseDirs , inorderStream));
     createOutputData();
+    List<Path> outOfOderDirs =  obj.pathConstruction(rootDirs, baseDirs, 
+        outoforderStream);
     LOG.info(expectedResults.size());
     for (int i = 0; i <= expectedResults.size()-1; i++) {
-      Assert.assertEquals( expectedResults.get(i) , obj.pathConstruction(
-          rootDirs, baseDirs , outoforderStream).get(i));
-      LOG.info("found ");
+      Assert.assertEquals( expectedResults.get(i) ,outOfOderDirs.get(i));
     }
   }
 }
