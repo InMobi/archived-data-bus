@@ -36,6 +36,7 @@ public class TestOrderlyCreationOfFilesValidation  {
   String [] emptyStream = "empty".split(",");
   String [] inorderStream = "inorder".split(",");
   String [] outoforderStream = "outoforder".split(",");
+  long temptime = System.currentTimeMillis();
   
   @BeforeTest
   public void setup() throws Exception {
@@ -47,13 +48,12 @@ public class TestOrderlyCreationOfFilesValidation  {
   public void cleanup() throws Exception {
     fs.delete(new Path(rootDirs[0]).getParent(), true);
   }
-  long temptime = System.currentTimeMillis();
   
   public void createMinDirs(String listPath, boolean outofOrder, int dirNumber) 
       throws Exception {
     int milliseconds;
     if (outofOrder) {
-     milliseconds = -60000;
+      milliseconds = -60000;
     } else {
       milliseconds = 60000;
     }
@@ -128,7 +128,8 @@ public class TestOrderlyCreationOfFilesValidation  {
     while (it.hasNext()) {
       Assert.assertTrue(totalOutOfOderDirs.contains(it1.next()));
     }
-    Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.size());
+    Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
+        size());
   }
 }
 
