@@ -163,9 +163,8 @@ public abstract class DistcpBaseService extends AbstractService {
 
 
   /*
-   * @param Map<Path, FileSystem> consumePaths - list of paths which have to
-   * be pulled populated by this function with the corresponding FileSystem
-   * object associated with it
+   * @param Map<Path, FileSystem> consumePaths - list of files which contain
+   * fully qualified path of minute level files which have to be pulled
    * @param Path tmp - Temporary Location path on Cluster to where files have
    * to be pulled
    *
@@ -179,61 +178,72 @@ public abstract class DistcpBaseService extends AbstractService {
     //find all consumePaths which need to be pulled
     FileStatus[] fileList = srcFs.listStatus(input);
     if (fileList != null) {
-      Set<String> sourceFiles = new HashSet<String>();
-      if (fileList.length > 1) {
-        /* inputPath has multiple files due to backlog
-         * read all and create a Input file for DISTCP on destinationCluster as
-         * an optimization so that distcp doesn't pull this file remotely
-         */
-        for (int i = 0; i < fileList.length; i++) {
-          Path consumeFilePath = fileList[i].getPath().makeQualified(srcFs);
-          /* put eachFile name in consumePaths
-           * An example of data in consumePaths is
-           * /databus/system/consumers/<cluster>/file1..and so on
-           */
-          consumePaths.put(consumeFilePath, srcFs);
+      Set<String> minFilesSet = new HashSet<String>();
+      /* inputPath could have multiple files due to backlog
+      * read all and create a Input file for DISTCP with valid paths on
+      * destinationCluster as an optimization so that distcp doesn't pull
+      * this file remotely
+      */
+      for (int i = 0; i < fileList.length; i++) {
+        Path consumeFilePath = fileList[i].getPath().makeQualified(srcFs);
+        /* put eachFile name in consumePaths
+        * An example of data in consumePaths is
+        * /databus/system/consumers/<cluster>/file1..and so on
+        */
+        consumePaths.put(consumeFilePath, srcFs);
 
-          FSDataInputStream fsDataInputStream = srcFs.open(consumeFilePath);
-          BufferedReader reader = new BufferedReader(new InputStreamReader
-                  (fsDataInputStream));
-          try {
-            String fileName = reader.readLine();
-            while (fileName != null) {
-              fileName = fileName.trim();
-              LOG.debug("Adding [" + fileName + "] to pull");
-              sourceFiles.add(fileName);
-              fileName = reader.readLine();
-            }
-          } finally {
-            if(reader != null)
-              reader.close();
+        LOG.debug("Reading minutePaths from ConsumePath [" +
+            consumeFilePath + "]");
+        //read all valid minute files path in each consumePath
+        readConsumePath(srcFs, consumeFilePath,
+            minFilesSet);
+      }
+      Path tmpPath = createInputFileForDISCTP(destFs, srcCluster.getName(), tmp,
+          minFilesSet);
+      return getFinalPathForDistCP(tmpPath, consumePaths);
+    }
+
+    return null;
+  }
+
+  /*
+   * read each consumePath and add only valid paths to minFilesSet
+   */
+  private void readConsumePath(FileSystem fs,Path consumePath,
+                               Set<String>  minFilesSet)  throws IOException{
+    BufferedReader reader = null;
+    try {
+      FSDataInputStream fsDataInputStream = fs.open(consumePath);
+      reader = new BufferedReader(new InputStreamReader
+          (fsDataInputStream));
+      String minFileName = null;
+      do {
+        minFileName = reader.readLine();
+        if (minFileName != null) {
+          /*
+          * To avoid data-loss in all services we publish the paths to
+          * consumers directory first before publishing on HDFS for
+          * finalConsumption. In a distributed transaction failure it's
+          * possible that some of these paths do not exist. Do isExistence
+          * check before adding them as DISTCP input otherwise DISTCP
+          * jobs can fail continously thereby blocking Merge/Mirror
+          * stream to run further
+          */
+          Path p = new Path(minFileName);
+          if (fs.exists(p)) {
+            LOG.info("Adding sourceFile [" + minFileName + "] to distcp " +
+                "FinalList");
+            minFilesSet.add(minFileName.trim());
+          } else {
+            LOG.info("Skipping [" + minFileName + "] to pull as it's an " +
+                "INVALID PATH");
           }
         }
-        Path tmpPath = createInputFileForDISCTP(destFs, srcCluster.getName(), tmp,
-            sourceFiles);
-        return getFinalPathForDistCP(tmpPath, consumePaths);
-      } else if (fileList.length == 1) {
-        /*
-         * services are running in a streaming fashion,
-         * read this file and only add VALID paths to distcp input
-         */
-        Path consumePath = fileList[0].getPath().makeQualified(srcFs);
-        consumePaths.put(consumePath, srcFs);
-        FSDataInputStream fsDataInputStream = srcFs.open(consumePath);
-        BufferedReader reader = new BufferedReader(new InputStreamReader
-            (fsDataInputStream));
-        String file = reader.readLine();
-        while (file != null) {
-          file = reader.readLine().trim();
-          sourceFiles.add(file);
-        }
+      } while (minFileName != null);
+    } finally {
+      if (reader != null)
         reader.close();
-        Path tmpPath = createInputFileForDISCTP(destFs, srcCluster.getName(), tmp,
-            sourceFiles);
-        return getFinalPathForDistCP(tmpPath, consumePaths);
-      }
     }
-    return null;
   }
 
   /*
@@ -248,15 +258,8 @@ public abstract class DistcpBaseService extends AbstractService {
       return tmpPath.makeQualified(destFs);
     } else {
       /*
-      * no valid paths to return. Cleanup consumePaths
+      * no valid paths to return.
       */
-      for (Map.Entry<Path, FileSystem> consumePath : consumePaths.entrySet()) {
-        Path p = consumePath.getKey();
-        FileSystem fs = consumePath.getValue();
-        fs.delete(p);
-        LOG.info("Deleting invalid consumePath[" + p + "]. ");
-      }
-      consumePaths.clear();
       return null;
     }
   }
@@ -271,49 +274,27 @@ public abstract class DistcpBaseService extends AbstractService {
    * @param Set<String> - set of sourceFiles need to be pulled
    */
   private Path createInputFileForDISCTP(FileSystem fs, String clusterName,
-                                        Path tmp, Set<String> sourceFiles)
+                                        Path tmp, Set<String> minFilesSet)
       throws IOException {
-    Set<String> validFiles = new HashSet<String>();
-    for (String sourceFile : sourceFiles) {
-      /*
-       * To avoid data-loss in all services we publish the paths to
-       * consumers directory first before publishing on HDFS for
-       * finalConsumption. In a distributed transaction failure it's
-       * possible that some of these paths do not exist. Do isExistence
-       * check before adding them as DISTCP input otherwise DISTCP
-       * jobs can fail continously thereby blocking Merge/Mirror
-       * stream to run further
-       */
-      Path p = new Path(sourceFile);
-      if (fs.exists(p)) {
-        LOG.info("Adding sourceFile [" + sourceFile + "] to distcp " +
-            "FinalList");
-        validFiles.add(sourceFile);
-      } else {
-        LOG.info("Skipping [" + sourceFile + "] to pull as it's an " +
-            "INVALID PATH");
-      }
-    }
-
-    if (validFiles.size() > 0) {
+    if (minFilesSet.size() > 0) {
       BufferedWriter writer = null;
       Path tmpPath = null;
       try {
-      tmpPath = new Path(tmp, clusterName + new Long(System
-          .currentTimeMillis()).toString());
-      FSDataOutputStream out = fs.create(tmpPath);
-     writer = new BufferedWriter(new OutputStreamWriter
-          (out));
-      for (String validFile : validFiles) {
-        writer.write(validFile);
-        writer.write("\n");
-      }
+        tmpPath = new Path(tmp, clusterName + new Long(System
+            .currentTimeMillis()).toString());
+        FSDataOutputStream out = fs.create(tmpPath);
+        writer = new BufferedWriter(new OutputStreamWriter
+            (out));
+        for (String minFile : minFilesSet) {
+          writer.write(minFile);
+          writer.write("\n");
+        }
       } finally {
         writer.close();
       }
       return tmpPath;
-    }
-    return null;
+    } else
+      return null;
   }
 
 

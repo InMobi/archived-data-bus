@@ -27,8 +27,10 @@ public class TestDistCPBaseService  {
   FileSystem localFs;
   Cluster cluster;
   MirrorStreamService service = null;
-  String expectedFileName = "/tmp/com.inmobi.databus.distcp" +
+  String expectedFileName1 = "/tmp/com.inmobi.databus.distcp" +
       ".TestDistCPBaseService/data-file1";
+  String expectedFileName2 = "/tmp/com.inmobi.databus.distcp" +
+      ".TestDistCPBaseService/data-file2";
   Set<String> expectedConsumePaths = new HashSet<String>();
 
   @BeforeTest
@@ -36,7 +38,6 @@ public class TestDistCPBaseService  {
     //create fs
     localFs = FileSystem.getLocal(new Configuration());
     localFs.mkdirs(testRoot);
-
 
     //create cluster
     Map<String, String> clusterConf = new HashMap<String, String>();
@@ -105,9 +106,12 @@ public class TestDistCPBaseService  {
     writer.write("junkfile-2\n");
     writer.close();
 
-    //create valid data file
+    //one valid & invalid data file
     Path data_file = new Path(testRoot, "data-file1");
     localFs.create(data_file);
+
+    Path data_file1 = new Path(testRoot, "data-file2");
+    localFs.create(data_file1);
 
     //one file with data and one valid path and one invalid path
     p = new Path(dataRoot, "file-with-valid-data");
@@ -115,6 +119,7 @@ public class TestDistCPBaseService  {
     writer = new BufferedWriter(new OutputStreamWriter(out));
     writer.write(data_file.toString() +"\n");
     writer.write("some-junk-path\n");
+    writer.write(data_file1.toString() + "\n");
     writer.close();
   }
 
@@ -127,12 +132,21 @@ public class TestDistCPBaseService  {
     BufferedReader reader = new BufferedReader(new InputStreamReader(in));
     String result = reader.readLine();
     //assert that the minuteFileName inside the valid file with data
-    //matches our expectedoutput
-    assert result.equals(expectedFileName);
+    //matches our expectedFileName1
+    assert result.equals(expectedFileName1);
+
+    //second line was junkpath which would be skipped instead the next valid
+    // path in input should be present
+    result = reader.readLine();
+    assert result.equals(expectedFileName2);
+    reader.close();
 
     Set<String> resultSet = new HashSet<String>();
+    //compare consumePaths with expectedOutput
     for (Path consumePath : consumePaths.keySet()) {
       //cant compare the path generated using timestamp
+      //The final path on destinationCluster which contains all valid
+      // minutefileNames has a suffix of timestamp to it
       if (!consumePath.toString().contains("file:/tmp/com.inmobi.databus" +
           ".distcp.TestDistCPBaseService/databusCluster")) {
         LOG.info("Path to consume [" + consumePath + "]");
@@ -150,14 +164,8 @@ public class TestDistCPBaseService  {
     Map<Path, FileSystem> consumePaths = new HashMap<Path, FileSystem>();
     Path p =  service.getDistCPInputFile(consumePaths, testRoot);
     //since all data is invalid
-    //all invalid consumePaths file should be deleted and
     //output of this function should be null
     assert p == null;
-    assert consumePaths.size() == 0;
-    assert !localFs.exists(new Path("/tmp/com.inmobi.databus.distcp" +
-        ".TestDistCPBaseService/system/mirrors/databusCluster/file1-empty"));
-    assert !localFs.exists(new Path("/tmp/com.inmobi.databus.distcp" +
-        ".TestDistCPBaseService/system/mirrors/databusCluster/file-with-junk-data"));
 
   }
 
