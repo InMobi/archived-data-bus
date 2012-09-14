@@ -76,6 +76,7 @@
       <outputDirectory>/bin/</outputDirectory>
       <includes>
         <include>**/databus.sh</include>
+        <include>**/databus-utils.sh</include>
       </includes>
     </fileSet>
    
