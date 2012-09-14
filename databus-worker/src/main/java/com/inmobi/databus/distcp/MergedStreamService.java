@@ -75,7 +75,7 @@ public class MergedStreamService extends DistcpBaseService {
         addPublishMissingPaths(missingDirsCommittedPaths, -1, null);
       }
 
-      Path inputFilePath = getInputFilePath(consumePaths, tmp);
+      Path inputFilePath = getDistCPInputFile(consumePaths, tmp);
       if (inputFilePath == null) {
         LOG.warn("No data to pull from " + "Cluster ["
                 + getSrcCluster().getHdfsUrl() + "]" + " to Cluster ["
@@ -112,6 +112,7 @@ public class MergedStreamService extends DistcpBaseService {
 
           // category, Set of Paths to commit
           committedPaths = doLocalCommit(commitTime, categoriesToCommit);
+
           for (Map.Entry<String, Set<Path>> entry : missingDirsCommittedPaths
               .entrySet()) {
             Set<Path> filesList = committedPaths.get(entry.getKey());
@@ -211,12 +212,15 @@ public class MergedStreamService extends DistcpBaseService {
                 + "_" + stream;
         tmpConsumerPath = new Path(tmp, tmpPath);
         FSDataOutputStream out = getDestFs().create(tmpConsumerPath);
-        for (Path path : committedPaths.get(stream)) {
-          LOG.debug("Writing Mirror Commit Path [" + path.toString() + "]");
-          out.writeBytes(path.toString());
-          out.writeBytes("\n");
+        try {
+          for (Path path : committedPaths.get(stream)) {
+            LOG.debug("Writing Mirror Commit Path [" + path.toString() + "]");
+            out.writeBytes(path.toString());
+            out.writeBytes("\n");
+          }
+        } finally {
+          out.close();
         }
-        out.close();
         // Two MergedStreamConsumers will write file for same consumer within
         // the same time
         // adding srcCLuster name avoids that conflict

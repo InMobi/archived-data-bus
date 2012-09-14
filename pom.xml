@@ -18,7 +18,7 @@
     <url>https://github.com/InMobi/data-bus</url>
     <developerConnection>scm:git:git@github.com/InMobi/data-bus.git</developerConnection>
   </scm>
-  
+
   <repositories>
     <repository>
       <id>cloudera</id>
