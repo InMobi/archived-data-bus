@@ -108,9 +108,6 @@ if [ -z "${DATABUS_HOME}" ] ; then
   DATABUS_HOME=$(cd $(dirname $0)/..; pwd)
 fi
 
-DEV_CLASSPATH=${DATABUS_HOME}/databus-core/target/classes
-DEV_CLASSPATH=$DEV_CLASSPATH:${DATABUS_HOME}/databus-worker/target/classes
-ln -s /home/rajubairishetti/.m2/repository/com/inmobi/databus/* /home/rajubairishetti/data-bus/databus-dist/target/databus-dist-1.2.0-SNAPSHOT-pkg/lib/* 
 # Append to the classpath
 if [ -n "${DATABUS_CLASSPATH}" ] ; then
   DATABUS_CLASSPATH="${DATABUS_HOME}/lib/*:$DEV_CLASSPATH:$DATABUS_CLASSPATH"

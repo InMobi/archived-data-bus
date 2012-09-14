@@ -63,11 +63,6 @@ public class OrderlyCreationOfDirs {
     Date previousKeyEntry = null;
     for (Date presentKeyEntry : creationTimeOfFiles.keySet() ) {
       if (previousKeyEntry != null) {
-        System.out.println(previousKeyEntry + "   " + presentKeyEntry);
-        System.out.println(creationTimeOfFiles.get(previousKeyEntry).
-            getModificationTime()
-            + "   diff  " +creationTimeOfFiles.get(presentKeyEntry).
-            getModificationTime());
         if (creationTimeOfFiles.get(previousKeyEntry).getModificationTime()
             > creationTimeOfFiles.get(presentKeyEntry).getModificationTime()) {
           System.out.println("Directory is created in out of order :    " + 
@@ -127,7 +122,11 @@ public class OrderlyCreationOfDirs {
       String[] baseDir      =   args[1].split(",");
       String[] streamName   =   args[2].split(",");
       OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
-      obj.pathConstruction(rootDirs, baseDir, streamName);
+     List<Path> outoforderdirs = obj.pathConstruction(rootDirs, baseDir, 
+         streamName); 
+     if (outoforderdirs.isEmpty()) {
+       System.out.println("There are no out of order dirs");
+     }
     } else {
       System.out.println("Insufficient number of arguments: enter rootdirs," +
       		" basedirs, streamnames ");
