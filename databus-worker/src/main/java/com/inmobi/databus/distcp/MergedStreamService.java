@@ -75,7 +75,7 @@ public class MergedStreamService extends DistcpBaseService {
         addPublishMissingPaths(missingDirsCommittedPaths, -1, null);
       }
 
-      Path inputFilePath = getInputFilePath(consumePaths, tmp);
+      Path inputFilePath = getDistCPInputFile(consumePaths, tmp);
       if (inputFilePath == null) {
         LOG.warn("No data to pull from " + "Cluster ["
                 + getSrcCluster().getHdfsUrl() + "]" + " to Cluster ["
@@ -112,6 +112,7 @@ public class MergedStreamService extends DistcpBaseService {
 
           // category, Set of Paths to commit
           committedPaths = doLocalCommit(commitTime, categoriesToCommit);
+
           for (Map.Entry<String, Set<Path>> entry : missingDirsCommittedPaths
               .entrySet()) {
             Set<Path> filesList = committedPaths.get(entry.getKey());
