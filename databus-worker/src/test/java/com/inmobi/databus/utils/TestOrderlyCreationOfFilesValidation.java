@@ -51,7 +51,6 @@ public class TestOrderlyCreationOfFilesValidation  {
   
   public void createMinDirs(String listPath, boolean outofOrder, int dirNumber) 
       throws Exception {
-     
     int milliseconds;
     if (outofOrder) {
      milliseconds = -60000;
