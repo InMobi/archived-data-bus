@@ -94,17 +94,8 @@ public class TestDistCPBaseService  {
   private void createValidData() throws IOException{
     Path dataRoot = new Path(testRoot, service.getInputPath());
     localFs.mkdirs(dataRoot);
-    //one empty file
-    Path p = new Path(dataRoot, "file1-empty");
-    localFs.create(p);
-
-    //one file with data put invalid paths
-    p = new Path(dataRoot, "file-with-junk-data");
-    FSDataOutputStream out = localFs.create(p);
-    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-    writer.write("junkfile-1\n");
-    writer.write("junkfile-2\n");
-    writer.close();
+    //create invalid data
+    createInvalidData();
 
     //one valid & invalid data file
     Path data_file = new Path(testRoot, "data-file1");
@@ -114,9 +105,9 @@ public class TestDistCPBaseService  {
     localFs.create(data_file1);
 
     //one file with data and one valid path and one invalid path
-    p = new Path(dataRoot, "file-with-valid-data");
-    out = localFs.create(p);
-    writer = new BufferedWriter(new OutputStreamWriter(out));
+    Path p = new Path(dataRoot, "file-with-valid-data");
+    FSDataOutputStream  out = localFs.create(p);
+    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
     writer.write(data_file.toString() +"\n");
     writer.write("some-junk-path\n");
     writer.write(data_file1.toString() + "\n");

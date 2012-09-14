@@ -1,5 +1,13 @@
 package com.inmobi.databus.distcp;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.inmobi.databus.AbstractServiceTest;
+import com.inmobi.databus.Cluster;
+import com.inmobi.databus.DatabusConfig;
+import com.inmobi.databus.PublishMissingPathsTest;
+import com.inmobi.databus.SourceStream;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -10,14 +18,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.inmobi.databus.AbstractServiceTest;
-import com.inmobi.databus.Cluster;
-import com.inmobi.databus.DatabusConfig;
-import com.inmobi.databus.PublishMissingPathsTest;
-import com.inmobi.databus.SourceStream;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -139,7 +139,7 @@ public class TestMergedStreamService extends MergedStreamService
                 + commitPaths.size());
             
             for (int j = 0; j < filesList.size() - 1; ++j) {
-              String  checkpath = filesList.get(j);
+              String checkpath = filesList.get(j);
               LOG.debug("Merged Checking file: " + checkpath);
               Assert.assertTrue(commitPaths.contains(checkpath));
             }
