@@ -145,6 +145,7 @@ public class TestDistCPBaseService  {
       }
     }
     assert resultSet.containsAll(expectedConsumePaths);
+    assert consumePaths.size() == resultSet.size() + 1;
   }
 
 
