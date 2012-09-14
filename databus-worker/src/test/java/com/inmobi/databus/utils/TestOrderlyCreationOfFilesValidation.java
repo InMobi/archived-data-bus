@@ -1,10 +1,13 @@
 package com.inmobi.databus.utils;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.TreeMap;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -25,7 +28,8 @@ public class TestOrderlyCreationOfFilesValidation  {
       .getSimpleName();
 
   FileSystem fs;
-  List<Path> expectedResults = new ArrayList<Path>();
+  Set<Path> outoforderExpectedResults = new HashSet<Path>();
+  List<Path> inorderExpectedResults = new ArrayList<Path>();
   String rootDirs [] = ("file:///tmp/test/" + className
     + "/1/,file:///tmp/test/" + className +"/2/").split(",");
   String baseDirs[] = "streams,streams_local".split(",");
@@ -43,78 +47,89 @@ public class TestOrderlyCreationOfFilesValidation  {
   public void cleanup() throws Exception {
     fs.delete(new Path(rootDirs[0]).getParent(), true);
   }
+  long temptime = System.currentTimeMillis();
   
-  public void createMinDirs(String listPath, boolean outofOrder) 
+  public void createMinDirs(String listPath, boolean outofOrder, int dirNumber) 
       throws Exception {
+     
     int milliseconds;
     if (outofOrder) {
-      milliseconds = -60000;
+     milliseconds = -60000;
     } else {
       milliseconds = 60000;
     }
-    for ( int i = 1; i < 5; i++) {
-      String date = Cluster.getDateAsYYYYMMDDHHMNPath(System.currentTimeMillis()
-          + i*milliseconds);
-      createFilesData(fs, listPath + date, 2 );
-    }  
+    String date = Cluster.getDateAsYYYYMMDDHHMNPath(temptime + 
+        dirNumber * milliseconds);
+    int filesCount = 2;
+    Path minDir = new Path(listPath, date);
+    fs.mkdirs(minDir);
+    for (int i =0; i < filesCount; i++) {
+      createFilesData(fs, minDir, i );
+    }
+  if (outofOrder) {
+    outoforderExpectedResults.add(minDir);
   }
+}
   
   public void createTestData() throws Exception {
-    String  listPath = rootDirs[0] + baseDirs[0] + File.separator + 
-        inorderStream[0] + File.separator ;
-    createMinDirs(listPath, false);
-    listPath = rootDirs[0] + baseDirs[0] + File.separator + outoforderStream[0]
-        + File.separator ;
-    createMinDirs(listPath, false);
-    createMinDirs(listPath, true);
+    String  listPath ;
+    int dirCount =2;
+    for (int j = 1; j <= dirCount; ++j) {
+      for ( String rootdir : rootDirs) {
+        for (String basedir : baseDirs) {
+          for (String inorderstream : inorderStream) {
+            listPath = rootdir + File.separator + basedir + File.separator +
+                inorderstream + File.separator;
+            createMinDirs(listPath, false, j );
+          }
+          for (String outoforderstream : outoforderStream) {
+            listPath = rootdir + File.separator + basedir + File.separator +
+                outoforderstream + File.separator;
+            createMinDirs(listPath, false, j);
+            Thread.sleep(1000);
+            createMinDirs(listPath, true, j);
+          }
+        }
+      }
+      Thread.sleep(1000);
+    }
   }
 
-  public static List<String> createFilesData(FileSystem fs,
-      String pathName, int filesCount) throws Exception {
-    Path createPath = new Path(pathName);
-    fs.mkdirs(createPath);
-    List<String> filesList = new ArrayList<String>();
-
-    for (int j = 0; j < filesCount; ++j) {
-      Thread.sleep(1000);
-      String filenameStr = new String("file" + j);
-      filesList.add(j, filenameStr);
-      Path path = new Path(createPath, filesList.get(j));
-      LOG.debug("Creating Test Data with filename [" + filesList.get(j) + "]");
-      FSDataOutputStream streamout = fs.create(path);
-      streamout.writeBytes("Creating Test data for teststream "
-          + filesList.get(j));
-      streamout.close(); 
-    }
-    return filesList;
+  public static Path createFilesData(FileSystem fs,
+      Path minDir, int fileNum) throws Exception {
+    Path filenameStr = new Path("file" + fileNum );
+    Path path = new Path(minDir, filenameStr);
+    LOG.debug("Creating Test Data with filename [" + filenameStr + "]");
+    FSDataOutputStream streamout = fs.create(path);
+    streamout.writeBytes("Creating Test data for teststream "
+        + path);
+    streamout.close(); 
+    return path;   
   }
   
-  public void createOutputData() {
-    String date;
-    for (int i = 4; i > 0; i-- ) {
-      date = Cluster.getDateAsYYYYMMDDHHMNPath(System.currentTimeMillis()
-          - i * 60000);
-      expectedResults.add(new Path( "file:/tmp/test/" +
-      		"TestOrderlyCreationOfFilesValidation/1/streams/outoforder/" +
-      		date));
-    }
-  }
-
   @Test
   public void TestOrderlyCreation() throws Exception {
-    OrderlyCreationOfDirsForDiffStreams obj = new 
-        OrderlyCreationOfDirsForDiffStreams();
-    Assert.assertEquals( expectedResults , obj.pathConstruction(rootDirs, 
+    OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
+    Assert.assertEquals( inorderExpectedResults , obj.pathConstruction(rootDirs, 
         baseDirs , emptyStream));
-    Assert.assertEquals( expectedResults , obj.pathConstruction(rootDirs, 
+    Assert.assertEquals( inorderExpectedResults , obj.pathConstruction(rootDirs, 
         baseDirs , inorderStream));
-    createOutputData();
     List<Path> outOfOderDirs =  obj.pathConstruction(rootDirs, baseDirs, 
         outoforderStream);
-    LOG.info(expectedResults.size());
-    for (int i = 0; i <= expectedResults.size()-1; i++) {
-      Assert.assertEquals( expectedResults.get(i) ,outOfOderDirs.get(i));
+    Iterator it = outoforderExpectedResults.iterator();
+    while (it.hasNext()) {
+      Assert.assertTrue(outOfOderDirs.contains(it.next()));
     }
+    Assert.assertEquals(outOfOderDirs.size(), outoforderExpectedResults.size());
+    String [] totalStreams ="empty,inorder,outoforder".split(",");
+    List<Path> totalOutOfOderDirs = obj.pathConstruction(rootDirs, baseDirs,
+        totalStreams );
+    LOG.info(totalOutOfOderDirs.size());
+    Iterator it1 = outoforderExpectedResults.iterator();
+    while (it.hasNext()) {
+      Assert.assertTrue(totalOutOfOderDirs.contains(it1.next()));
+    }
+    Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.size());
   }
 }
 

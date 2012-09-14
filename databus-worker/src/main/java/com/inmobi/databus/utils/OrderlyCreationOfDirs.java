@@ -16,13 +16,23 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import com.inmobi.databus.utils.CalendarHelper;
 
+/**
+ * This class finds the out of order minute directories in various streams 
+ * for different clusters. 
+ * This class main function takes list of root dirs, base dirs, stream names
+ *  as arguments. All are comma separated 
+ */
 public class OrderlyCreationOfDirs {
   private static final Log LOG = LogFactory.getLog(
       OrderlyCreationOfDirs.class);
 
   public OrderlyCreationOfDirs() {
   }
-
+ 
+  /**
+   * This method lists all the minute directories for a particular 
+   * stream category.
+   */
   public void doRecursiveListing(Path dir, Set<Path> listing, 
       FileSystem fs) throws IOException {
     FileStatus[] fileStatuses = fs.listStatus(dir);
@@ -40,20 +50,30 @@ public class OrderlyCreationOfDirs {
     }
   }
 
+  /**
+   *  This method finds the out of order minute directories for a 
+   *  particular stream.
+   *  @param creationTimeOfFiles : TreeMap for all the directories statuses
+   *   for a particular stream
+   *  @param outOfOrderDirs : store out of order directories : outOfOrderDirs
+   */
   public void validateOrderlyCreationOfPaths(
       TreeMap<Date , FileStatus> creationTimeOfFiles, 
       List<Path> outOfOrderDirs) {
     Date previousKeyEntry = null;
     for (Date presentKeyEntry : creationTimeOfFiles.keySet() ) {
       if (previousKeyEntry != null) {
-        //LOG.info(previousKeyEntry);
+        System.out.println(previousKeyEntry + "   " + presentKeyEntry);
+        System.out.println(creationTimeOfFiles.get(previousKeyEntry).
+            getModificationTime()
+            + "   diff  " +creationTimeOfFiles.get(presentKeyEntry).
+            getModificationTime());
         if (creationTimeOfFiles.get(previousKeyEntry).getModificationTime()
             > creationTimeOfFiles.get(presentKeyEntry).getModificationTime()) {
           System.out.println("Directory is created in out of order :    " + 
               creationTimeOfFiles.get(previousKeyEntry).getPath()); 
           outOfOrderDirs.add(creationTimeOfFiles.get(previousKeyEntry)
               .getPath());
-          previousKeyEntry = presentKeyEntry;
         }
       }
       previousKeyEntry = presentKeyEntry;
@@ -74,6 +94,12 @@ public class OrderlyCreationOfDirs {
     validateOrderlyCreationOfPaths(creationTimeOfFiles, outOfOrderDirs);
   }
 
+  /**
+   * @param  rootDirs : array of root directories
+   * @param  baseDirs : array of baseDirs
+   * @param  streamNames : array of stream names
+   * @return outOfOrderDirs: list of out of directories for all the streams.
+   */
   public List<Path> pathConstruction(String rootDirs[] , String baseDirs[] , 
       String streamNames[]) throws IOException{
     List<Path> outOfOrderDirs = new ArrayList<Path>();
@@ -85,7 +111,8 @@ public class OrderlyCreationOfDirs {
           Path streamDir = new Path(rootBaseDirPath , streamName); 
           FileStatus[] files = fs.listStatus(streamDir);
           if (files == null || files.length == 0) {
-            break;
+            LOG.info("No direcotries in that stream: " + streamName);
+            continue; 
           }
           listingAndValidation(streamDir, fs , outOfOrderDirs);
         }    
