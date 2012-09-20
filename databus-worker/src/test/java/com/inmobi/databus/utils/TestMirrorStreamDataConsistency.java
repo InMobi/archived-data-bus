@@ -1,7 +1,7 @@
 package com.inmobi.databus.utils;
 
 import java.util.ArrayList;
-import java.io.File;
+import java.util.Iterator;
 import java.io.IOException;
 import java.util.List;
 
@@ -21,15 +21,12 @@ public class TestMirrorStreamDataConsistency {
       TestMirrorStreamDataConsistency.class);
   private static String className = TestMirrorStreamDataConsistency.class
       .getSimpleName();
-
   FileSystem fs;
   String mergedStreamUrl = "file:///tmp/test/" + className + "/1/" ;
-  //String mirrorStreamUrl = ("file:///tmp/test/" + className
-   //   + "/2/,file:///tmp/test/" + className +"/3/");
-  String mirrorStreamUrl = ("file:///tmp/test/" + className + "/2/");
+  String mirrorStreamUrl = ("file:///tmp/test/" + className
+      + "/2/,file:///tmp/test/" + className +"/3/");
   String [] mirrorStreamUrls = mirrorStreamUrl.split(",");
- // String [] streamNames = "nothing,missing,dataReplay,extraFiles".split(",");
-  String [] streamNames = "missing".split(",");
+  String [] streamNames = "nothing,missing,dataReplay,extraFiles".split(",");
   List<Path> missedPaths = new ArrayList<Path>();
   List<Path> dataReplayPaths = new ArrayList<Path>();
   long temptime = System.currentTimeMillis();
@@ -47,33 +44,42 @@ public class TestMirrorStreamDataConsistency {
   }
   
   public void createMinDirs(Path listPath, boolean streamFlag, 
-  		boolean missingFlag, int dirCount) 
-      throws Exception {
+  		boolean missingFlag, int dirCount) throws Exception {
     int milliseconds = 60000;
     String date;
     Path streamDir;
     for(String streamName : streamNames ) {
-	    for (int i = 0; i < dirCount; i++) {
-		    date = Cluster.getDateAsYYYYMMDDHHMNPath(temptime + 
-		        i * milliseconds);
+	    for (int i = 1; i <= dirCount; i++) {
 		    streamDir = new Path(listPath, streamName);
 		    if (!streamFlag) {
+		    	date = Cluster.getDateAsYYYYMMDDHHMNPath(temptime + 
+			        i * milliseconds);
 		    	createFilesData(fs, new Path(streamDir, date), 2, 0);
+		    	for (int j = 0; j < mirrorStreamUrls.length; j++ ) {
+		    		missedPaths.add(new Path(new Path(streamDir, date), "file1"));
+		    	}
 		    } else {
 		    	if (!missingFlag) {
-		    		createFilesData(fs, new Path(streamDir, date), 2, 0);
-		    	} else {
-		    		missedPaths.addAll(createFilesData(fs, new Path(streamDir,
-		    				date), 2, 1));
+		    		date = Cluster.getDateAsYYYYMMDDHHMNPath(temptime - 
+				        i * milliseconds);
+		    		createFilesData(fs, new Path(streamDir, date), 1, 0);
+		    		date = Cluster.getDateAsYYYYMMDDHHMNPath(temptime + 
+				        i * milliseconds);
+		    		createFilesData(fs, new Path(streamDir, date), 1, 0);
+		    		
+		      } else {
+		    		date = Cluster.getDateAsYYYYMMDDHHMNPath(temptime -
+		    				i * milliseconds);
+		    		dataReplayPaths.add(new Path(streamDir, date));
+		    		dataReplayPaths.add(new Path(new Path(streamDir, date), "file0"));
 		    	}
 		    }
 	    }
     }
-   }
+  }
   
   public void createTestData(String rootDir, String streamType) throws  
   		Exception {
-   // String  listPath ;
     Path baseDir;
     if (streamType.equals("merge")) {
       baseDir = new Path(rootDir, "streams");
@@ -93,15 +99,12 @@ public class TestMirrorStreamDataConsistency {
     List<Path> filesList = new ArrayList<Path>();
     Path path;
     for (int j = start; j < filesCount; j++) {
-       // String filenameStr = new String(streamName + "-"
-       //   + getDateAsYYYYMMDDHHmm(new Date()) + "_" + idFormat.format(j));
       filesList.add(new Path("file"+j));
       if (start == 1) {
       	path= new Path(minDir, filesList.get(j-1));
       } else {
       	path= new Path(minDir, filesList.get(j));
       }
-    //  LOG.debug("Creating Test Data with filename [" + filesList.get(j) + "]");
       FSDataOutputStream streamout = fs.create(path);
       if (start == 1) {
       	streamout.writeBytes("Creating Test data for teststream "
@@ -124,19 +127,19 @@ public class TestMirrorStreamDataConsistency {
 		for (String streamName : streamNames) {
 			inconsistentdata.addAll(obj.processListingStreams(streamName));
 		}
-		
-		LOG.info(missedPaths.size() +"   "+ inconsistentdata.size());
-	  Assert.assertTrue(1 == 1);
-	  /*List<Path> merged = new ArrayList<Path>();
-	  List<Path> mirrored = new ArrayList<Path>();
-	  merged.add(new Path("file:///1"));
-	  merged.add(new Path("file:///2"));
-	  merged.add(new Path("file:///3"));
-	  merged.add(new Path("file:///4"));
-	  mirrored.add(new Path("file:///2"));
-	  mirrored.add(new Path("file:///3"));
-	  mirrored.add(new Path("file:///4"));
-	  LOG.info("size is:"+ obj.compareMergedAndMirror(merged, mirrored));
-	 */
+		Iterator<Path> it = missedPaths.iterator();
+		while (it.hasNext()) {
+			Path path = it.next();
+			LOG.info("missing file  " + path);
+		}
+		Iterator<Path> it1 = dataReplayPaths.iterator();
+		while (it1.hasNext()) {
+			Path path = it1.next();
+			LOG.info("data Replay  " + path);
+	  }
+		Assert.assertEquals(missedPaths.size() + dataReplayPaths.size(),
+	  		inconsistentdata.size());
+	  Assert.assertTrue(inconsistentdata.containsAll(missedPaths));
+	  Assert.assertTrue(inconsistentdata.containsAll(dataReplayPaths));
 	}
 }

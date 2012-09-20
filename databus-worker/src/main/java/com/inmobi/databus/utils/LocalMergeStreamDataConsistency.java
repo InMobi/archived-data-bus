@@ -95,11 +95,14 @@ public class LocalMergeStreamDataConsistency {
   }
  
 	public static void main(String [] args) throws Exception {
-		String [] localStreamrootDirs = args[0].split(",");
-		String mergedStreamRoorDir = args[1];
-		String [] streamNames = args[2].split(",");
-		LocalMergeStreamDataConsistency obj = new LocalMergeStreamDataConsistency();
-		obj.processing(mergedStreamRoorDir, localStreamrootDirs, streamNames);
-		
+		if (args.length ==3) {
+			String [] localStreamrootDirs = args[0].split(",");
+			String mergedStreamRoorDir = args[1];
+			String [] streamNames = args[2].split(",");
+			LocalMergeStreamDataConsistency obj = new LocalMergeStreamDataConsistency();
+			obj.processing(mergedStreamRoorDir, localStreamrootDirs, streamNames);
+		} else {
+			System.out.println("incorrect number of arguments");
+		}
 	}
 }
