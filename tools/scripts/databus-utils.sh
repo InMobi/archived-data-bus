@@ -28,8 +28,8 @@ error() {
 
 display_help() {
   cat <<EOF
-USAGE: $0 mirrorstreamdataconsistency <mergedstreamroot-dir> <streamname(comma separated list)> <mirrorstreamroot-dir>
-       $0 orderlycreated <root-dirs (comma separated list)>  <basedir (comma separated list)> <streamname (comma separated list) >
+USAGE: $0 mirrorstreamdataconsistency <mergedstreamroot-dir> <mirrorstreamroot-dir( comma separated list)> [<streamname(comma separated list)>]
+       $0 orderlycreated <root-dirs (comma separated list)> [<basedir (comma separated list)>] [<streamname (comma separated list)>]
 EOF
 }
 
