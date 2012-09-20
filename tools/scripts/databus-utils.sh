@@ -1,4 +1,5 @@
 # constants
+DATABUS_MIRROR_STREAM_VALIDATION_CLASS="com.inmobi.databus.utils.MirrorStreamDataConsistencyValidation"
 DATABUS_ORDERLY_CREATION_FILES_CLASS="com.inmobi.databus.utils.OrderlyCreationOfDirs"
 
 #functions
@@ -27,7 +28,7 @@ error() {
 
 display_help() {
   cat <<EOF
-USAGE: 
+USAGE: $0 mirrorstreamdataconsistency <mergedstreamroot-dir> <streamname(comma separated list)> <mirrorstreamroot-dir>
        $0 orderlycreated <root-dirs (comma separated list)>  <basedir (comma separated list)> <streamname (comma separated list) >
 EOF
 }
@@ -65,6 +66,9 @@ case "$mode" in
   help)
     display_help
     exit 0
+    ;;
+  mirrorstreamdataconsistency)
+    opt_mirror=1
     ;;
   orderlycreated)
     opt_order=1;
@@ -118,6 +122,8 @@ fi
 # finally, invoke the appropriate command
 if [ -n "$opt_order" ] ; then
   run_databus $DATABUS_ORDERLY_CREATION_FILES_CLASS $args 
+elif [ -n "$opt_mirror" ] ; then
+  run_databus $DATABUS_MIRROR_STREAM_VALIDATION_CLASS $args $args1 $args2
 #  echo $args
 else
   error "This message should never appear" 1
