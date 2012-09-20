@@ -37,6 +37,7 @@ public class FileUtil {
       in.close();
       CodecPool.returnCompressor(gzipCompressor);
       compressedOut.close();
+      out.close();
     }
   }
 }

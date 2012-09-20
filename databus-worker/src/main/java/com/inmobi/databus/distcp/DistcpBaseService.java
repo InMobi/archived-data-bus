@@ -14,10 +14,8 @@
 package com.inmobi.databus.distcp;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.util.Calendar;
 import java.util.Date;
@@ -277,20 +275,20 @@ public abstract class DistcpBaseService extends AbstractService {
                                         Path tmp, Set<String> minFilesSet)
       throws IOException {
     if (minFilesSet.size() > 0) {
-      BufferedWriter writer = null;
       Path tmpPath = null;
+      FSDataOutputStream out = null;
       try {
         tmpPath = new Path(tmp, clusterName + new Long(System
             .currentTimeMillis()).toString());
-        FSDataOutputStream out = fs.create(tmpPath);
-        writer = new BufferedWriter(new OutputStreamWriter
-            (out));
+        out = fs.create(tmpPath);
         for (String minFile : minFilesSet) {
-          writer.write(minFile);
-          writer.write("\n");
+          out.write(minFile.getBytes());
+          out.write('\n');
         }
       } finally {
-        writer.close();
+        if (out != null) {
+          out.close();
+        }
       }
       return tmpPath;
     } else
