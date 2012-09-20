@@ -3,7 +3,6 @@ package com.inmobi.databus.utils;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
@@ -117,52 +116,14 @@ public class OrderlyCreationOfDirs {
     return outOfOrderDirs;
   }
   
-  public void listFilesAtOneLevel(Path rootDir, List<Path> listing,
-  		FileSystem fs ) throws Exception {
-  	FileStatus[] fileStatuses = fs.listStatus(rootDir);
-    if (fileStatuses == null || fileStatuses.length == 0) {
-      LOG.debug("No files in directory:" + rootDir);
-      //listing.add(dir);
-    } else {
-      for (FileStatus file : fileStatuses) {  
-        listing.add(file.getPath());
-      } 
-    }
-  }
-  
-  public static void main(String[] args) throws Exception {
-  	OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
+  public static void main(String[] args) throws IOException {
     if (args.length == 3) {
       String[] rootDirs     =   args[0].split(",");
-      List<Path> listingbaseDirs = new ArrayList<Path>();
-      List<Path> listingStreamNames = new ArrayList<Path>();
-      for (String rootDir : rootDirs) {
-	      FileSystem fs = new Path(rootDir).getFileSystem(new Configuration());
-	      obj.listFilesAtOneLevel(new Path(rootDir), listingbaseDirs, fs);
-	    }
-      String []  baseDirs = new String[listingbaseDirs.size()];
-      
-      int i = 0 ;
-      Iterator<Path> it = listingbaseDirs.iterator();
-      while (it.hasNext()) {
-      	baseDirs[i] = it.next().toString();
-      }
-      for (String rootDir : rootDirs) {
-      	for (String baseDir : baseDirs) {
-      		FileSystem fs = new Path(rootDir, baseDir).
-      				getFileSystem(new Configuration());
-      		obj.listFilesAtOneLevel(new Path(rootDir, baseDir), 
-      				listingStreamNames, fs);
-      	}
-      }
-      String[] streamNames = new String[listingStreamNames.size()];
-      i = 0;
-      Iterator<Path> it1 = listingStreamNames.iterator();
-      while (it1.hasNext()) {
-      	streamNames[i++] = it1.next().toString();
-      }
-      List<Path> outoforderdirs = obj.pathConstruction(rootDirs, baseDirs, 
-         streamNames); 
+      String[] baseDir      =   args[1].split(",");
+      String[] streamName   =   args[2].split(",");
+      OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
+     List<Path> outoforderdirs = obj.pathConstruction(rootDirs, baseDir, 
+         streamName); 
      if (outoforderdirs.isEmpty()) {
        System.out.println("There are no out of order dirs");
      }
