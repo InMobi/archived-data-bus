@@ -173,37 +173,39 @@ public class MirrorStreamDataConsistencyValidation {
   }
 
   public static void main(String args[]) throws Exception {
-  	String mergedStreamUrl = args[0];
-  	String mirrorStreamUrls = args[1];	
-  	List<String> streamNames = new ArrayList<String>();
-  	MirrorStreamDataConsistencyValidation obj = new 
-  			MirrorStreamDataConsistencyValidation(mirrorStreamUrls, 
-  					mergedStreamUrl);
-  	if(args.length == 3) {
-  		for (String streamname : args[2].split(",")) {
-  			streamNames.add(streamname);
+  	if (args.length >= 2) {
+  		String mergedStreamUrl = args[0];
+  		String mirrorStreamUrls = args[1];	
+  		List<String> streamNames = new ArrayList<String>();
+  		MirrorStreamDataConsistencyValidation obj = new 
+  				MirrorStreamDataConsistencyValidation(mirrorStreamUrls, 
+  						mergedStreamUrl);
+  		if (args.length == 3) {
+  			for (String streamname : args[2].split(",")) {
+  				streamNames.add(streamname);
+  			}
+  		} else if (args.length == 2) {
+  			FileSystem fs = new Path(mergedStreamUrl, "streams").
+  					getFileSystem(new Configuration());
+  			FileStatus[] fileStatuses = fs.listStatus(new Path(mergedStreamUrl,
+  					"streams"));
+  			if (fileStatuses.length != 0) {
+  				for (FileStatus file : fileStatuses) {  
+  					streamNames.add(file.getPath().getName());
+  				} 
+  			} else {
+  				System.out.println("There are no streams in the merged stream ");
+  				System.exit(0);
+  			}
   		}
-  	} else if (args.length == 2) {
-  		FileSystem fs = new Path(mergedStreamUrl, "streams").
-  				getFileSystem(new Configuration());
-  		FileStatus[] fileStatuses = fs.listStatus(new Path(mergedStreamUrl,
-  				"streams"));
-  		if (fileStatuses.length != 0) {
-  			for (FileStatus file : fileStatuses) {  
-  				streamNames.add(file.getPath().getName());
-  			} 
-  		} else {
-  			System.out.println("There are no streams in the merged stream ");
-  			System.exit(0);
+  		for (String streamName : streamNames) {
+  			obj.processListingStreams(streamName);
   		}
   	} else {
   		System.out.println("Enter the arguments" + " 1st arg :MergedStream Path" + 
   				"2nd arg: " + "Set of Mirrored stream paths" + "3rd arg: Set of " +
   				"stream names");
   		System.exit(1);
-  	}
-  	for(String streamName : streamNames) {
-  		obj.processListingStreams(streamName);
   	}
   }
 }
