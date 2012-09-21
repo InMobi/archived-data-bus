@@ -12,7 +12,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.util.Shell.ExitCodeException;
 
 /**
  * This class checks the data consistency between merged stream and mirrored 
@@ -55,7 +54,7 @@ public class MirrorStreamDataConsistencyValidation {
   
   public void mergedStreamListing(String streamName, List<Path> 
   		filesInMergedStream) throws IOException {
-  	Path completeMergedStreamDirPath =new Path(mergedStreamDirPath,
+  	Path completeMergedStreamDirPath = new Path(mergedStreamDirPath,
   			streamName);
   	LOG.info("merged Stream path : " + completeMergedStreamDirPath);    
   	FileSystem mergedFS = completeMergedStreamDirPath.getFileSystem(
@@ -63,7 +62,7 @@ public class MirrorStreamDataConsistencyValidation {
   	doRecursiveListing(completeMergedStreamDirPath, filesInMergedStream,
   			mergedFS);             
   	Iterator it = filesInMergedStream.iterator();
-  	while (it.hasNext() ) {
+  	while (it.hasNext()) {
   		LOG.debug(" files in merged stream : " + (it.next()));
   	}
   }
@@ -194,7 +193,8 @@ public class MirrorStreamDataConsistencyValidation {
   				streamNames.add(file.getPath().getName());
   			} 
   		} else {
-  			System.exit(1);
+  			LOG.info("There are no streams in the merged stream ");
+  			System.exit(0);
   		}
   	} else {
   		LOG.info("Enter the arguments" + " 1st arg :MergedStream Path" + 
@@ -202,10 +202,8 @@ public class MirrorStreamDataConsistencyValidation {
   				"stream names");
   		System.exit(1);
   	}
-
   	for(String streamName : streamNames) {
   		obj.processListingStreams(streamName);
-
   	}
   }
 }
