@@ -113,11 +113,11 @@ public class MirrorStreamDataConsistencyValidation {
   				substring(mirrorStreamLen);
   		if(!mergedStreamfilePath.equals(mirrorStreamfilePath)) {
   			if(mergedStreamfilePath.compareTo(mirrorStreamfilePath) < 0) {
-  				LOG.info("Missing file path : " + mergedStreamFiles.get(i));
+  				System.out.println("Missing file path : " + mergedStreamFiles.get(i));
   				inconsistentData.add(mergedStreamFiles.get(i));
   				--j;
   			} else {
-  				LOG.info("Data Replica : " + mirrorStreamFiles.get(j));
+  				System.out.println("Data Replica : " + mirrorStreamFiles.get(j));
   				inconsistentData.add(mirrorStreamFiles.get(j));
   				--i;
   			}
@@ -127,20 +127,20 @@ public class MirrorStreamDataConsistencyValidation {
   	}	
   	if((i == j) && i== mergedStreamFiles.size() && j == mirrorStreamFiles.
   			size()) {
-  		LOG.info("There are no missing paths");
+  		System.out.println("There are no missing paths");
   	} else {
   		/* check whether there are any missing file paths or extra dummy files  
   		 * or not
   		 */
   		if(i == mergedStreamFiles.size() ) {
   			for(;j < mirrorStreamFiles.size(); j++) {
-  				LOG.info("Extra files are in the Mirrored Stream" + 
+  				System.out.println("Extra files are in the Mirrored Stream" + 
   						mirrorStreamFiles.get(j));	
   				inconsistentData.add(mirrorStreamFiles.get(j));
   			}
   		} else {
   			for( ; i < mergedStreamFiles.size(); i++) {
-  				LOG.info("Missing File path " + mergedStreamFiles.get(i));	
+  				System.out.println("Missing File path " + mergedStreamFiles.get(i));	
   				inconsistentData.add(mergedStreamFiles.get(i));
   			}
   		}
@@ -193,11 +193,11 @@ public class MirrorStreamDataConsistencyValidation {
   				streamNames.add(file.getPath().getName());
   			} 
   		} else {
-  			LOG.info("There are no streams in the merged stream ");
+  			System.out.println("There are no streams in the merged stream ");
   			System.exit(0);
   		}
   	} else {
-  		LOG.info("Enter the arguments" + " 1st arg :MergedStream Path" + 
+  		System.out.println("Enter the arguments" + " 1st arg :MergedStream Path" + 
   				"2nd arg: " + "Set of Mirrored stream paths" + "3rd arg: Set of " +
   				"stream names");
   		System.exit(1);
