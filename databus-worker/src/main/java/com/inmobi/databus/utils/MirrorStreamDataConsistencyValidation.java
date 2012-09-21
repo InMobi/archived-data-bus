@@ -12,6 +12,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.util.Shell.ExitCodeException;
 
 /**
  * This class checks the data consistency between merged stream and mirrored 
@@ -29,7 +30,7 @@ public class MirrorStreamDataConsistencyValidation {
   Path mergedStreamDirPath;
   
   public MirrorStreamDataConsistencyValidation(String mirrorStreamUrls, 
-  		String mergedStreamUrl) throws IOException{
+  		String mergedStreamUrl) throws IOException {
   	String[] rootDirSplits;
   	mergedStreamDirPath = new Path(mergedStreamUrl, "streams");
   	if (mirrorStreamUrls != null) {
@@ -172,49 +173,39 @@ public class MirrorStreamDataConsistencyValidation {
   	Collections.sort(listOfFiles);
   }
 
-  public void listFilesAtOneLevel(Path rootDir, List<String> listing,
-  		FileSystem fs ) throws Exception {
-  	FileStatus[] fileStatuses = fs.listStatus(rootDir);
-  	if (fileStatuses == null || fileStatuses.length == 0) {
-  		LOG.debug("No files in directory:" + rootDir);
-  	} else {
-  		for (FileStatus file : fileStatuses) {  
-  			listing.add(file.getPath().getName());
-  			System.out.println("lists"+ file.getPath().getName() + file.getPath() );
-  		} 
-  	}
-  }
-  
   public static void main(String args[]) throws Exception {
   	String mergedStreamUrl = args[0];
-  	String mirrorStreamUrls = args[1];				
-  	MirrorStreamDataConsistencyValidation obj=new 
+  	String mirrorStreamUrls = args[1];	
+  	List<String> streamNames = new ArrayList<String>();
+  	MirrorStreamDataConsistencyValidation obj = new 
   			MirrorStreamDataConsistencyValidation(mirrorStreamUrls, 
   					mergedStreamUrl);
-  	List<String> listingStreamNames = new ArrayList<String>();
   	if(args.length == 3) {
-  		String streamNames[]=args[2].split(",") ;
-  		for(String streamName : streamNames) {
-  			obj.processListingStreams(streamName);
+  		for (String streamname : args[2].split(",")) {
+  			streamNames.add(streamname);
   		}
   	} else if (args.length == 2) {
   		FileSystem fs = new Path(mergedStreamUrl, "streams").
   				getFileSystem(new Configuration());
-  		obj.listFilesAtOneLevel(new Path(mergedStreamUrl, "streams"), 
-  				listingStreamNames, fs);
-  		String[] streamNames = new String[listingStreamNames.size()];
-  		int i = 0;
-  		Iterator<String> it = listingStreamNames.iterator();
-  		while (it.hasNext()) {
-  			streamNames[i++] = it.next();
-  		}
-  		for(String streamName : streamNames) {
-  			obj.processListingStreams(streamName);
+  		FileStatus[] fileStatuses = fs.listStatus(new Path(mergedStreamUrl,
+  				"streams"));
+  		if (fileStatuses.length != 0) {
+  			for (FileStatus file : fileStatuses) {  
+  				streamNames.add(file.getPath().getName());
+  			} 
+  		} else {
+  			System.exit(1);
   		}
   	} else {
   		LOG.info("Enter the arguments" + " 1st arg :MergedStream Path" + 
   				"2nd arg: " + "Set of Mirrored stream paths" + "3rd arg: Set of " +
   				"stream names");
+  		System.exit(1);
+  	}
+
+  	for(String streamName : streamNames) {
+  		obj.processListingStreams(streamName);
+
   	}
   }
 }
