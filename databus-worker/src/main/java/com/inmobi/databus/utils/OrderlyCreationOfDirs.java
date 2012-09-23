@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.Iterator;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -95,41 +96,97 @@ public class OrderlyCreationOfDirs {
    * @param  streamNames : array of stream names
    * @return outOfOrderDirs: list of out of directories for all the streams.
    */
-  public List<Path> pathConstruction(String rootDirs[] , String baseDirs[] , 
-      String streamNames[]) throws IOException{
-    List<Path> outOfOrderDirs = new ArrayList<Path>();
-    for (String rootDir : rootDirs) {
-      FileSystem fs = new Path(rootDir).getFileSystem(new Configuration());
-      for (String baseDir : baseDirs) {
-        Path rootBaseDirPath = new Path(rootDir, baseDir);
-        for (String streamName : streamNames) {
-          Path streamDir = new Path(rootBaseDirPath , streamName); 
-          FileStatus[] files = fs.listStatus(streamDir);
-          if (files == null || files.length == 0) {
-            LOG.info("No direcotries in that stream: " + streamName);
-            continue; 
-          }
-          listingAndValidation(streamDir, fs , outOfOrderDirs);
-        }    
-      }
-    }
-    return outOfOrderDirs;
+  public List<Path> pathConstruction(String rootDirs[] , List<String> baseDirs, 
+  		List<String> streamNames) throws IOException {
+  	List<Path> outOfOrderDirs = new ArrayList<Path>();
+  	for (String rootDir : rootDirs) {
+  		FileSystem fs = new Path(rootDir).getFileSystem(new Configuration());
+  		Iterator<String> it = baseDirs.iterator();
+  		String baseDir;
+  		while (it.hasNext()) {
+  			baseDir = it.next();
+  			Path rootBaseDirPath = new Path(rootDir, baseDir);
+  			Iterator<String> it1 = streamNames.iterator();
+  			String streamName;
+  			while (it1.hasNext()) {
+  				streamName = it1.next();
+  				Path streamDir = new Path(rootBaseDirPath , streamName); 
+  				FileStatus[] files = fs.listStatus(streamDir);
+  				if (files == null || files.length == 0) {
+  					LOG.info("No direcotries in that stream: " + streamDir);
+  					continue; 
+  				}
+  				listingAndValidation(streamDir, fs , outOfOrderDirs);
+  			}    
+  		}
+  	}
+  	return outOfOrderDirs;
   }
   
   public static void main(String[] args) throws IOException {
-    if (args.length == 3) {
-      String[] rootDirs     =   args[0].split(",");
-      String[] baseDir      =   args[1].split(",");
-      String[] streamName   =   args[2].split(",");
-      OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
-     List<Path> outoforderdirs = obj.pathConstruction(rootDirs, baseDir, 
-         streamName); 
-     if (outoforderdirs.isEmpty()) {
-       System.out.println("There are no out of order dirs");
-     }
-    } else {
-      System.out.println("Insufficient number of arguments: enter rootdirs," +
-      		" basedirs, streamnames ");
-    }
+  	if (args.length >= 1) {
+  		String[] rootDirs = args[0].split(",");
+  		List<String> baseDirs = new ArrayList<String>();
+  		List<String> streamNames = new ArrayList<String>();
+  		OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
+  		if (args.length == 3) {
+  			for (String baseDir : args[1].split(",")) {
+  				baseDirs.add(baseDir);
+  			}
+  			for (String streamname : args[2].split(",")) {
+  				streamNames.add(streamname);
+  			}
+  		} else if (args.length == 2) {
+  			for (String baseDir : args[1].split(",")) {
+  				baseDirs.add(baseDir);
+  			}
+  			String baseDir;
+  			for (String rootDir : rootDirs) {
+  				Iterator<String> it = baseDirs.iterator();
+  				while (it.hasNext()) {
+  					baseDir = it.next();
+  					FileSystem fs = new Path(rootDir, baseDir).
+  							getFileSystem(new Configuration());
+  					FileStatus[] fileStatuses = fs.listStatus(new Path(rootDir,
+  							baseDir));
+  					if (fileStatuses.length != 0) {
+  						for (FileStatus file : fileStatuses) {
+  							streamNames.add(file.getPath().getName());
+  						}
+  					}
+  				}
+  			}
+  		} else if (args.length == 1) {
+  			String baseDir;
+  			for (String rootDir : rootDirs) {
+  				FileSystem rootDirFs = new Path(rootDir).getFileSystem(new 
+  						Configuration());
+  				FileStatus[] fileStatuses = rootDirFs.listStatus(new Path(rootDir));
+  				for (FileStatus file : fileStatuses) {
+  					baseDirs.add(file.getPath().getName());
+  				}
+  				Iterator<String> it = baseDirs.iterator();
+  				while (it.hasNext()) {
+  					baseDir = it.next();
+  					FileSystem baseDirFs = new Path(rootDir, baseDir).getFileSystem
+  							(new Configuration());
+  					FileStatus[] streamFileStatuses = baseDirFs.listStatus(new Path
+  							(rootDir, baseDir));
+  					for (FileStatus file : streamFileStatuses) {
+  						streamNames.add(file.getPath().getName());
+  					}
+  				}
+  			}
+  		}
+  		List<Path> outoforderdirs = obj.pathConstruction(rootDirs, baseDirs, 
+  				streamNames); 
+  		if (outoforderdirs.isEmpty()) {
+  			System.out.println("There are no out of order dirs");
+  		}
+  	} else {
+  		System.out.println("Insufficient number of arguments: 1st argument:" +
+  				" rootdirs," + " 2nd arument :basedirs, 3rd arguments: streamnames"
+  				+ " 2nd arg, 3rd args are optionl here");
+  	}
   }
 }

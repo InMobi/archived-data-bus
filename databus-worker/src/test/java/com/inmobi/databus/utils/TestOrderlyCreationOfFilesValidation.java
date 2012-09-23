@@ -31,17 +31,23 @@ public class TestOrderlyCreationOfFilesValidation  {
   Set<Path> outoforderExpectedResults = new HashSet<Path>();
   List<Path> inorderExpectedResults = new ArrayList<Path>();
   String rootDirs [] = ("file:///tmp/test/" + className
-    + "/1/,file:///tmp/test/" + className +"/2/").split(",");
-  String baseDirs[] = "streams,streams_local".split(",");
-  String [] emptyStream = "empty".split(",");
-  String [] inorderStream = "inorder".split(",");
-  String [] outoforderStream = "outoforder".split(",");
+  		+ "/1/,file:///tmp/test/" + className +"/2/").split(",");
+  List<String> baseDirs = new ArrayList<String>();
+  List<String> emptyStream = new ArrayList<String>();
+  List<String> inorderStream = new ArrayList<String>();
+  List<String> outoforderStream = new ArrayList<String>();
   long temptime = System.currentTimeMillis();
-  
+
   @BeforeTest
   public void setup() throws Exception {
-    fs = FileSystem.getLocal(new Configuration());
-    createTestData();
+  	fs = FileSystem.getLocal(new Configuration());
+  	emptyStream.add("empty");
+  	inorderStream.add("inorder");
+  	outoforderStream.add("outoforder");
+  	baseDirs.add("streams");
+  	baseDirs.add("streams_local");
+  	createTestData();
+
   }
   
   @AfterTest
@@ -57,11 +63,13 @@ public class TestOrderlyCreationOfFilesValidation  {
     } else {
       milliseconds = 60000;
     }
+ 
     String date = Cluster.getDateAsYYYYMMDDHHMNPath(temptime + 
         dirNumber * milliseconds);
     int filesCount = 2;
     Path minDir = new Path(listPath, date);
     fs.mkdirs(minDir);
+    LOG.info("minDir " + minDir);
     for (int i =0; i < filesCount; i++) {
       createFilesData(fs, minDir, i );
     }
@@ -110,9 +118,9 @@ public class TestOrderlyCreationOfFilesValidation  {
   public void TestOrderlyCreation() throws Exception {
     OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
     Assert.assertEquals( inorderExpectedResults , obj.pathConstruction(rootDirs, 
-        baseDirs , emptyStream));
+        baseDirs, emptyStream)); 
     Assert.assertEquals( inorderExpectedResults , obj.pathConstruction(rootDirs, 
-        baseDirs , inorderStream));
+        baseDirs, inorderStream)); 
     List<Path> outOfOderDirs =  obj.pathConstruction(rootDirs, baseDirs, 
         outoforderStream);
     Iterator it = outoforderExpectedResults.iterator();
@@ -120,16 +128,19 @@ public class TestOrderlyCreationOfFilesValidation  {
       Assert.assertTrue(outOfOderDirs.contains(it.next()));
     }
     Assert.assertEquals(outOfOderDirs.size(), outoforderExpectedResults.size());
-    String [] totalStreams ="empty,inorder,outoforder".split(",");
+    List<String> totalStreams = new ArrayList<String>();
+    totalStreams.add("empty");
+    totalStreams.add("inorder");
+    totalStreams.add("outoforder");
     List<Path> totalOutOfOderDirs = obj.pathConstruction(rootDirs, baseDirs,
-        totalStreams );
+       totalStreams);
     LOG.info(totalOutOfOderDirs.size());
     Iterator it1 = outoforderExpectedResults.iterator();
     while (it.hasNext()) {
       Assert.assertTrue(totalOutOfOderDirs.contains(it1.next()));
     }
     Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
-        size());
+        size()); 
   }
 }
 
