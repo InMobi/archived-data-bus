@@ -29,7 +29,7 @@ public class TestOrderlyCreationOfFilesValidation {
 
   FileSystem fs;
   Set<Path> outoforderExpectedResults = new HashSet<Path>();
-  List<Path> inorderExpectedResults = new ArrayList<Path>();
+  Set<Path> inorderExpectedResults = new HashSet<Path>();
   String rootDirs [] = ("file:///tmp/test/" + className
   		+ "/1/,file:///tmp/test/" + className +"/2/").split(",");
   List<String> baseDirs = new ArrayList<String>();
@@ -121,44 +121,64 @@ public class TestOrderlyCreationOfFilesValidation {
   		Assert.assertTrue(totalOutOfOrderDirs.contains(it.next()));
   	}
   }
+
+  private List<Path> checkResults(String [] rootDirs, List<String> baseDirs, 
+  		List<String> streamNames, OrderlyCreationOfDirs obj) throws Exception {
+  	List<Path> outOfOrderDirs = new ArrayList<Path>();
+  	for (String rootDir : rootDirs) {
+  		for (String baseDir : baseDirs) {
+  			outOfOrderDirs.addAll(obj.pathConstruction(rootDir, baseDir, 
+  					streamNames));
+  		}
+  	}
+  	return outOfOrderDirs;
+  }
   @Test
   public void TestOrderlyCreation() throws Exception {
-    OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
-    Assert.assertEquals( inorderExpectedResults , obj.pathConstruction(rootDirs, 
-        baseDirs, emptyStream)); 
-    Assert.assertEquals( inorderExpectedResults , obj.pathConstruction(rootDirs, 
-        baseDirs, inorderStream)); 
-    List<Path> outOfOderDirs =  obj.pathConstruction(rootDirs, baseDirs, 
-        outoforderStream);
-    checkAllElements(outOfOderDirs, outoforderExpectedResults);
-    Assert.assertEquals(outOfOderDirs.size(), outoforderExpectedResults.size());
-    List<String> totalStreams = new ArrayList<String>();
-    totalStreams.add("empty");
-    totalStreams.add("inorder");
-    totalStreams.add("outoforder");
-    List<Path> totalOutOfOderDirs = obj.pathConstruction(rootDirs, baseDirs,
-        totalStreams);
-    checkAllElements(totalOutOfOderDirs, outoforderExpectedResults);
-    Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
-        size()); 
-   
-    //streamnames are optional here
-    String args[] = {("file:///tmp/test/" + className + "/1/,file:///tmp/test/"
-    		+ className +"/2/"), ("streams,streams_local") } ;
-    totalOutOfOderDirs = new ArrayList<Path>();
-    totalOutOfOderDirs = obj.run(args);
-    checkAllElements(totalOutOfOderDirs, outoforderExpectedResults);
-    Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
-    		size()); 
+  	OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
+  	//empty stream
+  	List<Path> outOfOrderDirs = checkResults(rootDirs, baseDirs, emptyStream, 
+  			obj);
+  	checkAllElements(outOfOrderDirs, inorderExpectedResults);
+  	
+  	//inorder stream
+  	outOfOrderDirs = checkResults(rootDirs, baseDirs, inorderStream, obj);
+  	checkAllElements(outOfOrderDirs, inorderExpectedResults);
+  	
+  	//outoforder stream
+  	outOfOrderDirs = checkResults(rootDirs, baseDirs, outoforderStream, obj);
+  	checkAllElements(outOfOrderDirs, outoforderExpectedResults);
+  	Assert.assertEquals(outOfOrderDirs.size(), outoforderExpectedResults.size());
 
-    // base dirs as optional
-    String arg[] =  {("file:///tmp/test/" + className + "/1/,file:///tmp/test/"
-    		+ className +"/2/")};
-    totalOutOfOderDirs = new ArrayList<Path>();
-    totalOutOfOderDirs = obj.run(arg);
-    checkAllElements(totalOutOfOderDirs, outoforderExpectedResults);
-    Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
-    		size()); 
+  	//all streams together
+  	List<String> totalStreams = new ArrayList<String>();
+  	totalStreams.add("empty");
+  	totalStreams.add("inorder");
+  	totalStreams.add("outoforder");
+  	List<Path> totalOutOfOrderDirs = checkResults(rootDirs, baseDirs, 
+  			totalStreams, obj);
+  	checkAllElements(totalOutOfOrderDirs, outoforderExpectedResults);
+  	Assert.assertEquals(totalOutOfOrderDirs.size(), outoforderExpectedResults.
+  			size()); 
+
+  	//streamnames are optional here
+  	String args[] = {("file:///tmp/test/" + className + "/1/,file:///tmp/test/"
+  			+ className +"/2/"), ("streams,streams_local") } ;
+  	totalOutOfOrderDirs = new ArrayList<Path>();
+  	totalOutOfOrderDirs = obj.run(args);
+  	checkAllElements(totalOutOfOrderDirs, outoforderExpectedResults);
+  	Assert.assertEquals(totalOutOfOrderDirs.size(), outoforderExpectedResults.
+  			size()); 
+  	LOG.info("checking");
+
+  	// base dirs as optional
+  	String arg[] =  {("file:///tmp/test/" + className + "/1/,file:///tmp/test/"
+  			+ className +"/2/")};
+  	totalOutOfOrderDirs = new ArrayList<Path>();
+  	totalOutOfOrderDirs = obj.run(arg);
+  	checkAllElements(totalOutOfOrderDirs, outoforderExpectedResults);
+  	Assert.assertEquals(totalOutOfOrderDirs.size(), outoforderExpectedResults.
+  			size()); 
   }
 }
 
