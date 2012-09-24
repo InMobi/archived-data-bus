@@ -21,7 +21,7 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 import com.inmobi.databus.Cluster;
 
-public class TestOrderlyCreationOfFilesValidation  {
+public class TestOrderlyCreationOfFilesValidation {
   private static Logger LOG = Logger.getLogger(
       TestOrderlyCreationOfFilesValidation.class);
   private static String className = TestOrderlyCreationOfFilesValidation.class
@@ -133,7 +133,7 @@ public class TestOrderlyCreationOfFilesValidation  {
     totalStreams.add("inorder");
     totalStreams.add("outoforder");
     List<Path> totalOutOfOderDirs = obj.pathConstruction(rootDirs, baseDirs,
-       totalStreams);
+        totalStreams);
     LOG.info(totalOutOfOderDirs.size());
     Iterator it1 = outoforderExpectedResults.iterator();
     while (it.hasNext()) {
@@ -141,6 +141,29 @@ public class TestOrderlyCreationOfFilesValidation  {
     }
     Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
         size()); 
+    String args[] =  ;
+    
+    
+    //String args [] = "rootDirs,baseDirs".split(",");
+    totalOutOfOderDirs = new ArrayList<Path>();
+    totalOutOfOderDirs = obj.run(args);
+   /* Iterator it2 = outoforderExpectedResults.iterator();
+    while (it.hasNext()) {
+      Assert.assertTrue(totalOutOfOderDirs.contains(it2.next()));
+    }*/
+    LOG.info("sizes are" + outoforderExpectedResults.size() + " " + totalOutOfOderDirs.size());
+    Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
+        size()); 
+    //String arg[] = "rootDirs[]".split(",");
+    totalOutOfOderDirs = new ArrayList<Path>();
+    totalOutOfOderDirs = obj.run(arg);
+    Iterator it3 = outoforderExpectedResults.iterator();
+    while (it.hasNext()) {
+      Assert.assertTrue(totalOutOfOderDirs.contains(it3.next()));
+    }
+    Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
+        size()); 
+    
   }
 }
 
