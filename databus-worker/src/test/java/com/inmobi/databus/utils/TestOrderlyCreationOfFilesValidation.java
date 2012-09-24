@@ -114,6 +114,13 @@ public class TestOrderlyCreationOfFilesValidation {
     return path;   
   }
   
+  private void  checkAllElements(List<Path> totalOutOfOrderDirs, Set<Path> 
+  		outoforderExpectedResults) {
+  	Iterator it = outoforderExpectedResults.iterator();
+  	while (it.hasNext()) {
+  		Assert.assertTrue(totalOutOfOrderDirs.contains(it.next()));
+  	}
+  }
   @Test
   public void TestOrderlyCreation() throws Exception {
     OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
@@ -123,10 +130,7 @@ public class TestOrderlyCreationOfFilesValidation {
         baseDirs, inorderStream)); 
     List<Path> outOfOderDirs =  obj.pathConstruction(rootDirs, baseDirs, 
         outoforderStream);
-    Iterator it = outoforderExpectedResults.iterator();
-    while (it.hasNext()) {
-      Assert.assertTrue(outOfOderDirs.contains(it.next()));
-    }
+    checkAllElements(outOfOderDirs, outoforderExpectedResults);
     Assert.assertEquals(outOfOderDirs.size(), outoforderExpectedResults.size());
     List<String> totalStreams = new ArrayList<String>();
     totalStreams.add("empty");
@@ -134,36 +138,27 @@ public class TestOrderlyCreationOfFilesValidation {
     totalStreams.add("outoforder");
     List<Path> totalOutOfOderDirs = obj.pathConstruction(rootDirs, baseDirs,
         totalStreams);
-    LOG.info(totalOutOfOderDirs.size());
-    Iterator it1 = outoforderExpectedResults.iterator();
-    while (it.hasNext()) {
-      Assert.assertTrue(totalOutOfOderDirs.contains(it1.next()));
-    }
+    checkAllElements(totalOutOfOderDirs, outoforderExpectedResults);
     Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
         size()); 
-    String args[] =  ;
-    
-    
-    //String args [] = "rootDirs,baseDirs".split(",");
+   
+    //streamnames are optional here
+    String args[] = {("file:///tmp/test/" + className + "/1/,file:///tmp/test/"
+    		+ className +"/2/"), ("streams,streams_local") } ;
     totalOutOfOderDirs = new ArrayList<Path>();
     totalOutOfOderDirs = obj.run(args);
-   /* Iterator it2 = outoforderExpectedResults.iterator();
-    while (it.hasNext()) {
-      Assert.assertTrue(totalOutOfOderDirs.contains(it2.next()));
-    }*/
-    LOG.info("sizes are" + outoforderExpectedResults.size() + " " + totalOutOfOderDirs.size());
+    checkAllElements(totalOutOfOderDirs, outoforderExpectedResults);
     Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
-        size()); 
-    //String arg[] = "rootDirs[]".split(",");
+    		size()); 
+
+    // base dirs as optional
+    String arg[] =  {("file:///tmp/test/" + className + "/1/,file:///tmp/test/"
+    		+ className +"/2/")};
     totalOutOfOderDirs = new ArrayList<Path>();
     totalOutOfOderDirs = obj.run(arg);
-    Iterator it3 = outoforderExpectedResults.iterator();
-    while (it.hasNext()) {
-      Assert.assertTrue(totalOutOfOderDirs.contains(it3.next()));
-    }
+    checkAllElements(totalOutOfOderDirs, outoforderExpectedResults);
     Assert.assertEquals(totalOutOfOderDirs.size(), outoforderExpectedResults.
-        size()); 
-    
+    		size()); 
   }
 }
 
