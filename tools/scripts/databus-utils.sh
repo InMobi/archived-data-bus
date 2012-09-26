@@ -28,9 +28,9 @@ error() {
 
 display_help() {
   cat <<EOF
-USAGE: $0 mirrorstreamdataconsistency <mergedstreamroot-dir> <mirrorstreamroot-dir( comma separated list)> [<streamname(comma separated list)>]
+USAGE: $0 mirrorstreamdataconsistency <mergedstreamroot-dir> <mirrorstreamroot-dir (comma separated list)> [<streamname (comma separated list)>]
        $0 orderlycreated <root-dirs (comma separated list)> [<basedir (comma separated list)>] [<streamname (comma separated list)>]
-       $0 localmergeconsistency <local stream root-Dirs(comma separated list)> <merge stream url> [<streamNames (comma separated list)>]
+       $0 localmergeconsistency <local stream root-dirs (comma separated list)> <merge stream root-dir> [<streamNames (comma separated list)>]
 EOF
 }
 
