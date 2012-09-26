@@ -1,7 +1,7 @@
 # constants
 DATABUS_MIRROR_STREAM_VALIDATION_CLASS="com.inmobi.databus.utils.MirrorStreamDataConsistencyValidation"
 DATABUS_ORDERLY_CREATION_FILES_CLASS="com.inmobi.databus.utils.OrderlyCreationOfDirs"
-
+DATABUS_LOCAL_MERGE_STREAM_VALIDATION_CLASS="com.inmobi.databus.utils.LocalMergeStreamDataConsistency"
 #functions
 info() {
   local msg=$1
@@ -30,6 +30,7 @@ display_help() {
   cat <<EOF
 USAGE: $0 mirrorstreamdataconsistency <mergedstreamroot-dir> <mirrorstreamroot-dir( comma separated list)> [<streamname(comma separated list)>]
        $0 orderlycreated <root-dirs (comma separated list)> [<basedir (comma separated list)>] [<streamname (comma separated list)>]
+       $0 localmergeconsistency <local stream root-Dirs(comma separated list)> <merge stream url> [<streamNames (comma separated list)>]
 EOF
 }
 
@@ -72,6 +73,9 @@ case "$mode" in
     ;;
   orderlycreated)
     opt_order=1;
+    ;;
+  localmergeconsistency)
+    opt_local_merge=1;
     ;;
   *)
     error "Unknown or unspecified command '$mode'"
@@ -124,6 +128,8 @@ if [ -n "$opt_order" ] ; then
   run_databus $DATABUS_ORDERLY_CREATION_FILES_CLASS $args 
 elif [ -n "$opt_mirror" ] ; then
   run_databus $DATABUS_MIRROR_STREAM_VALIDATION_CLASS $args $args1 $args2
+elif [ -n "$opt_local_merge" ] ; then 
+  run_databus $DATABUS_LOCAL_MERGE_STREAM_VALIDATION_CLASS $args
 #  echo $args
 else
   error "This message should never appear" 1
