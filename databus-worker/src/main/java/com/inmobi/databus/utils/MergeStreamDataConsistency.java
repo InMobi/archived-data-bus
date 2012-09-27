@@ -21,12 +21,11 @@ import org.apache.hadoop.fs.Path;
  * The main method takes 3 arguments. Local stream urls as first argument, merge
  *  stream url as second argument and third argument is set of stream names. 
  *  Third argument is optional here  
- * @author rajubairishetti
  *
  */
-public class LocalMergeStreamDataConsistency {
+public class MergeStreamDataConsistency {
 	private static final Log LOG = LogFactory.getLog(
-			LocalMergeStreamDataConsistency.class);
+			MergeStreamDataConsistency.class);
 	
 	public List<Path> compareLocalMergeStreams(TreeMap<String, Path> 
 			localStreamFiles, TreeMap<String, Path> mergedStreamFiles, List<Path> 
@@ -39,28 +38,26 @@ public class LocalMergeStreamDataConsistency {
 		Iterator<Entry<String, Path>> mergedIt = mergedStreamFileEntries.iterator();
 		String localKey = null;
 		String mergedKey = null;
-		boolean localFlag = true;
-		boolean mergedFlag = true;
+		if (localIt.hasNext()) {
+			localKey = localIt.next().getKey(); 
+		}
+		if (mergedIt.hasNext()) {
+			mergedKey = mergedIt.next().getKey();
+		}
 		while (localIt.hasNext() && mergedIt.hasNext()) {
-			if (localFlag) {
-				localKey = localIt.next().getKey(); 
-			}
-			if (mergedFlag) {
-				mergedKey = mergedIt.next().getKey(); 
-			}
 			if (!localKey.equals(mergedKey)) {
 				if(localKey.compareTo(mergedKey) < 0) {
 					System.out.println("missing path: " + localStreamFiles.get(localKey));
 					inconsistency.add(localStreamFiles.get(localKey));
-					mergedFlag = false;
+					localKey = localIt.next().getKey(); 
 				} else {
 					System.out.println("data replay: " + mergedStreamFiles.get(mergedKey));
 					inconsistency.add(mergedStreamFiles.get(mergedKey));
-					localFlag = false;
+					mergedKey = mergedIt.next().getKey(); 
 				}
 			} else {
-				localFlag = true;
-				mergedFlag = true;
+				localKey = localIt.next().getKey(); 
+				mergedKey = mergedIt.next().getKey();
 			}
 		}
 		if ((!localIt.hasNext()) && (!mergedIt.hasNext()) && (localStreamFiles.
@@ -71,7 +68,7 @@ public class LocalMergeStreamDataConsistency {
 				while (localIt.hasNext()) {
 					localKey = localIt.next().getKey();
 					inconsistency.add(localStreamFiles.get(localKey));
-					System.out.println("extra files in local stream: " + 
+					System.out.println("To be merged files: " + 
 							localStreamFiles.get(localKey));
 				}
 			} else {
@@ -128,66 +125,45 @@ public class LocalMergeStreamDataConsistency {
 		}
 	}
 	
-	/**
-	 * 
-	 * @param listOfStreamNames : stores all the stream names
-	 * @param rootDir : merge or local stream root directory url 
-	 * @param baseDir : base directory ("streams" for merge and streams_local for
-	 * local stream) 
-	 * @throws Exception
-	 */
-	public void getStreamNames(List<String> listOfStreamNames, String rootDir,
-			String baseDir) throws Exception {
-		FileSystem fs = new Path(rootDir, baseDir).getFileSystem(new Configuration());
-		FileStatus[] fileStatuses = fs.listStatus(new Path(rootDir, baseDir));
-		if (fileStatuses.length != 0) {
-			for (FileStatus file : fileStatuses) {  
-				listOfStreamNames.add(file.getPath().getName());
-			} 
-		} else {
-			System.out.println("There are no stream names in the stream");
-			System.exit(0);
-		}
-	}
-	
 	public List<Path> run(String [] args) throws Exception {
 		List<Path> inconsistencydata = new ArrayList<Path>();
-		if (args.length >= 2) {
-			String [] localStreamrootDirs = args[0].split(",");
-			String mergedStreamRoorDir = args[1];	
-			List<String> streamNames = new ArrayList<String>();
-			if (args.length == 2) {
-				List<String> mergedStreamNames = new ArrayList<String>();
-				List<String> localStreamNames = new ArrayList<String>();
-				getStreamNames(mergedStreamNames, mergedStreamRoorDir, "streams");
-				getStreamNames(localStreamNames, localStreamrootDirs[0], 
-						"streams_local");
-				for (String mergedStreamName : mergedStreamNames) {
-					if (localStreamNames.contains(mergedStreamName)) {
-						streamNames.add(mergedStreamName);
-					}
-				}
-			} else if (args.length == 3) {
-				for (String streamname : args[2].split(",")) {
-					streamNames.add(streamname);
-				}
-			} 
-			inconsistencydata = this.listingValidation(mergedStreamRoorDir, 
-					localStreamrootDirs, streamNames);
-			if (inconsistencydata.isEmpty()) {
-				System.out.println("there is no inconsistency data");
+		String [] localStreamrootDirs = args[0].split(",");
+		String mergedStreamRoorDir = args[1];	
+		List<String> streamNames = new ArrayList<String>();
+		if (args.length == 2) {
+			FileSystem fs = new Path(mergedStreamRoorDir, "streams").getFileSystem(
+					new Configuration());
+			FileStatus[] fileStatuses = fs.listStatus(new Path(mergedStreamRoorDir, 
+					"streams"));
+			if (fileStatuses.length != 0) {
+				for (FileStatus file : fileStatuses) {  
+					streamNames.add(file.getPath().getName());
+				} 
+			} else {
+				System.out.println("There are no stream names in the stream");
 			}
+		} else if (args.length == 3) {
+			for (String streamname : args[2].split(",")) {
+				streamNames.add(streamname);
+			}
+		} 
+		inconsistencydata = this.listingValidation(mergedStreamRoorDir, 
+				localStreamrootDirs, streamNames);
+		if (inconsistencydata.isEmpty()) {
+			System.out.println("there is no inconsistency data");
+		}
+		return inconsistencydata;
+	}
+
+	public static void main(String [] args) throws Exception {
+		MergeStreamDataConsistency obj = new MergeStreamDataConsistency();
+		if (args.length >= 2) {
+			obj.run(args);
 		} else {
 			System.out.println("Enter the arguments" + "1st arg: Set of local stream" 
 					+	"urls" + "2nd arg: MergedStream url" + "3rd arg: Set of " +
 					"stream names" + "stream names are optional");
 			System.exit(1);
 		}
-		return inconsistencydata;
-	}
-
-	public static void main(String [] args) throws Exception {
-		LocalMergeStreamDataConsistency obj = new LocalMergeStreamDataConsistency();
-		obj.run(args);
 	}
 }
