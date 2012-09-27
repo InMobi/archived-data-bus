@@ -1,7 +1,7 @@
 # constants
 DATABUS_MIRROR_STREAM_VALIDATION_CLASS="com.inmobi.databus.utils.MirrorStreamDataConsistencyValidation"
 DATABUS_ORDERLY_CREATION_FILES_CLASS="com.inmobi.databus.utils.OrderlyCreationOfDirs"
-DATABUS_LOCAL_MERGE_STREAM_VALIDATION_CLASS="com.inmobi.databus.utils.LocalMergeStreamDataConsistency"
+DATABUS_LOCAL_MERGE_STREAM_VALIDATION_CLASS="com.inmobi.databus.utils.MergeStreamDataConsistency"
 #functions
 info() {
   local msg=$1
