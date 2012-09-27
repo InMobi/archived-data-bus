@@ -22,11 +22,10 @@ public class TestMirrorStreamDataConsistency {
 	private static String className = TestMirrorStreamDataConsistency.class
 			.getSimpleName();
 	FileSystem fs;
-	String mergedStreamUrl = "file:///tmp/test/" + className + "/1/" ;
+	String mergedStreamUrl = "file:///tmp/test/" + className + "/1/";
 	String mirrorStreamUrl = ("file:///tmp/test/" + className
 			+ "/2/,file:///tmp/test/" + className +"/3/");
 	String [] mirrorStreamUrls = mirrorStreamUrl.split(",");
-
 	String [] allStreamNames = ("empty,emptyDirs,consistentData,missingFiles," +
 			"missingDirs,dataReplayDirs,dataReplayFiles,extraFiles,extraDirs").
 			split(",");
@@ -115,9 +114,7 @@ public class TestMirrorStreamDataConsistency {
 						date = Cluster.getDateAsYYYYMMDDHHMNPath(temptime + i * 
 								milliseconds);
 						createFilesData(fs, new Path(streamDir, date), 2, 0);
-					} else {
-
-					}
+					} 
 				} else {
 					if (streamName.equals("emptyDirs")) {
 						date = Cluster.getDateAsYYYYMMDDHHMNPath(temptime + i * 
@@ -165,16 +162,14 @@ public class TestMirrorStreamDataConsistency {
 							extraDirPaths.add(new Path(new Path(streamDir, date), "file0"));
 							extraDirPaths.add(new Path(new Path(streamDir, date), "file1"));
 						}
-					} else {
-
-					}
+					} 
 				}
 			}	
 		}
 	}
 
 	public void createTestData(String rootDir, String streamType) throws  
-	Exception {
+			Exception {
 		Path baseDir;
 		if (streamType.equals("merge")) {
 			baseDir = new Path(rootDir, "streams");
@@ -229,76 +224,37 @@ public class TestMirrorStreamDataConsistency {
 		return filesList; 
 	}
 
-	public List<Path> findInconsistentData(String [] streamNames, List<Path> 
-			inconsistentData, MirrorStreamDataConsistencyValidation obj) throws 
-			IOException {
+	private void mirrorStreamConsistency(String [] streamNames, List<Path> 
+			expectedPaths, MirrorStreamDataConsistencyValidation obj) throws 
+					Exception {
+		List<Path> inconsistentdata = new ArrayList<Path>();
 		for (String streamName : streamNames) {
-			inconsistentData.addAll(obj.processListingStreams(streamName));
+			inconsistentdata.addAll(obj.processListingStreams(streamName));
 		}
-		return inconsistentData;
+		Assert.assertEquals(inconsistentdata.size(), expectedPaths.size());
+		Assert.assertTrue(inconsistentdata.containsAll(expectedPaths));
 	}
 
 	@Test
-	public void testMirrorStream() throws IOException {
+	public void testMirrorStream() throws Exception {
 		MirrorStreamDataConsistencyValidation obj = new 
 				MirrorStreamDataConsistencyValidation(mirrorStreamUrl, mergedStreamUrl);
-		List<Path> inconsistentdata = new ArrayList<Path>();
-		inconsistentdata = findInconsistentData(emptyStreamName, inconsistentdata, 
-				obj);
-		Assert.assertEquals(inconsistentdata.size(), emptyPaths.size());
-		Assert.assertTrue(inconsistentdata.containsAll(emptyPaths));
-
+		mirrorStreamConsistency(emptyStreamName, emptyPaths, obj);
 		// empty dirs
-		inconsistentdata = findInconsistentData(emptyDirStreamName, inconsistentdata, 
-				obj);
-		Assert.assertEquals(inconsistentdata.size(), emptyDirsPaths.size());
-		Assert.assertTrue(inconsistentdata.containsAll(emptyDirsPaths));
-
+		mirrorStreamConsistency(emptyDirStreamName, emptyDirsPaths, obj);
 		//missing file paths
-		inconsistentdata = findInconsistentData(missedFilesStreamName, 
-				inconsistentdata, obj);
-		Assert.assertEquals(inconsistentdata.size(), missedFilePaths.size());
-		Assert.assertTrue(inconsistentdata.containsAll(missedFilePaths));
-
+		mirrorStreamConsistency(missedFilesStreamName, missedFilePaths, obj);
 		//missing dir paths 
-		inconsistentdata = new ArrayList<Path>();
-		inconsistentdata = findInconsistentData(missedDirsStreamName, 
-				inconsistentdata, obj);
-		Assert.assertEquals(inconsistentdata.size(), missedDirPaths.size());
-		Assert.assertTrue(inconsistentdata.containsAll(missedDirPaths));
-
+		mirrorStreamConsistency(missedDirsStreamName, missedDirPaths, obj);
 		//data replay : dir paths
-		inconsistentdata = new ArrayList<Path>();
-		inconsistentdata = findInconsistentData(dataReplayDirsStreamName, 
-				inconsistentdata, obj);
-		Assert.assertEquals(inconsistentdata.size(), dataReplayDirPaths.size());
-		Assert.assertTrue(inconsistentdata.containsAll(dataReplayDirPaths));
-
+		mirrorStreamConsistency(dataReplayDirsStreamName, dataReplayDirPaths, obj);
 		//data replay : file paths
-		inconsistentdata = new ArrayList<Path>();
-		inconsistentdata = findInconsistentData(dataReplayFilesStreamName, 
-				inconsistentdata, obj);
-		Assert.assertEquals(inconsistentdata.size(), dataReplayFilePaths.size());
-		Assert.assertTrue(inconsistentdata.containsAll(dataReplayFilePaths));
-
+		mirrorStreamConsistency(dataReplayFilesStreamName, dataReplayFilePaths, obj);
 		//extra file paths
-		inconsistentdata = new ArrayList<Path>();
-		inconsistentdata = findInconsistentData(extrafilesStreamName, 
-				inconsistentdata, obj);
-		Assert.assertEquals(inconsistentdata.size(), extraFilePaths.size());
-		Assert.assertTrue(inconsistentdata.containsAll(extraFilePaths));
-
+		mirrorStreamConsistency(extrafilesStreamName, extraFilePaths, obj);
 		//extra dir paths
-		inconsistentdata = new ArrayList<Path>();
-		inconsistentdata = findInconsistentData(extraDirsStreamName, 
-				inconsistentdata, obj);
-		Assert.assertEquals(inconsistentdata.size(), extraDirPaths.size());
-		Assert.assertTrue(inconsistentdata.containsAll(extraDirPaths));
-
+		mirrorStreamConsistency(extraDirsStreamName, extraDirPaths, obj);
 		//all streams together
-		inconsistentdata = new ArrayList<Path>();
-		inconsistentdata = findInconsistentData(allStreamNames, inconsistentdata, 
-				obj);
 		List<Path> allStreamPaths = new ArrayList<Path>();
 		allStreamPaths.addAll(emptyPaths);
 		allStreamPaths.addAll(emptyDirsPaths);
@@ -308,8 +264,13 @@ public class TestMirrorStreamDataConsistency {
 		allStreamPaths.addAll(dataReplayFilePaths);
 		allStreamPaths.addAll(extraFilePaths);
 		allStreamPaths.addAll(extraDirPaths);
-
+		
+		mirrorStreamConsistency(allStreamNames, allStreamPaths, obj);
+		String [] args = {("file:///tmp/test/" + className + "/1/"), ("file:///tmp/" +
+				"test/" + className	+ "/2/,file:///tmp/test/" + className +"/3/")}; 
+		List<Path> inconsistentdata = obj.run(args);
 		Assert.assertEquals(inconsistentdata.size(), allStreamPaths.size());
 		Assert.assertTrue(inconsistentdata.containsAll(allStreamPaths));
+		
 	}
 }
