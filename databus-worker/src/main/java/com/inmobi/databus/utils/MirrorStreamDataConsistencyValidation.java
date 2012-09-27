@@ -175,29 +175,28 @@ public class MirrorStreamDataConsistencyValidation {
   public List<Path> run(String [] args) throws Exception {
   	List<String> streamNames = new ArrayList<String>();
   	List<Path> inconsistentData = new ArrayList<Path>();
-  	 if (args.length == 2) {
-  		 FileSystem fs = mirrorStreamDirs.get(0).getFileSystem(new Configuration());
-  		 FileStatus[] fileStatuses = fs.listStatus(mirrorStreamDirs.get(0));
-  		 if (fileStatuses.length != 0) {
-  			 for (FileStatus file : fileStatuses) {  
-  				 streamNames.add(file.getPath().getName());
-  			 } 
-  		 } 
-  	 } else if (args.length == 3) {
-  		 for (String streamname : args[2].split(",")) {
-  			 streamNames.add(streamname);
-  		 }
-  	 } else {
-  		 System.out.println("There are no streams in the merged stream ");
-  	 }
-
-  	 for (String streamName : streamNames) {
-  		 inconsistentData.addAll(this.processListingStreams(streamName));
-  	 }
-  	 if (inconsistentData.isEmpty()) {
-  		 System.out.println("there is no inconsistency data");
-  	 }
-  	 return inconsistentData;
+  	if (args.length == 2) {
+  		FileSystem fs = mirrorStreamDirs.get(0).getFileSystem(new Configuration());
+  		FileStatus[] fileStatuses = fs.listStatus(mirrorStreamDirs.get(0));
+  		if (fileStatuses.length != 0) {
+  			for (FileStatus file : fileStatuses) {  
+  				streamNames.add(file.getPath().getName());
+  			} 
+  		} else {
+  			System.out.println("There are no stream names in the mirrored stream");
+  		}
+  	} else if (args.length == 3) {
+  		for (String streamname : args[2].split(",")) {
+  			streamNames.add(streamname);
+  		}
+  	} 
+  	for (String streamName : streamNames) {
+  		inconsistentData.addAll(this.processListingStreams(streamName));
+  	}
+  	if (inconsistentData.isEmpty()) {
+  		System.out.println("there is no inconsistency data");
+  	}
+  	return inconsistentData;
   }
 
   public static void main(String args[]) throws Exception {
