@@ -323,8 +323,8 @@ public class LocalStreamService extends AbstractService {
   private void processFile(FileStatus file, String currentFile,
                            String checkPointValue, FileSystem fs, Map<FileStatus, String> results,
                            Map<String, FileStatus> collectorPaths) throws IOException {
-
-    String fileName = file.getPath().getName();
+	
+	String fileName = file.getPath().getName();	
     if (fileName != null
     && !fileName.equalsIgnoreCase(currentFile)) {
       if (!isEmptyFile(file, fs)) {

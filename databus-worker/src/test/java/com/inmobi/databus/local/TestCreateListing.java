@@ -118,6 +118,7 @@ public class TestCreateListing {
     out.close();
 
     //don't sleep now
+    results.clear();
     service.createListing(localFs, localFs.getFileStatus(new Path(rootDir,
     "data")), results, trashSet, checkpointPaths);
     for (FileStatus file : results.keySet())  {
