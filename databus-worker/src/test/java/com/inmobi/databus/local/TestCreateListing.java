@@ -118,9 +118,7 @@ public class TestCreateListing {
     out.close();
 
     //don't sleep now
-    results.clear();
-    trashSet.clear();
-    checkpointPaths.clear();
+    clearLists();
     service.createListing(localFs, localFs.getFileStatus(new Path(rootDir,
     "data")), results, trashSet, checkpointPaths);
     for (FileStatus file : results.keySet())  {
@@ -148,9 +146,7 @@ public class TestCreateListing {
     out.writeBytes("this is a testcase");
     out.close();
 
-    results.clear();
-    trashSet.clear();
-    checkpointPaths.clear();
+    clearLists();
     service.createListing(localFs, localFs.getFileStatus(new Path(rootDir,
     "data")), results, trashSet, checkpointPaths);
     for (FileStatus file : results.keySet())  {
@@ -171,9 +167,7 @@ public class TestCreateListing {
     out.writeBytes("this is a testcase");
     out.close();
 
-    results.clear();
-    trashSet.clear();
-    checkpointPaths.clear();
+    clearLists();
     service.createListing(localFs, localFs.getFileStatus(new Path(rootDir,
     "data")), results, trashSet, checkpointPaths);
     for (FileStatus file : results.keySet())  {
@@ -185,4 +179,9 @@ public class TestCreateListing {
 
   }
 
+  public void clearLists(Map<FileStatus, String> results, Set<FileStatus> trashSet, Map<String, FileStatus> checkpointPaths){
+	  results.clear();
+	  trashSet.clear();
+	  checkpointPaths.clear();
+  }
 }
