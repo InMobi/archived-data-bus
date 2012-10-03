@@ -179,9 +179,9 @@ public class TestCreateListing {
 
   }
 
-  public void clearLists(Map<FileStatus, String> results, 
-    Set<FileStatus> trashSet, Map<String, FileStatus> checkpointPaths){
-	results.clear();
+  public void clearLists(Map<FileStatus, String> results,
+  Set<FileStatus> trashSet, Map<String, FileStatus> checkpointPaths) {
+    results.clear();
     trashSet.clear();
     checkpointPaths.clear();
   }
