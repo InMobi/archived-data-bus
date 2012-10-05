@@ -79,7 +79,6 @@ case "$mode" in
   mergestreamdataconsistency)
     opt_local_merge=1;
     ;;
-  *)
   localstreamdataconsistency)
     opt_local=1;
     ;;
