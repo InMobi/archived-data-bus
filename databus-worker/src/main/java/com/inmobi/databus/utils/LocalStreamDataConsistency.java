@@ -9,14 +9,13 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
-import javax.sound.midi.SysexMessage;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import com.inmobi.databus.local.LocalStreamService;
 
 /**
  * This class is used to check the data consistency between data(data + trash) 
@@ -77,32 +76,46 @@ public class LocalStreamDataConsistency {
 					}
 				}
 			} else { 
-				if (dataTrashIt.hasNext() && localIt.hasNext()) {
-					dataTrashKey = dataTrashIt.next().getKey(); 
+				if (dataTrashIt.hasNext() && !localIt.hasNext()) {
+					dataTrashKey = dataTrashIt.next().getKey();
+					localKey = null;
+				} else if (localIt.hasNext() && !dataTrashIt.hasNext()) {
+					localKey = localIt.next().getKey();
+					dataTrashKey = null;
+				} else if (dataTrashIt.hasNext() && localIt.hasNext()) {
+					dataTrashKey = dataTrashIt.next().getKey();
 					localKey = localIt.next().getKey();
 				} else {
 					localKey = null;
 					dataTrashKey = null;
-				} 
+				}
 			}
 		}
-		if ((!dataTrashIt.hasNext()) && (!localIt.hasNext()) && (listOfDataTrashFiles.
+		if ((dataTrashKey == null) && (localKey == null) && (listOfDataTrashFiles.
 				size() == listOfLocalFiles.size())) {
 			System.out.println("there is no inconsitent data");
 		} else {
-			if (!localIt.hasNext()) {
-				while (dataTrashIt.hasNext()) {
-					dataTrashKey = dataTrashIt.next().getKey();
+			if (localKey == null) {
+				while (dataTrashKey != null) {
 					inconsistency.add(listOfDataTrashFiles.get(dataTrashKey));
 					System.out.println("Files to be sent: " + 
 							listOfDataTrashFiles.get(dataTrashKey));
+					if (dataTrashIt.hasNext()) {
+						dataTrashKey = dataTrashIt.next().getKey();
+					} else {
+						dataTrashKey = null;
+					}
 				}
 			} else {
-				while (localIt.hasNext()) {
-					localKey = localIt.next().getKey();
+				while (localKey != null) {
 					inconsistency.add(listOfLocalFiles.get(localKey));
 					System.out.println("extra files in streams_local: " + 
 							listOfLocalFiles.get(localKey));
+					if (localIt.hasNext()) {
+						localKey = localIt.next().getKey();
+					} else {
+						localKey = null;
+					}
 				}
 			}
 		}
@@ -111,7 +124,8 @@ public class LocalStreamDataConsistency {
 	
 	public void doRecursiveListing(Path pathName, TreeMap<String, Path> listOfFiles, 
 			FileSystem fs, String baseDir, String streamName) throws Exception {
-		FileStatus [] fileStatuses = fs.listStatus(pathName);
+		FileStatus [] fileStatuses = fs.listStatus(pathName, new LocalStreamService.
+				CollectorPathFilter());
 		if (fileStatuses == null || fileStatuses.length == 0) {
 			LOG.debug("No files in directory:" + pathName);
 		} else {
@@ -121,17 +135,13 @@ public class LocalStreamDataConsistency {
 				} else {
 					if (baseDir.equals("data")) {
 						// check for meta files (scribe_stats.gz file and *current.gz file) 
-						 // and ignore them 
-						if (!((file.getPath().getName() + ".gz").equals(streamName + 
-								"_current.gz") || (file.getPath().getName() + ".gz").equals
-										("scribe_stats.gz"))) {
-							String filename = file.getPath().getParent().getName() + "_" + 
-									file.getPath().getName() + ".gz";
-							listOfFiles.put(filename, file.getPath());
-							LOG.debug("data files: " + filename);
-						}
+						// and ignore them
+						String filename = file.getPath().getParent().getName() + "-" + 
+								file.getPath().getName() + ".gz";
+						listOfFiles.put(filename, file.getPath());
+						LOG.debug("data files: " + filename);
 					} else if (baseDir.equals("trash")){
-						listOfFiles.put(file.getPath().getName(), file.getPath());
+						listOfFiles.put(file.getPath().getName() + ".gz", file.getPath());
 						LOG.debug("trash files" + file.getPath().getName());
 					} else {
 						listOfFiles.put(file.getPath().getName(), file.getPath());
@@ -140,15 +150,8 @@ public class LocalStreamDataConsistency {
 				}
 			}
 		}
-}
-	
-	public void getStreamNames(List<String> streamNames, String pathName) throws 
-			Exception{
-		for (String streamName : pathName.split(",")) {
-			streamNames.add(streamName);
-		}
 	}
-	
+
 	public void getStreamCollectorNames( Path streamDir, List<String>  
 			streamCollectorNames) throws Exception {
 		FileSystem fs = streamDir.getFileSystem(new Configuration());
@@ -231,29 +234,7 @@ public class LocalStreamDataConsistency {
 				processAllStreams(streamNames, collectorNames, baseDir, 
 						listOfDataTrashFiles, listOfLocalFiles, inconsistentData, rootDir);
 			}
-		} else if (args.length == 2) {
-			getStreamNames(streamNames, args[1]);
-			for (String rootDir : rootDirs) {
-				allocateMemory(listOfDataTrashFiles, listOfLocalFiles);
-				Path baseDir = new Path(rootDir, "data");
-				findTrashFiles(rootDir, listOfDataTrashFiles);
-				processAllStreams(streamNames, collectorNames, baseDir, 
-						listOfDataTrashFiles, listOfLocalFiles, inconsistentData, rootDir);
-			}
-		} else if (args.length == 3) {
-			getStreamNames(streamNames, args[1]);
-			for (String collectorName : args[2].split(",")) {
-				collectorNames.add(collectorName);
-			}
-			for (String rootDir : rootDirs) {
-				findTrashFiles(rootDir, listOfDataTrashFiles);
-				for (String streamName : streamNames ) {
-					processing(rootDir, streamName, collectorNames, listOfDataTrashFiles,
-							listOfLocalFiles);
-				}
-				compareDataLocalStreams(listOfDataTrashFiles, listOfLocalFiles, inconsistentData);
-			}
-		}
+		} 
 		return inconsistentData;
 	}
  
@@ -264,8 +245,7 @@ public class LocalStreamDataConsistency {
 			obj.run(args);
 		} else {
 			System.out.println("incorrect number of arguments:" + "Enter 1st arg: " +
-					"rootdir url" + "2nd arg: set of stream names" + "3rd arg: set of " +
-							"collector names" + "2nd and 3rd arguments are optional here");
+					"rootdir url");
 			System.exit(1);
 		}
 	}

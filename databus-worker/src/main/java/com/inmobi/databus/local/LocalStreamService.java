@@ -268,7 +268,7 @@ public class LocalStreamService extends AbstractService {
     300000);
   }
 
-  static class CollectorPathFilter implements PathFilter {
+  public static class CollectorPathFilter implements PathFilter {
     public boolean accept(Path path) {
       if (path.getName().endsWith("current")
       || path.getName().equalsIgnoreCase("scribe_stats"))

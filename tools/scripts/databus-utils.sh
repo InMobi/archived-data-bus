@@ -32,7 +32,7 @@ display_help() {
 USAGE: $0 mirrorstreamdataconsistency <mergedstreamroot-dir> <mirrorstreamroot-dir (comma separated list)> [<streamname (comma separated list)>]
        $0 orderlycreated <root-dirs (comma separated list)> [<basedir (comma separated list)>] [<streamname (comma separated list)>]
        $0 mergestreamdataconsistency <local stream root-dirs (comma separated list)> <merge stream root-dir> [<streamNames (comma separated list)>]
-       $0 localstreamdataconsistency <root-dirs (comma separated list)> [<stream names (comma separated list)>] [<collector names (comma separated list)>]
+       $0 localstreamdataconsistency <root-dirs (comma separated list)>
 EOF
 }
 

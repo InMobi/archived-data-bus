@@ -125,7 +125,7 @@ public class TestLocalStreamDataConsistency {
 				createFilesData(fs, pathName, 3, 0, filePrefix, streamType);
 			}
 		} else if (streamType.equals("trash")) {
-			filePrefix = collectorName + "_" + streamName + "-";
+			filePrefix = collectorName + "-" + streamName + "-";
 			if (streamName.equals("empty")) {
 			} else if (streamName.equals("consistentData")) {
 				createFilesData(fs, pathName, 2, 3, filePrefix, streamType);
@@ -137,7 +137,7 @@ public class TestLocalStreamDataConsistency {
 				createFilesData(fs, pathName, 2, 3, filePrefix, streamType);
 			}
 		} else if (streamType.equals("streams_local")) {
-			filePrefix = collectorName + "_" + streamName + "-";
+			filePrefix = collectorName + "-" + streamName + "-";
 			if (streamName.equals("empty")) {
 			} else if (streamName.equals("consistentData")) {
 				createFilesData(fs, pathName, 5, 0, filePrefix, streamType);
@@ -163,7 +163,7 @@ public class TestLocalStreamDataConsistency {
 		List<String> filesList = new ArrayList<String>();
 		Path path;
 		for (int j = start; j < filesCount + start; j++) {
-			if (streamType.equals("trash") || streamType.equals("streams_local")) {
+			if (streamType.equals("streams_local")) {
 				filesList.add(filePrefix + "file" + j + ".gz");
 			} else {
 				filesList.add(filePrefix + "file" + j);
@@ -224,19 +224,7 @@ public class TestLocalStreamDataConsistency {
 		String[] args = {("file:///tmp/test/" + className + "/1/,file:///" + 
 				"tmp/test/" + className + "/2/")};
 		LOG.info("testing run method");
-		checkDataConsistency(allStreamPaths, inconsistentdata, args, obj);
-
-		LOG.info("collector names are optional here");
-		String[] arguments = {("file:///tmp/test/" + className + "/1/,file:///" + 
-				"tmp/test/" + className + "/2/"), ("consistentData,missingFiles," +
-						"dataReplayFiles,extraFiles")};
-		checkDataConsistency(allStreamPaths, inconsistentdata, arguments, obj);
-
-		LOG.info("no optional arguments");
-		String[] arg = {("file:///tmp/test/" + className + "/1/,file:///" + 
-				"tmp/test/" + className + "/2/"), ("consistentData,missingFiles," +
-						"dataReplayFiles,extraFiles"), "collector1"};
-		checkDataConsistency(allStreamPaths, inconsistentdata, arg, obj);
+		checkDataConsistency(allStreamPaths, inconsistentdata, args, obj); 
 	}
 }
 
