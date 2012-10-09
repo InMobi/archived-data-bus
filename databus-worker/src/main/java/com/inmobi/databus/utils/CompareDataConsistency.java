@@ -12,16 +12,16 @@ import org.apache.hadoop.fs.Path;
 public abstract class CompareDataConsistency {
 
 	/**
-	 * This method compares the data consistency between two streams
+	 * This method compares the data consistency between source and destination streams
 	 * @return list of inconsistency paths
 	 */
 	public List<Path> compareDataConsistency(TreeMap<String, Path>
-	localStreamFiles, TreeMap<String, Path> mergedStreamFiles, List<Path>
-	inconsistency) {
-		Set<Entry<String, Path>> localStreamFileEntries = localStreamFiles.
-				entrySet();
-		Set<Entry<String, Path>> mergedStreamFileEntries = mergedStreamFiles.
-				entrySet();
+		sourceStreamFiles, TreeMap<String, Path> destStreamFiles, List<Path>
+			inconsistency) {
+		Set<Entry<String, Path>> localStreamFileEntries = sourceStreamFiles.
+			entrySet();
+		Set<Entry<String, Path>> mergedStreamFileEntries = destStreamFiles.
+			entrySet();
 		Iterator<Entry<String, Path>> localIt = localStreamFileEntries.iterator();
 		Iterator<Entry<String, Path>> mergedIt = mergedStreamFileEntries.iterator();
 		String localKey = null;
@@ -35,16 +35,16 @@ public abstract class CompareDataConsistency {
 		while ((localKey != null) && (mergedKey != null)) {
 			if (!localKey.equals(mergedKey)) {
 				if(localKey.compareTo(mergedKey) < 0) {
-					System.out.println("missing path: " + localStreamFiles.get(localKey));
-					inconsistency.add(localStreamFiles.get(localKey));
+					System.out.println("missing path: " + sourceStreamFiles.get(localKey));
+					inconsistency.add(sourceStreamFiles.get(localKey));
 					if (localIt.hasNext()) {
 						localKey = localIt.next().getKey();
 					} else {
 						localKey = null;
 					}
 				} else {
-					System.out.println("data replay: " + mergedStreamFiles.get(mergedKey));
-					inconsistency.add(mergedStreamFiles.get(mergedKey));
+					System.out.println("data replay: " + destStreamFiles.get(mergedKey));
+					inconsistency.add(destStreamFiles.get(mergedKey));
 					if (mergedIt.hasNext()) {	
 						mergedKey = mergedIt.next().getKey();
 					} else {
@@ -67,15 +67,15 @@ public abstract class CompareDataConsistency {
 				}
 			}
 		}
-		if ((localStreamFiles.size() == mergedStreamFiles.size()) &&
+		if ((sourceStreamFiles.size() == destStreamFiles.size()) &&
 				localKey == null && mergedKey == null) {
 			System.out.println("there are no missing files");
 		} else {
 			if (mergedKey == null) {
 				while (localKey != null) {
-					inconsistency.add(localStreamFiles.get(localKey));
+					inconsistency.add(sourceStreamFiles.get(localKey));
 					System.out.println("Files to be sent: " +
-							localStreamFiles.get(localKey));
+						sourceStreamFiles.get(localKey));
 					if (localIt.hasNext()) {
 						localKey = localIt.next().getKey();
 					} else {
@@ -84,9 +84,9 @@ public abstract class CompareDataConsistency {
 				}
 			} else {
 				while (mergedKey != null) {
-					inconsistency.add(mergedStreamFiles.get(mergedKey));
+					inconsistency.add(destStreamFiles.get(mergedKey));
 					System.out.println("extra files in stream: " +
-							mergedStreamFiles.get(mergedKey));
+						destStreamFiles.get(mergedKey));
 					if (mergedIt.hasNext()) {
 						mergedKey = mergedIt.next().getKey();
 					} else {
