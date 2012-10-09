@@ -24,102 +24,13 @@ import com.inmobi.databus.local.LocalStreamService;
  * names. Second and third arguments are optional here.
  *
  */
-public class LocalStreamDataConsistency {
+public class LocalStreamDataConsistency extends CompareDataConsistency {
 
 	private static final Log LOG = LogFactory.getLog(
 			LocalStreamDataConsistency.class);
 	
 	public LocalStreamDataConsistency() {
 		
-	}
-	
-	/**
-	 * This method is used to compare the data between the data and streams_local.
-	 * @param listOfDataTrashFiles : list of all files (data + trash)
-	 * @param listOfLocalFiles     : list of streams_local files
-	 */
-	public List<Path> compareDataLocalStreams(TreeMap<String, Path> 
-			listOfDataTrashFiles, TreeMap<String, Path> listOfLocalFiles, List<Path> 
-					inconsistency) {
-		Set<Entry<String, Path>> dataTrashFileEntries = listOfDataTrashFiles.
-				entrySet();
-		Set<Entry<String, Path>> localFileEntries = listOfLocalFiles.
-				entrySet();
-		Iterator<Entry<String, Path>> dataTrashIt = dataTrashFileEntries.iterator();
-		Iterator<Entry<String, Path>> localIt = localFileEntries.iterator();
-		String dataTrashKey = null;
-		String localKey = null;
-		if (dataTrashIt.hasNext()) {
-			dataTrashKey = dataTrashIt.next().getKey(); 
-		}
-		if (localIt.hasNext()) {
-			localKey = localIt.next().getKey();
-		}
-		while (dataTrashKey!= null && localKey!= null) {
-			LOG.debug("comparision : " + dataTrashKey + " " + localKey);
-			if (!dataTrashKey.equals(localKey)) {
-				if(dataTrashKey.compareTo(localKey) < 0) {
-					System.out.println("missing path: " + listOfDataTrashFiles.get(dataTrashKey));
-					inconsistency.add(listOfDataTrashFiles.get(dataTrashKey));
-					if (dataTrashIt.hasNext()) {
-						dataTrashKey = dataTrashIt.next().getKey(); 
-					} else {
-						dataTrashKey = null;
-					}
-				} else {
-					System.out.println("data replay: " + listOfLocalFiles.get(localKey));
-					inconsistency.add(listOfLocalFiles.get(localKey));
-					if (localIt.hasNext()) {
-						localKey = localIt.next().getKey();
-					} else {
-						localKey = null;
-					}
-				}
-			} else { 
-				if (dataTrashIt.hasNext() && !localIt.hasNext()) {
-					dataTrashKey = dataTrashIt.next().getKey();
-					localKey = null;
-				} else if (localIt.hasNext() && !dataTrashIt.hasNext()) {
-					localKey = localIt.next().getKey();
-					dataTrashKey = null;
-				} else if (dataTrashIt.hasNext() && localIt.hasNext()) {
-					dataTrashKey = dataTrashIt.next().getKey();
-					localKey = localIt.next().getKey();
-				} else {
-					localKey = null;
-					dataTrashKey = null;
-				}
-			}
-		}
-		if ((dataTrashKey == null) && (localKey == null) && (listOfDataTrashFiles.
-				size() == listOfLocalFiles.size())) {
-			System.out.println("there is no inconsitent data");
-		} else {
-			if (localKey == null) {
-				while (dataTrashKey != null) {
-					inconsistency.add(listOfDataTrashFiles.get(dataTrashKey));
-					System.out.println("Files to be sent: " + 
-							listOfDataTrashFiles.get(dataTrashKey));
-					if (dataTrashIt.hasNext()) {
-						dataTrashKey = dataTrashIt.next().getKey();
-					} else {
-						dataTrashKey = null;
-					}
-				}
-			} else {
-				while (localKey != null) {
-					inconsistency.add(listOfLocalFiles.get(localKey));
-					System.out.println("extra files in streams_local: " + 
-							listOfLocalFiles.get(localKey));
-					if (localIt.hasNext()) {
-						localKey = localIt.next().getKey();
-					} else {
-						localKey = null;
-					}
-				}
-			}
-		}
-		return inconsistency;
 	}
 	
 	public void doRecursiveListing(Path pathName, TreeMap<String, Path> listOfFiles, 
@@ -134,8 +45,6 @@ public class LocalStreamDataConsistency {
 					doRecursiveListing(file.getPath(), listOfFiles, fs, baseDir, streamName);
 				} else {
 					if (baseDir.equals("data")) {
-						// check for meta files (scribe_stats.gz file and *current.gz file) 
-						// and ignore them
 						String filename = file.getPath().getParent().getName() + "-" + 
 								file.getPath().getName() + ".gz";
 						listOfFiles.put(filename, file.getPath());
@@ -199,7 +108,7 @@ public class LocalStreamDataConsistency {
 			processing(rootDir, streamName, collectorNames, listOfDataTrashFiles,
 					listOfLocalFiles);
 		}
-		compareDataLocalStreams(listOfDataTrashFiles, listOfLocalFiles, 
+		compareDataConsistency(listOfDataTrashFiles, listOfLocalFiles, 
 				inconsistentData);
 	}
 	

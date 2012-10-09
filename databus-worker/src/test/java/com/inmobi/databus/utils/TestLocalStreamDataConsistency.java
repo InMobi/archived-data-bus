@@ -61,7 +61,6 @@ public class TestLocalStreamDataConsistency {
 		for (String collectorName : collectorNameUrl.split(",")) {
 			collectorNames.add(collectorName);
 		}
-		createtestdata(allStreamNames);
 	}
 	public void createtestdata(List<String> streamNames) throws Exception {
 		createTestData("data", streamNames );
@@ -194,7 +193,7 @@ public class TestLocalStreamDataConsistency {
   			obj.processing(rootDir, streamName, collectorNames, listOfDataTrashFiles,
   					listOfLocalFiles);
   		}
-  		obj.compareDataLocalStreams(listOfDataTrashFiles, listOfLocalFiles, 
+  		obj.compareDataConsistency(listOfDataTrashFiles, listOfLocalFiles, 
   				inconsistentdata);
   		Assert.assertEquals( 2 * inconsistentdata.size(), expectedPaths.size());
   	}
@@ -208,9 +207,24 @@ public class TestLocalStreamDataConsistency {
 		Assert.assertTrue(inconsistentdata.containsAll(expectedStreamPaths)); 
   }
   
+  public void checkStreamDataConsistency(List<String> streamNames, List<Path> 
+  		expectedPaths, LocalStreamDataConsistency obj) throws Exception {
+  	createtestdata(streamNames);
+  	testLocalStreamData(streamNames, expectedPaths, obj);
+  	cleanup();
+  }
+  
 	@Test
 	public void testLocalStream() throws Exception {
 		LocalStreamDataConsistency obj = new LocalStreamDataConsistency();
+		checkStreamDataConsistency(emptyStreamName, emptyPaths, obj);
+		checkStreamDataConsistency(missedFilesStreamName, missedFilePaths, obj);
+		checkStreamDataConsistency(dataReplayFilesStreamName, dataReplayFilePaths, obj);
+		checkStreamDataConsistency(extrafilesStreamName, extraFilePaths, obj);
+		missedFilePaths = new ArrayList<Path>();
+		dataReplayFilePaths = new ArrayList<Path>();
+		extraFilePaths = new ArrayList<Path>();
+		createtestdata(allStreamNames);
 		LOG.info("all streams together");
 		List<Path> allStreamPaths = new ArrayList<Path>();
 		allStreamPaths.addAll(emptyPaths);
@@ -225,6 +239,7 @@ public class TestLocalStreamDataConsistency {
 				"tmp/test/" + className + "/2/")};
 		LOG.info("testing run method");
 		checkDataConsistency(allStreamPaths, inconsistentdata, args, obj); 
+		LOG.info("Successful");
 	}
 }
 
