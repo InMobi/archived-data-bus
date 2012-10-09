@@ -221,6 +221,7 @@ public class TestLocalStreamDataConsistency {
 		checkStreamDataConsistency(missedFilesStreamName, missedFilePaths, obj);
 		checkStreamDataConsistency(dataReplayFilesStreamName, dataReplayFilePaths, obj);
 		checkStreamDataConsistency(extrafilesStreamName, extraFilePaths, obj);
+		emptyPaths = new ArrayList<Path>();
 		missedFilePaths = new ArrayList<Path>();
 		dataReplayFilePaths = new ArrayList<Path>();
 		extraFilePaths = new ArrayList<Path>();
