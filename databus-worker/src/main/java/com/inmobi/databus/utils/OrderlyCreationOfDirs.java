@@ -1,6 +1,8 @@
 package com.inmobi.databus.utils;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -8,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.Iterator;
+import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -77,9 +80,11 @@ public class OrderlyCreationOfDirs {
   }
 
   public void listingAndValidation(Path streamDir, FileSystem fs, 
-      List<Path> outOfOrderDirs)
+      List<Path> outOfOrderDirs, Set<Path> notCreatedMinutePaths)
       throws IOException {
     Set<Path> listing = new HashSet<Path>();
+    TreeSet<Path> hourPathListing = new TreeSet<Path>(new PathComparator());
+    TreeSet<Path> minutePathListing = new TreeSet<Path>(new PathComparator());
     TreeMap<Date, FileStatus>creationTimeOfFiles = new TreeMap<Date, 
         FileStatus >();
     doRecursiveListing(streamDir, listing, fs);
@@ -88,6 +93,89 @@ public class OrderlyCreationOfDirs {
           streamDir, path), fs.getFileStatus(path));
     }
     validateOrderlyCreationOfPaths(creationTimeOfFiles, outOfOrderDirs);
+    createHourPathSetAndMinutePathSet(listing, hourPathListing,
+        minutePathListing);
+    validateMinuteFolderCreation(hourPathListing, minutePathListing,
+        notCreatedMinutePaths);
+  }
+  
+  public void createHourPathSetAndMinutePathSet(Set<Path> listing,
+      TreeSet<Path> hourPathListing, TreeSet<Path> minutePathListing) {
+    for (Path path : listing) {
+      FileStatus fileStatus = null;
+      try {
+        FileSystem fs = path.getFileSystem(new Configuration());
+        fileStatus = fs.getFileStatus(path);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+      if (fileStatus.isDir()) {
+        minutePathListing.add(path);
+        hourPathListing.add(path.getParent());
+      } else {
+        minutePathListing.add(path.getParent());
+        hourPathListing.add(path.getParent().getParent());
+      }
+    }
+  }
+
+  public void validateMinuteFolderCreation(TreeSet<Path> hourPathListing,
+      TreeSet<Path> minutePathListing, Set<Path> notCreatedMinutePaths) {
+    for (Path path : hourPathListing) {
+      if (path.compareTo(hourPathListing.last()) == 0) {
+        int number = getNumberOfChildFolders(path);
+        String minutePath;
+        for (int i = 0; i < number; i++) {
+          if (i < 10)
+            minutePath = "0" + Integer.toString(i);
+          else
+            minutePath = Integer.toString(i);
+          Path newPath = new Path(path, minutePath);
+          if (!checkIfPresent(path, newPath))
+            notCreatedMinutePaths.add(newPath);
+        }
+      } else {
+        String minutePath;
+        for (int i = 0; i < 60; i++) {
+          if (i < 10)
+            minutePath = "0" + Integer.toString(i);
+          else
+            minutePath = Integer.toString(i);
+          Path newPath = new Path(path, minutePath);
+          if (!checkIfPresent(path, newPath))
+            notCreatedMinutePaths.add(newPath);
+        }
+      }
+    }
+  }
+  
+  public int getNumberOfChildFolders(Path path){
+    FileSystem fs = null;
+    try{
+      fs= path.getFileSystem(new Configuration());
+      return fs.listStatus(path).length;
+    }
+    catch(IOException e){
+      e.printStackTrace();
+    }
+    return -1;
+  }
+  
+  public boolean checkIfPresent(Path parentPath, Path childPath){
+    try{
+      FileSystem fs= parentPath.getFileSystem(new Configuration());
+      FileStatus[] fileStatuses = fs.listStatus(parentPath);
+      Path path;
+      for(FileStatus fileStatus : fileStatuses){
+        path = fileStatus.getPath();
+        if(path.compareTo(childPath)==0)
+          return true;
+      }
+    }
+    catch(IOException e){
+      e.printStackTrace();
+    }
+    return false;    
   }
   
   public void getStreamNames(String baseDir, String rootDir, List<String>
@@ -100,8 +188,7 @@ public class OrderlyCreationOfDirs {
   			if (!streamNames.contains(file.getPath().getName())) {
   				streamNames.add(file.getPath().getName());
   			}
-  		}
-  	
+  		}  	
   }
   
   public void getBaseDirs(String baseDirArg, List<String> baseDirs) {
@@ -112,6 +199,7 @@ public class OrderlyCreationOfDirs {
   
   public List<Path> run(String [] args) throws Exception {
   	List<Path> outoforderdirs = new ArrayList<Path>();
+  	List<Path> notCreatedMinutePaths = new ArrayList<Path>();
   	if (args.length >= 1) {
   		String[]	rootDirs = args[0].split(",");
   		List<String> baseDirs = new ArrayList<String>();
@@ -125,11 +213,20 @@ public class OrderlyCreationOfDirs {
   					getStreamNames(baseDir, rootDir, streamNames);
   					outoforderdirs.addAll(pathConstruction(rootDir, baseDir, 
   							streamNames));
+                    notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
+                rootDir, baseDir, streamNames));
   				}
   			}
   			if (outoforderdirs.isEmpty()) {
   				System.out.println("There are no out of order dirs");
-  			} 
+  			}
+  			if (notCreatedMinutePaths.isEmpty()) {
+  			    System.out.println("There are no missing dirs");
+  			}
+  			else
+  			  for(Path path: notCreatedMinutePaths){
+  	            System.out.println("Missing path: "+path.toString());  			    
+  			  }
   		} else if (args.length == 2) {
   			getBaseDirs(args[1], baseDirs);
   			for (String rootDir : rootDirs) {
@@ -137,12 +234,21 @@ public class OrderlyCreationOfDirs {
   					streamNames = new ArrayList<String>();
   					getStreamNames(baseDir, rootDir, streamNames);
   					outoforderdirs.addAll(pathConstruction(rootDir, baseDir, 
-  							streamNames));
+                        streamNames));
+                    notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
+                rootDir, baseDir, streamNames));
   				}
   			}
   			if (outoforderdirs.isEmpty()) {
   				System.out.println("There are no out of order dirs");
-  			} 
+  			}
+  			if (notCreatedMinutePaths.isEmpty()) {
+  			    System.out.println("There are no missing dirs");
+            }
+  			else
+              for(Path path: notCreatedMinutePaths){
+                System.out.println("Missing path: "+path.toString());               
+              }
   		} else if (args.length == 3) {
   			getBaseDirs(args[1], baseDirs);
   			streamNames = new ArrayList<String>();
@@ -151,13 +257,22 @@ public class OrderlyCreationOfDirs {
   			}
   			for (String rootDir : rootDirs) {
   				for (String baseDir : baseDirs) {
-  					outoforderdirs.addAll(pathConstruction(rootDir, baseDir, 
-  							streamNames));
+  				  outoforderdirs.addAll(pathConstruction(rootDir, baseDir, 
+                    streamNames));
+  				  notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
+  	                rootDir, baseDir, streamNames));
   				}
   			}
   			if (outoforderdirs.isEmpty()) {
   				System.out.println("There are no out of order dirs");
   			} 
+  			if (notCreatedMinutePaths.isEmpty()) {
+                System.out.println("There are no missing dirs");
+            }
+  			else
+              for(Path path: notCreatedMinutePaths){
+                System.out.println("Missing path: "+path.toString());               
+              }
   		} 
   	} else {
   		System.out.println("Insufficient number of arguments: 1st argument:" +
@@ -177,6 +292,7 @@ public class OrderlyCreationOfDirs {
   public List<Path> pathConstruction(String rootDir, String baseDir,
   		List<String> streamNames) throws IOException {
   	List<Path> outOfOrderDirs = new ArrayList<Path>();
+  	Set<Path> notCreatedMinutePaths = new HashSet<Path>();
   	FileSystem fs = new Path(rootDir).getFileSystem(new Configuration());
   	Path rootBaseDirPath = new Path(rootDir, baseDir);
   	for (String streamName : streamNames) {
@@ -186,7 +302,7 @@ public class OrderlyCreationOfDirs {
   			LOG.info("No direcotries in that stream: " + streamName);
   			continue;
   		}
-  		listingAndValidation(streamDir, fs , outOfOrderDirs);
+        listingAndValidation(streamDir, fs, outOfOrderDirs, notCreatedMinutePaths);
   	}
   	return outOfOrderDirs;
   }
@@ -194,5 +310,43 @@ public class OrderlyCreationOfDirs {
   public static void main(String[] args) throws Exception {
   	OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
   	obj.run(args);
+  }
+
+  public Set<Path> pathConstructionForMissingDirs(
+      String rootDir, String baseDir, List<String> streamNames) {
+    List<Path> outOfOrderDirs = new ArrayList<Path>();
+    Set<Path> notCreatedMinutePaths = new HashSet<Path>();
+    try{
+      FileSystem fs = new Path(rootDir).getFileSystem(new Configuration());
+      Path rootBaseDirPath = new Path(rootDir, baseDir);
+      for (String streamName : streamNames) {
+          Path streamDir = new Path(rootBaseDirPath , streamName);
+          FileStatus[] files = fs.listStatus(streamDir);
+          if (files == null || files.length == 0) {
+              LOG.info("No direcotries in that stream: " + streamName);
+              continue;
+          }
+          listingAndValidation(streamDir, fs , outOfOrderDirs, notCreatedMinutePaths);
+      }
+    }
+    catch(IOException e){
+      e.printStackTrace();
+    }
+    return notCreatedMinutePaths;
+  }
+}
+
+class PathComparator implements Comparator<Path>{
+  
+  @Override
+  public int compare(Path p1, Path p2){
+    Path parentP1 = p1.getParent();
+    Path parentP2 = p2.getParent();
+    if(parentP1.getName().compareTo(parentP2.getName()) == 0)
+      return p1.getName().compareTo(p2.getName());
+    else if(parentP1.getName().compareTo(parentP2.getName()) > 0)
+      return 1;
+    else
+      return -1;
   }
 }
