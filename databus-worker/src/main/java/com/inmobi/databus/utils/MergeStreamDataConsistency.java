@@ -44,39 +44,66 @@ public class MergeStreamDataConsistency {
 		if (mergedIt.hasNext()) {
 			mergedKey = mergedIt.next().getKey();
 		}
-		while (localIt.hasNext() && mergedIt.hasNext()) {
+		while ((localKey != null) && (mergedKey != null)) {
 			if (!localKey.equals(mergedKey)) {
 				if(localKey.compareTo(mergedKey) < 0) {
 					System.out.println("missing path: " + localStreamFiles.get(localKey));
 					inconsistency.add(localStreamFiles.get(localKey));
-					localKey = localIt.next().getKey(); 
+					if (localIt.hasNext()) {
+						localKey = localIt.next().getKey();
+					} else {
+						localKey = null;
+					}
 				} else {
 					System.out.println("data replay: " + mergedStreamFiles.get(mergedKey));
 					inconsistency.add(mergedStreamFiles.get(mergedKey));
-					mergedKey = mergedIt.next().getKey(); 
+					if (mergedIt.hasNext()) {	
+						mergedKey = mergedIt.next().getKey(); 
+					} else {
+						mergedKey = null;
+					}
 				}
 			} else {
-				localKey = localIt.next().getKey(); 
-				mergedKey = mergedIt.next().getKey();
+				if (localIt.hasNext() && !mergedIt.hasNext()) {
+					localKey = localIt.next().getKey();
+					mergedKey = null;
+				} else if (mergedIt.hasNext() && !localIt.hasNext()) {
+					mergedKey = mergedIt.next().getKey();
+					localKey = null;
+				} else if (localIt.hasNext() && mergedIt.hasNext()) {
+					localKey = localIt.next().getKey();
+					mergedKey = mergedIt.next().getKey();
+				} else {
+					localKey = null;
+					mergedKey = null;
+				}
 			}
 		}
-		if ((!localIt.hasNext()) && (!mergedIt.hasNext()) && (localStreamFiles.
-				size() == mergedStreamFiles.size())) {
+		if ((localStreamFiles.size() == mergedStreamFiles.size()) && 
+				localKey == null && mergedKey == null) {
 			System.out.println("there are no missing files");
 		} else {
-			if (!mergedIt.hasNext()) {
-				while (localIt.hasNext()) {
-					localKey = localIt.next().getKey();
+			if (mergedKey == null) {
+				while (localKey != null) {
 					inconsistency.add(localStreamFiles.get(localKey));
 					System.out.println("To be merged files: " + 
 							localStreamFiles.get(localKey));
+					if (localIt.hasNext()) {
+						localKey = localIt.next().getKey();
+					} else {
+						localKey = null;
+					}
 				}
 			} else {
-				while (mergedIt.hasNext()) {
-					mergedKey = mergedIt.next().getKey();
+				while (mergedKey != null) {
 					inconsistency.add(mergedStreamFiles.get(mergedKey));
 					System.out.println("extra files in merged stream: " + 
 							mergedStreamFiles.get(mergedKey));
+					if (mergedIt.hasNext()) {
+						mergedKey = mergedIt.next().getKey();
+					} else {
+						mergedKey = null;
+					}
 				}
 			}
 		}
