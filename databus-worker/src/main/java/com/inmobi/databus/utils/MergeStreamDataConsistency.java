@@ -23,93 +23,10 @@ import org.apache.hadoop.fs.Path;
  *  Third argument is optional here  
  *
  */
-public class MergeStreamDataConsistency {
+public class MergeStreamDataConsistency extends CompareDataConsistency {
 	private static final Log LOG = LogFactory.getLog(
 			MergeStreamDataConsistency.class);
 	
-	public List<Path> compareLocalMergeStreams(TreeMap<String, Path> 
-			localStreamFiles, TreeMap<String, Path> mergedStreamFiles, List<Path> 
-					inconsistency) {
-		Set<Entry<String, Path>> localStreamFileEntries = localStreamFiles.
-				entrySet();
-		Set<Entry<String, Path>> mergedStreamFileEntries = mergedStreamFiles.
-				entrySet();
-		Iterator<Entry<String, Path>> localIt = localStreamFileEntries.iterator();
-		Iterator<Entry<String, Path>> mergedIt = mergedStreamFileEntries.iterator();
-		String localKey = null;
-		String mergedKey = null;
-		if (localIt.hasNext()) {
-			localKey = localIt.next().getKey(); 
-		}
-		if (mergedIt.hasNext()) {
-			mergedKey = mergedIt.next().getKey();
-		}
-		while ((localKey != null) && (mergedKey != null)) {
-			if (!localKey.equals(mergedKey)) {
-				if(localKey.compareTo(mergedKey) < 0) {
-					System.out.println("missing path: " + localStreamFiles.get(localKey));
-					inconsistency.add(localStreamFiles.get(localKey));
-					if (localIt.hasNext()) {
-						localKey = localIt.next().getKey();
-					} else {
-						localKey = null;
-					}
-				} else {
-					System.out.println("data replay: " + mergedStreamFiles.get(mergedKey));
-					inconsistency.add(mergedStreamFiles.get(mergedKey));
-					if (mergedIt.hasNext()) {	
-						mergedKey = mergedIt.next().getKey(); 
-					} else {
-						mergedKey = null;
-					}
-				}
-			} else {
-				if (localIt.hasNext() && !mergedIt.hasNext()) {
-					localKey = localIt.next().getKey();
-					mergedKey = null;
-				} else if (mergedIt.hasNext() && !localIt.hasNext()) {
-					mergedKey = mergedIt.next().getKey();
-					localKey = null;
-				} else if (localIt.hasNext() && mergedIt.hasNext()) {
-					localKey = localIt.next().getKey();
-					mergedKey = mergedIt.next().getKey();
-				} else {
-					localKey = null;
-					mergedKey = null;
-				}
-			}
-		}
-		if ((localStreamFiles.size() == mergedStreamFiles.size()) && 
-				localKey == null && mergedKey == null) {
-			System.out.println("there are no missing files");
-		} else {
-			if (mergedKey == null) {
-				while (localKey != null) {
-					inconsistency.add(localStreamFiles.get(localKey));
-					System.out.println("To be merged files: " + 
-							localStreamFiles.get(localKey));
-					if (localIt.hasNext()) {
-						localKey = localIt.next().getKey();
-					} else {
-						localKey = null;
-					}
-				}
-			} else {
-				while (mergedKey != null) {
-					inconsistency.add(mergedStreamFiles.get(mergedKey));
-					System.out.println("extra files in merged stream: " + 
-							mergedStreamFiles.get(mergedKey));
-					if (mergedIt.hasNext()) {
-						mergedKey = mergedIt.next().getKey();
-					} else {
-						mergedKey = null;
-					}
-				}
-			}
-		}
-		return inconsistency;
-	}
-
 	public List<Path> listingValidation(String mergedStreamRoorDir, String[] 
 			localStreamrootDirs, List<String> streamNames) throws Exception {
 		Path streamDir;
@@ -130,7 +47,7 @@ public class MergeStreamDataConsistency {
 			fs = streamDir.getFileSystem(new Configuration());
 			doRecursiveListing(streamDir, mergedStreamFiles, fs);
 			System.out.println("stream name: " + streamName);
-			compareLocalMergeStreams(localStreamFiles, mergedStreamFiles, 
+			compareDataConsistency(localStreamFiles, mergedStreamFiles, 
 					inconsistency);
 		}
 		return inconsistency;
