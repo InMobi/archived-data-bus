@@ -15,13 +15,12 @@ public abstract class CompareDataConsistency {
 	 * This method compares the data consistency between source and destination streams
 	 * @return list of inconsistency paths
 	 */
-	public List<Path> compareDataConsistency(TreeMap<String, Path>
-		sourceStreamFiles, TreeMap<String, Path> destStreamFiles, List<Path>
-			inconsistency) {
+	public List<Path> compareDataConsistency(TreeMap<String, Path> sourceStreamFiles, 
+			TreeMap<String, Path> destStreamFiles, List<Path> inconsistency) {
 		Set<Entry<String, Path>> localStreamFileEntries = sourceStreamFiles.
-			entrySet();
+				entrySet();
 		Set<Entry<String, Path>> mergedStreamFileEntries = destStreamFiles.
-			entrySet();
+				entrySet();
 		Iterator<Entry<String, Path>> localIt = localStreamFileEntries.iterator();
 		Iterator<Entry<String, Path>> mergedIt = mergedStreamFileEntries.iterator();
 		String localKey = null;
@@ -75,7 +74,7 @@ public abstract class CompareDataConsistency {
 				while (localKey != null) {
 					inconsistency.add(sourceStreamFiles.get(localKey));
 					System.out.println("Files to be sent: " +
-						sourceStreamFiles.get(localKey));
+							sourceStreamFiles.get(localKey));
 					if (localIt.hasNext()) {
 						localKey = localIt.next().getKey();
 					} else {
@@ -86,7 +85,7 @@ public abstract class CompareDataConsistency {
 				while (mergedKey != null) {
 					inconsistency.add(destStreamFiles.get(mergedKey));
 					System.out.println("extra files in stream: " +
-						destStreamFiles.get(mergedKey));
+							destStreamFiles.get(mergedKey));
 					if (mergedIt.hasNext()) {
 						mergedKey = mergedIt.next().getKey();
 					} else {
