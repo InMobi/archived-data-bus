@@ -1,6 +1,7 @@
 package com.inmobi.databus.utils;
 
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
@@ -74,39 +75,33 @@ public class OrderlyCreationOfDirs {
           outOfOrderDirs.add(creationTimeOfFiles.get(previousKeyEntry)
               .getPath());
         }
-        int previousMinute = Integer.parseInt(creationTimeOfFiles
-            .get(previousKeyEntry).getPath().getName());
-        int presentMinute = Integer.parseInt(creationTimeOfFiles
-            .get(presentKeyEntry).getPath().getName());
-        Path parentPath = creationTimeOfFiles.get(previousKeyEntry).getPath()
-            .getParent();
-        Path missingPath;
-        while ((presentMinute - previousMinute) != 1) {
-          if (!(presentMinute == 0 && previousMinute == 59)) {
-            previousMinute++;
-            if (previousMinute == 60){
-              previousMinute = 0;
-              parentPath = creationTimeOfFiles.get(presentKeyEntry).getPath()
-                  .getParent();
-            }
-            if (previousMinute < 10)
-              missingPath = new Path(parentPath, "0"
-                  + Integer.toString(previousMinute));
-            else
-              missingPath = new Path(parentPath,
-                  Integer.toString(previousMinute));
-            System.out.println("Missing Dir: " + missingPath);
-            notCreatedMinutePaths.add(missingPath);
-          }
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(previousKeyEntry);
+        calendar.add(Calendar.MINUTE, 1);
+        while (presentKeyEntry.compareTo(calendar.getTime()) != 0) {
+          Path parentPath, missingPath;
+          if (calendar.get(Calendar.MINUTE) != 0)
+            parentPath = creationTimeOfFiles.get(previousKeyEntry).getPath()
+                .getParent();
           else
-            break;
+            parentPath = creationTimeOfFiles.get(presentKeyEntry).getPath()
+                .getParent();
+          if (calendar.get(Calendar.MINUTE) < 10)
+            missingPath = new Path(parentPath, "0"
+                + Integer.toString(calendar.get(Calendar.MINUTE)));
+          else
+            missingPath = new Path(parentPath, Integer.toString(calendar
+                .get(Calendar.MINUTE)));
+          System.out.println("Missing Dir: " + missingPath);
+          notCreatedMinutePaths.add(missingPath);
+          calendar.add(Calendar.MINUTE, 1);
         }
       }
       previousKeyEntry = presentKeyEntry;
     }
   }
 
-  public void listingAndValidation(Path streamDir, FileSystem fs, 
+  public void listingAndValidation(Path streamDir, FileSystem fs,
       List<Path> outOfOrderDirs, Set<Path> notCreatedMinutePaths)
       throws IOException {
     Set<Path> listing = new HashSet<Path>();
@@ -154,10 +149,8 @@ public class OrderlyCreationOfDirs {
   				for (String baseDir : baseDirs) {
   					streamNames = new ArrayList<String>();
   					getStreamNames(baseDir, rootDir, streamNames);
-  					outoforderdirs.addAll(pathConstruction(rootDir, baseDir, 
-  						streamNames));
-            notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
-                rootDir, baseDir, streamNames));
+            pathConstruction(rootDir, baseDir, streamNames, outoforderdirs,
+                notCreatedMinutePaths);
   				}
   			}
   			if (outoforderdirs.isEmpty()) {
@@ -172,10 +165,8 @@ public class OrderlyCreationOfDirs {
   				for (String baseDir : baseDirs) {
   					streamNames = new ArrayList<String>();
   					getStreamNames(baseDir, rootDir, streamNames);
-            outoforderdirs.addAll(pathConstruction(rootDir, baseDir,
-                streamNames));
-            notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
-                rootDir, baseDir, streamNames));
+            pathConstruction(rootDir, baseDir, streamNames, outoforderdirs,
+                notCreatedMinutePaths);
   				}
   			}
   			if (outoforderdirs.isEmpty()) {
@@ -192,10 +183,8 @@ public class OrderlyCreationOfDirs {
   			}
   			for (String rootDir : rootDirs) {
           for (String baseDir : baseDirs) {
-            outoforderdirs.addAll(pathConstruction(rootDir, baseDir,
-                streamNames));
-            notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
-                rootDir, baseDir, streamNames));
+            pathConstruction(rootDir, baseDir, streamNames, outoforderdirs,
+                notCreatedMinutePaths);
   				}
   			}
   			if (outoforderdirs.isEmpty()) {
@@ -220,10 +209,9 @@ public class OrderlyCreationOfDirs {
    * @param  streamNames : array of stream names
    * @return outOfOrderDirs: list of out of directories for all the streams.
    */
-  public List<Path> pathConstruction(String rootDir, String baseDir,
-  		List<String> streamNames) throws IOException {
-  	List<Path> outOfOrderDirs = new ArrayList<Path>();
-  	Set<Path> notCreatedMinutePaths = new HashSet<Path>();
+  public void pathConstruction(String rootDir, String baseDir,
+      List<String> streamNames, List<Path> outOfOrderDirs,
+      Set<Path> notCreatedMinutePaths) throws IOException {
   	FileSystem fs = new Path(rootDir).getFileSystem(new Configuration());
   	Path rootBaseDirPath = new Path(rootDir, baseDir);
   	for (String streamName : streamNames) {
@@ -235,7 +223,6 @@ public class OrderlyCreationOfDirs {
   		}
       listingAndValidation(streamDir, fs, outOfOrderDirs, notCreatedMinutePaths);
   	}
-  	return outOfOrderDirs;
   }
 
   public static void main(String[] args) throws Exception {
@@ -243,27 +230,4 @@ public class OrderlyCreationOfDirs {
   	obj.run(args);
   }
 
-  public Set<Path> pathConstructionForMissingDirs(
-      String rootDir, String baseDir, List<String> streamNames) {
-    List<Path> outOfOrderDirs = new ArrayList<Path>();
-    Set<Path> notCreatedMinutePaths = new HashSet<Path>();
-    try{
-      FileSystem fs = new Path(rootDir).getFileSystem(new Configuration());
-      Path rootBaseDirPath = new Path(rootDir, baseDir);
-      for (String streamName : streamNames) {
-          Path streamDir = new Path(rootBaseDirPath , streamName);
-          FileStatus[] files = fs.listStatus(streamDir);
-          if (files == null || files.length == 0) {
-              LOG.info("No direcotries in that stream: " + streamName);
-              continue;
-          }
-        listingAndValidation(streamDir, fs, outOfOrderDirs,
-            notCreatedMinutePaths);
-      }
-    }
-    catch(IOException e){
-      e.printStackTrace();
-    }
-    return notCreatedMinutePaths;
-  }
 }

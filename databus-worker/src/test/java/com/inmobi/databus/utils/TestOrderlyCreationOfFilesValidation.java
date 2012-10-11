@@ -225,11 +225,11 @@ public class TestOrderlyCreationOfFilesValidation {
   private List<Path> checkResults(String [] rootDirs, List<String> baseDirs, 
   		List<String> streamNames, OrderlyCreationOfDirs obj) throws Exception {
   	List<Path> outOfOrderDirs = new ArrayList<Path>();
-  	List<Path> notCreatedDirs = new ArrayList<Path>();
+  	Set<Path> notCreatedDirs = new HashSet<Path>();
   	for (String rootDir : rootDirs) {
   		for (String baseDir : baseDirs) {
-  			outOfOrderDirs.addAll(obj.pathConstruction(rootDir, baseDir, 
-  					streamNames));
+        obj.pathConstruction(rootDir, baseDir, streamNames, outOfOrderDirs,
+            notCreatedDirs);
   		}
   	}
   	return outOfOrderDirs;
@@ -238,11 +238,12 @@ public class TestOrderlyCreationOfFilesValidation {
   private Set<Path> checkResultsForMissingDirs(String[] rootDirs,
       List<String> baseDirs, List<String> streamNames, OrderlyCreationOfDirs obj)
       throws Exception {
+    List<Path> outOfOrderDirs = new ArrayList<Path>();
     Set<Path> notCreatedDirs = new HashSet<Path>();
     for (String rootDir : rootDirs) {
       for (String baseDir : baseDirs) {
-        notCreatedDirs.addAll(obj.pathConstructionForMissingDirs(rootDir,
-            baseDir, streamNames));
+        obj.pathConstruction(rootDir, baseDir, streamNames, outOfOrderDirs,
+            notCreatedDirs);
       }
     }
     return notCreatedDirs;
