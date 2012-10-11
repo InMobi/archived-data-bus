@@ -308,13 +308,15 @@ public class TestOrderlyCreationOfFilesValidation {
     for(Path path: prevHourMissingDirsExpectedResults)
       LOG.info("expected missing dirs "+path.toString());
     checkAllElementsOfSets(missingDirs, prevHourMissingDirsExpectedResults);
-    Assert.assertEquals(missingDirs.size(), prevHourMissingDirsExpectedResults.size());
+    Assert.assertEquals(missingDirs.size(),
+        prevHourMissingDirsExpectedResults.size());
 
     // path from last hour missing stream
     missingDirs = checkResultsForMissingDirs(rootDirs, baseDirs,
         missingLastHourStream, obj);
     checkAllElementsOfSets(missingDirs, lastHourMissingDirsExpectedResults);
-    Assert.assertEquals(missingDirs.size(), lastHourMissingDirsExpectedResults.size());
+    Assert.assertEquals(missingDirs.size(),
+        lastHourMissingDirsExpectedResults.size());
   }
 }
 

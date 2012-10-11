@@ -117,7 +117,8 @@ public class OrderlyCreationOfDirs {
       creationTimeOfFiles.put(CalendarHelper.getDateFromStreamDir(
           streamDir, path), fs.getFileStatus(path));
     }
-    validateOrderlyCreationOfPaths(creationTimeOfFiles, outOfOrderDirs, notCreatedMinutePaths);
+    validateOrderlyCreationOfPaths(creationTimeOfFiles, outOfOrderDirs,
+        notCreatedMinutePaths);
   }
   
   public void getStreamNames(String baseDir, String rootDir, List<String>
@@ -154,8 +155,8 @@ public class OrderlyCreationOfDirs {
   					streamNames = new ArrayList<String>();
   					getStreamNames(baseDir, rootDir, streamNames);
   					outoforderdirs.addAll(pathConstruction(rootDir, baseDir, 
-  							streamNames));
-                    notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
+  						streamNames));
+            notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
                 rootDir, baseDir, streamNames));
   				}
   			}
@@ -171,18 +172,18 @@ public class OrderlyCreationOfDirs {
   				for (String baseDir : baseDirs) {
   					streamNames = new ArrayList<String>();
   					getStreamNames(baseDir, rootDir, streamNames);
-  					outoforderdirs.addAll(pathConstruction(rootDir, baseDir, 
-                        streamNames));
-                    notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
+            outoforderdirs.addAll(pathConstruction(rootDir, baseDir,
+                streamNames));
+            notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
                 rootDir, baseDir, streamNames));
   				}
   			}
   			if (outoforderdirs.isEmpty()) {
   				System.out.println("There are no out of order dirs");
   			}
-  			if (notCreatedMinutePaths.isEmpty()) {
-  			    System.out.println("There are no missing dirs");
-            }
+        if (notCreatedMinutePaths.isEmpty()) {
+          System.out.println("There are no missing dirs");
+        }
   		} else if (args.length == 3) {
   			getBaseDirs(args[1], baseDirs);
   			streamNames = new ArrayList<String>();
@@ -191,10 +192,10 @@ public class OrderlyCreationOfDirs {
   			}
   			for (String rootDir : rootDirs) {
   				for (String baseDir : baseDirs) {
-  				  outoforderdirs.addAll(pathConstruction(rootDir, baseDir, 
-                    streamNames));
+                  outoforderdirs.addAll(pathConstruction(rootDir, baseDir,
+                      streamNames));
   				  notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
-  	                rootDir, baseDir, streamNames));
+  	                  rootDir, baseDir, streamNames));
   				}
   			}
   			if (outoforderdirs.isEmpty()) {
@@ -232,7 +233,7 @@ public class OrderlyCreationOfDirs {
   			LOG.info("No direcotries in that stream: " + streamName);
   			continue;
   		}
-        listingAndValidation(streamDir, fs, outOfOrderDirs, notCreatedMinutePaths);
+      listingAndValidation(streamDir, fs, outOfOrderDirs, notCreatedMinutePaths);
   	}
   	return outOfOrderDirs;
   }
@@ -256,7 +257,8 @@ public class OrderlyCreationOfDirs {
               LOG.info("No direcotries in that stream: " + streamName);
               continue;
           }
-          listingAndValidation(streamDir, fs , outOfOrderDirs, notCreatedMinutePaths);
+        listingAndValidation(streamDir, fs, outOfOrderDirs,
+            notCreatedMinutePaths);
       }
     }
     catch(IOException e){
