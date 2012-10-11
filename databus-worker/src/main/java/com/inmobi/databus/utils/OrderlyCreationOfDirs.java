@@ -191,19 +191,19 @@ public class OrderlyCreationOfDirs {
   				streamNames.add(streamname);
   			}
   			for (String rootDir : rootDirs) {
-  				for (String baseDir : baseDirs) {
-                  outoforderdirs.addAll(pathConstruction(rootDir, baseDir,
-                      streamNames));
-  				  notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
-  	                  rootDir, baseDir, streamNames));
+          for (String baseDir : baseDirs) {
+            outoforderdirs.addAll(pathConstruction(rootDir, baseDir,
+                streamNames));
+            notCreatedMinutePaths.addAll(pathConstructionForMissingDirs(
+                rootDir, baseDir, streamNames));
   				}
   			}
   			if (outoforderdirs.isEmpty()) {
   				System.out.println("There are no out of order dirs");
   			} 
-  			if (notCreatedMinutePaths.isEmpty()) {
-                System.out.println("There are no missing dirs");
-            }
+        if (notCreatedMinutePaths.isEmpty()) {
+          System.out.println("There are no missing dirs");
+        }
   		} 
   	} else {
   		System.out.println("Insufficient number of arguments: 1st argument:" +
