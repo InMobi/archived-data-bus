@@ -3,7 +3,6 @@ package com.inmobi.databus.utils;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
