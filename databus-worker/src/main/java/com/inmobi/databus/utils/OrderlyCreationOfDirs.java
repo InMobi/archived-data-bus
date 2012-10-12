@@ -20,6 +20,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import com.inmobi.databus.utils.CalendarHelper;
+import com.inmobi.databus.Cluster;
 
 /**
  * This class finds the out of order minute directories in various streams 
@@ -62,9 +63,9 @@ public class OrderlyCreationOfDirs {
    *   for a particular stream
    *  @param outOfOrderDirs : store out of order directories : outOfOrderDirs
    */
-  public void validateOrderlyCreationOfPaths(
-      TreeMap<Date , FileStatus> creationTimeOfFiles, 
-      List<Path> outOfOrderDirs, Set<Path> notCreatedMinutePaths) {
+  public void validateOrderlyCreationOfPaths(Path streamDir,
+      TreeMap<Date, FileStatus> creationTimeOfFiles, List<Path> outOfOrderDirs,
+      Set<Path> notCreatedMinutePaths) {
     Date previousKeyEntry = null;
     for (Date presentKeyEntry : creationTimeOfFiles.keySet() ) {
       if (previousKeyEntry != null) {
@@ -80,18 +81,7 @@ public class OrderlyCreationOfDirs {
         calendar.add(Calendar.MINUTE, 1);
         while (presentKeyEntry.compareTo(calendar.getTime()) != 0) {
           Path parentPath, missingPath;
-          if (calendar.get(Calendar.MINUTE) != 0)
-            parentPath = creationTimeOfFiles.get(previousKeyEntry).getPath()
-                .getParent();
-          else
-            parentPath = creationTimeOfFiles.get(presentKeyEntry).getPath()
-                .getParent();
-          if (calendar.get(Calendar.MINUTE) < 10)
-            missingPath = new Path(parentPath, "0"
-                + Integer.toString(calendar.get(Calendar.MINUTE)));
-          else
-            missingPath = new Path(parentPath, Integer.toString(calendar
-                .get(Calendar.MINUTE)));
+          missingPath = new Path(streamDir, Cluster.getDateAsYYYYMMDDHHMNPath(calendar.getTime()));
           System.out.println("Missing Dir: " + missingPath);
           notCreatedMinutePaths.add(missingPath);
           calendar.add(Calendar.MINUTE, 1);
@@ -112,8 +102,8 @@ public class OrderlyCreationOfDirs {
       creationTimeOfFiles.put(CalendarHelper.getDateFromStreamDir(
           streamDir, path), fs.getFileStatus(path));
     }
-    validateOrderlyCreationOfPaths(creationTimeOfFiles, outOfOrderDirs,
-        notCreatedMinutePaths);
+    validateOrderlyCreationOfPaths(streamDir, creationTimeOfFiles,
+        outOfOrderDirs, notCreatedMinutePaths);
   }
   
   public void getStreamNames(String baseDir, String rootDir, List<String>
