@@ -81,7 +81,8 @@ public class OrderlyCreationOfDirs {
         calendar.add(Calendar.MINUTE, 1);
         while (presentKeyEntry.compareTo(calendar.getTime()) != 0) {
           Path parentPath, missingPath;
-          missingPath = new Path(streamDir, Cluster.getDateAsYYYYMMDDHHMNPath(calendar.getTime()));
+          missingPath = new Path(streamDir,
+              Cluster.getDateAsYYYYMMDDHHMNPath(calendar.getTime()));
           System.out.println("Missing Dir: " + missingPath);
           notCreatedMinutePaths.add(missingPath);
           calendar.add(Calendar.MINUTE, 1);
