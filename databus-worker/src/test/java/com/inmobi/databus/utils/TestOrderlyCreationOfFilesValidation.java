@@ -1,6 +1,10 @@
 package com.inmobi.databus.utils;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.TreeMap;
@@ -29,6 +33,9 @@ public class TestOrderlyCreationOfFilesValidation {
 
   FileSystem fs;
   Set<Path> outoforderExpectedResults = new HashSet<Path>();
+  Set<Path> noneMissingDirsExpectedResults = new HashSet<Path>();
+  Set<Path> prevHourMissingDirsExpectedResults = new HashSet<Path>();
+  Set<Path> lastHourMissingDirsExpectedResults = new HashSet<Path>();
   Set<Path> inorderExpectedResults = new HashSet<Path>();
   String rootDirs [] = ("file:///tmp/test/" + className
   		+ "/1/,file:///tmp/test/" + className +"/2/").split(",");
@@ -36,6 +43,9 @@ public class TestOrderlyCreationOfFilesValidation {
   List<String> emptyStream = new ArrayList<String>();
   List<String> inorderStream = new ArrayList<String>();
   List<String> outoforderStream = new ArrayList<String>();
+  List<String> noneMissingStream = new ArrayList<String>();
+  List<String> missingPrevHoursStream = new ArrayList<String>();
+  List<String> missingLastHourStream = new ArrayList<String>();
   long temptime = System.currentTimeMillis();
 
   @BeforeTest
@@ -46,6 +56,9 @@ public class TestOrderlyCreationOfFilesValidation {
   	outoforderStream.add("outoforder");
   	baseDirs.add("streams");
   	baseDirs.add("streams_local");
+  	noneMissingStream.add("nonemissing");
+  	missingPrevHoursStream.add("missingprevhours");
+  	missingLastHourStream.add("missinglasthour");
   	createTestData();
 
   }
@@ -78,6 +91,70 @@ public class TestOrderlyCreationOfFilesValidation {
   }
 }
   
+  public void createMinDirsForHoleValidation(String listPath,
+      boolean noneMissing, boolean prevHourMissing, int dirNumber)
+      throws Exception {
+    Calendar cal = Calendar.getInstance();
+    cal.setTime(new Date(temptime));
+    cal.add(Calendar.HOUR, -1);
+    cal.set(Calendar.MINUTE, 0);
+    Date oneHourBack = cal.getTime();
+    long increment = 60000;
+    long startTime = oneHourBack.getTime();
+    long time = startTime;
+    if (noneMissing) {      
+      for (int i = 0; time <= temptime; i++) {
+        time = startTime + (i * increment);
+        String path = Cluster.getDateAsYYYYMMDDHHMNPath(time);
+        int filesCount = 2;
+        Path minDir = new Path(listPath, path);
+        fs.mkdirs(minDir);
+        for (int j = 0; j < filesCount; j++) {
+          createFilesData(fs, minDir, j);
+        }
+      }
+    } else {
+      if (prevHourMissing) {
+        for (int i = 0; time <= temptime; i++) {
+          if (i != 29) {
+            time = startTime + (i * increment);
+            String path = Cluster.getDateAsYYYYMMDDHHMNPath(time);
+            int filesCount = 2;
+            Path minDir = new Path(listPath, path);
+            fs.mkdirs(minDir);
+            for (int j = 0; j < filesCount; j++) {
+              createFilesData(fs, minDir, j);
+            }
+          } else {
+            time = startTime + (i * increment);
+            String path = Cluster.getDateAsYYYYMMDDHHMNPath(time);
+            Path minDir = new Path(listPath, path);
+            prevHourMissingDirsExpectedResults.add(minDir);
+          }
+        }
+      } else {
+        for (int i = 0; time <= temptime; i++) {
+          if (i != 61) {
+            time = startTime + (i * increment);
+            LOG.info("Time "+(new Date(time)).toString());
+            String path = Cluster.getDateAsYYYYMMDDHHMNPath(time);
+            int filesCount = 2;
+            Path minDir = new Path(listPath, path);
+            fs.mkdirs(minDir);
+            for (int j = 0; j < filesCount; j++) {
+              createFilesData(fs, minDir, j);
+            }
+          } else {
+            time = startTime + (i * increment);
+            String path = Cluster.getDateAsYYYYMMDDHHMNPath(time);
+            Path minDir = new Path(listPath, path);
+            lastHourMissingDirsExpectedResults.add(minDir);
+          }
+        }
+      }
+    }
+  }
+  
   public void createTestData() throws Exception {
     String  listPath ;
     int dirCount =2;
@@ -87,7 +164,7 @@ public class TestOrderlyCreationOfFilesValidation {
           for (String inorderstream : inorderStream) {
             listPath = rootdir + File.separator + basedir + File.separator +
                 inorderstream + File.separator;
-            createMinDirs(listPath, false, j );
+            createMinDirs(listPath, false, j);
           }
           for (String outoforderstream : outoforderStream) {
             listPath = rootdir + File.separator + basedir + File.separator +
@@ -95,6 +172,21 @@ public class TestOrderlyCreationOfFilesValidation {
             createMinDirs(listPath, false, j);
             Thread.sleep(1000);
             createMinDirs(listPath, true, j);
+          }
+          for (String nonemissing : noneMissingStream) {
+            listPath = rootdir + File.separator + basedir + File.separator
+                + nonemissing + File.separator;
+            createMinDirsForHoleValidation(listPath, true, false, j);
+          }
+          for (String missingPrevHours : missingPrevHoursStream) {
+            listPath = rootdir + File.separator + basedir + File.separator
+                + missingPrevHours + File.separator;
+            createMinDirsForHoleValidation(listPath, false, true, j);
+          }
+          for (String missingLastHour : missingLastHourStream) {
+            listPath = rootdir + File.separator + basedir + File.separator
+                + missingLastHour + File.separator;
+            createMinDirsForHoleValidation(listPath, false, false, j);
           }
         }
       }
@@ -121,18 +213,42 @@ public class TestOrderlyCreationOfFilesValidation {
   		Assert.assertTrue(totalOutOfOrderDirs.contains(it.next()));
   	}
   }
+  
+  private void checkAllElementsOfSets(Set<Path> totalMissingDirs,
+      Set<Path> missingExpectedResults) {
+    Iterator it = missingExpectedResults.iterator();
+    while (it.hasNext()) {
+      Assert.assertTrue(totalMissingDirs.contains(it.next()));
+    }
+  }
 
   private List<Path> checkResults(String [] rootDirs, List<String> baseDirs, 
   		List<String> streamNames, OrderlyCreationOfDirs obj) throws Exception {
   	List<Path> outOfOrderDirs = new ArrayList<Path>();
+  	Set<Path> notCreatedDirs = new HashSet<Path>();
   	for (String rootDir : rootDirs) {
   		for (String baseDir : baseDirs) {
-  			outOfOrderDirs.addAll(obj.pathConstruction(rootDir, baseDir, 
-  					streamNames));
+        obj.pathConstruction(rootDir, baseDir, streamNames, outOfOrderDirs,
+            notCreatedDirs);
   		}
   	}
   	return outOfOrderDirs;
   }
+  
+  private Set<Path> checkResultsForMissingDirs(String[] rootDirs,
+      List<String> baseDirs, List<String> streamNames, OrderlyCreationOfDirs obj)
+      throws Exception {
+    List<Path> outOfOrderDirs = new ArrayList<Path>();
+    Set<Path> notCreatedDirs = new HashSet<Path>();
+    for (String rootDir : rootDirs) {
+      for (String baseDir : baseDirs) {
+        obj.pathConstruction(rootDir, baseDir, streamNames, outOfOrderDirs,
+            notCreatedDirs);
+      }
+    }
+    return notCreatedDirs;
+  }
+  
   @Test
   public void TestOrderlyCreation() throws Exception {
   	OrderlyCreationOfDirs obj = new OrderlyCreationOfDirs();
@@ -179,6 +295,25 @@ public class TestOrderlyCreationOfFilesValidation {
   	checkAllElements(totalOutOfOrderDirs, outoforderExpectedResults);
   	Assert.assertEquals(totalOutOfOrderDirs.size(), outoforderExpectedResults.
   			size()); 
+  	
+    // none missing stream
+    Set<Path> missingDirs = checkResultsForMissingDirs(rootDirs, baseDirs,
+        noneMissingStream, obj);
+    checkAllElementsOfSets(missingDirs, noneMissingDirsExpectedResults);
+
+    // path from prev hour missing stream
+    missingDirs = checkResultsForMissingDirs(rootDirs, baseDirs,
+        missingPrevHoursStream, obj);
+    checkAllElementsOfSets(missingDirs, prevHourMissingDirsExpectedResults);
+    Assert.assertEquals(missingDirs.size(),
+        prevHourMissingDirsExpectedResults.size());
+
+    // path from last hour missing stream
+    missingDirs = checkResultsForMissingDirs(rootDirs, baseDirs,
+        missingLastHourStream, obj);
+    checkAllElementsOfSets(missingDirs, lastHourMissingDirsExpectedResults);
+    Assert.assertEquals(missingDirs.size(),
+        lastHourMissingDirsExpectedResults.size());
   }
 }
 
