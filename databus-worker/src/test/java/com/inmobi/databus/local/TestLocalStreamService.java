@@ -86,20 +86,20 @@ public class TestLocalStreamService extends LocalStreamService implements
   }
   
   public void doRecursiveListing(Path dir, Set<Path> listing,
-    FileSystem fs) throws IOException {
-  FileStatus[] fileStatuses = fs.listStatus(dir);
-  if (fileStatuses == null || fileStatuses.length == 0) {
-    LOG.debug("No files in directory:" + dir);
-  } else {
-    for (FileStatus file : fileStatuses) {
-      if (file.isDir()) {
-        doRecursiveListing(file.getPath(), listing, fs);	
-      } else {
-        listing.add(file.getPath().getParent());
-      }
-    }
+  		FileSystem fs) throws IOException {
+  	FileStatus[] fileStatuses = fs.listStatus(dir);
+  	if (fileStatuses == null || fileStatuses.length == 0) {
+  		LOG.debug("No files in directory:" + dir);
+  	} else {
+  		for (FileStatus file : fileStatuses) {
+  			if (file.isDir()) {
+  				doRecursiveListing(file.getPath(), listing, fs);	
+  			} else {
+  				listing.add(file.getPath().getParent());
+  			}
+  		}
+  	}
   }
-}
 
   @Override
   protected void preExecute() throws Exception {
