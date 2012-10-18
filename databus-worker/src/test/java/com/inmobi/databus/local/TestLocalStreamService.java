@@ -15,12 +15,14 @@ import com.inmobi.databus.Cluster;
 import com.inmobi.databus.DatabusConfig;
 import com.inmobi.databus.PublishMissingPathsTest;
 import com.inmobi.databus.SourceStream;
+import com.inmobi.databus.utils.CalendarHelper;
 import java.io.File;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +84,22 @@ public class TestLocalStreamService extends LocalStreamService implements
     
     return filesList;
   }
+  
+  public void doRecursiveListing(Path dir, Set<Path> listing,
+    FileSystem fs) throws IOException {
+  FileStatus[] fileStatuses = fs.listStatus(dir);
+  if (fileStatuses == null || fileStatuses.length == 0) {
+    LOG.debug("No files in directory:" + dir);
+  } else {
+    for (FileStatus file : fileStatuses) {
+      if (file.isDir()) {
+        doRecursiveListing(file.getPath(), listing, fs);	
+      } else {
+        listing.add(file.getPath().getParent());
+      }
+    }
+  }
+}
 
   @Override
   protected void preExecute() throws Exception {
@@ -153,24 +171,24 @@ public class TestLocalStreamService extends LocalStreamService implements
         }
         
         LOG.info("Tmp Path does not exist for cluster " + srcCluster.getName());
-        
+
         List<String> filesList = files.get(sstream.getValue().getName());
         Set<String> prevfilesList = prevfiles.get(sstream.getValue().getName());
-        
+
         Path trashpath = srcCluster.getTrashPathWithDateHour();
-        String commitpath = srcCluster.getLocalFinalDestDirRoot()
-            + sstream.getValue().getName() + File.separator
-            + Cluster.getDateAsYYYYMMDDHHPath(todaysdate.getTime());
-        FileStatus[] mindirs = fs.listStatus(new Path(commitpath));
-        
-        FileStatus mindir = mindirs[0];
-        
-        for (FileStatus minutedir : mindirs) {
-          if (mindir.getPath().getName()
-              .compareTo(minutedir.getPath().getName()) < 0) {
-            mindir = minutedir;
-          }
+        String streamPrefix = srcCluster.getLocalFinalDestDirRoot()
+        		+ sstream.getValue().getName();
+        Set<Path> listOfPaths = new HashSet<Path>();
+        doRecursiveListing(new Path(streamPrefix), listOfPaths, fs);
+        Path latestPath = null;
+        for (Path path : listOfPaths) {
+        	if (latestPath== null || (CalendarHelper.getDateFromStreamDir(new 
+        			Path(streamPrefix), path).compareTo(CalendarHelper.getDateFromStreamDir
+        					(new Path(streamPrefix), latestPath)) > 0)) {
+        		latestPath = path;
+        	}
         }
+
         // Make sure all the paths from dummy to mindir are created
         PublishMissingPathsTest.VerifyMissingPublishPaths(fs,
             todaysdate.getTime(), behinddate,
@@ -178,11 +196,8 @@ public class TestLocalStreamService extends LocalStreamService implements
                 + sstream.getValue().getName());
   
         try {
-          Integer.parseInt(mindir.getPath().getName());
-          String streams_local_dir = commitpath + mindir.getPath().getName()
-              + File.separator + srcCluster.getName();
-          
-          LOG.debug("Checking in Path for mapred Output: " + streams_local_dir);
+          String streams_local_dir = latestPath + File.separator + srcCluster.getName(); 
+        	LOG.debug("Checking in Path for mapred Output: " + streams_local_dir);
           
           // First check for the previous current file
           if (!prevfilesList.isEmpty()) {
@@ -315,3 +330,4 @@ public class TestLocalStreamService extends LocalStreamService implements
     return fs;
   }
 }
+
