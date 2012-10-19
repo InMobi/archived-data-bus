@@ -105,14 +105,13 @@ public class MergedStreamService extends DistcpBaseService {
       // if success
       if (!skipCommit) {
         Map<String, List<Path>> categoriesToCommit = prepareForCommit(tmpOut);
+        committedPaths =  new HashMap<String, Set<Path>>();
         synchronized (getDestCluster()) {
           long commitTime = getDestCluster().getCommitTime();
           addPublishMissingPaths(missingDirsCommittedPaths, commitTime,
               categoriesToCommit.keySet());
-
-          // category, Set of Paths to commit
-          committedPaths = doLocalCommit(commitTime, categoriesToCommit);
-
+          Map<Path, Path> commitPaths = findCommitedPaths(tmpOut, commitTime, 
+          		categoriesToCommit, committedPaths);
           for (Map.Entry<String, Set<Path>> entry : missingDirsCommittedPaths
               .entrySet()) {
             Set<Path> filesList = committedPaths.get(entry.getKey());
@@ -121,9 +120,13 @@ public class MergedStreamService extends DistcpBaseService {
             else
               committedPaths.put(entry.getKey(), entry.getValue());
           }
+          // Prepare paths for MirrorStreamConsumerService
+          Map<Path, Path> consumepaths = commitMirroredConsumerPaths(committedPaths, tmp);
+          commitPaths.putAll(consumepaths);
+          // category, Set of Paths to commit
+          doLocalCommit(commitPaths);
         }
-        // Prepare paths for MirrorStreamConsumerService
-        commitMirroredConsumerPaths(committedPaths, tmp);
+
         // Cleanup happens in parallel without sync
         // no race is there in consumePaths, tmpOut
         doFinalCommit(consumePaths);
@@ -141,41 +144,41 @@ public class MergedStreamService extends DistcpBaseService {
       Map<String, Set<Path>> missingDirsCommittedPaths, long commitTime,
       Set<String> categoriesToCommit)
       throws Exception {
-      Map<String, Set<Path>> missingDirsforCategory = null;
-      
-      if(categoriesToCommit!=null) {
-        missingDirsforCategory = new HashMap<String, Set<Path>>();
-        for (String category : categoriesToCommit) {
-          Set<Path> missingDirectories = publishMissingPaths(getDestFs(),
-              getDestCluster().getFinalDestDirRoot(), commitTime, category);
-          missingDirsforCategory.put(category, missingDirectories);
-        }
-      } else {
-        missingDirsforCategory = publishMissingPaths(
-          getDestFs(), getDestCluster().getFinalDestDirRoot());
-      }
+  	Map<String, Set<Path>> missingDirsforCategory = null;
 
-      if (missingDirsforCategory != null) {
-        for (Map.Entry<String, Set<Path>> entry : missingDirsforCategory
-            .entrySet()) {
-          LOG.debug("Add Missing Directories to Commit Path: "
-              + entry.getValue().size());
-            if (missingDirsCommittedPaths.get(entry.getKey()) != null) {
-              Set<Path> missingPaths = missingDirsCommittedPaths.get(entry
-                  .getKey());
-              missingPaths.addAll(entry.getValue());
-            } else {
-              missingDirsCommittedPaths.put(entry.getKey(), entry.getValue());
-          }
-        }
-      }
+  	if(categoriesToCommit!=null) {
+  		missingDirsforCategory = new HashMap<String, Set<Path>>();
+  		for (String category : categoriesToCommit) {
+  			Set<Path> missingDirectories = publishMissingPaths(getDestFs(),
+  					getDestCluster().getFinalDestDirRoot(), commitTime, category);
+  			missingDirsforCategory.put(category, missingDirectories);
+  		}
+  	} else {
+  		missingDirsforCategory = publishMissingPaths(
+  				getDestFs(), getDestCluster().getFinalDestDirRoot());
+  	}
+
+  	if (missingDirsforCategory != null) {
+  		for (Map.Entry<String, Set<Path>> entry : missingDirsforCategory
+  				.entrySet()) {
+  			LOG.debug("Add Missing Directories to Commit Path: "
+  					+ entry.getValue().size());
+  			if (missingDirsCommittedPaths.get(entry.getKey()) != null) {
+  				Set<Path> missingPaths = missingDirsCommittedPaths.get(entry
+  						.getKey());
+  				missingPaths.addAll(entry.getValue());
+  			} else {
+  				missingDirsCommittedPaths.put(entry.getKey(), entry.getValue());
+  			}
+  		}
+  	}
   }
 
   /*
    * @param Map<String, Set<Path>> commitedPaths - Stream Name, It's committed
    * Path.
    */
-  private void commitMirroredConsumerPaths(
+  private Map<Path, Path> commitMirroredConsumerPaths(
           Map<String, Set<Path>> committedPaths, Path tmp) throws Exception {
     // Map of Stream and clusters where it's mirrored
     Map<String, Set<Cluster>> mirrorStreamConsumers = new HashMap<String, Set<Cluster>>();
@@ -230,29 +233,8 @@ public class MergedStreamService extends DistcpBaseService {
         consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
       } // for each consumer
     } // for each stream
-    
-		if (consumerCommitPaths == null || consumerCommitPaths.size() == 0) {
-			LOG.info("consumerCommitPaths is empty for all stream, skipping mirrorCommit");
-      missingDirsCommittedPaths.clear();
-			return;
-		}
-    // Do the final mirrorCommit
-    LOG.info("Committing [" + consumerCommitPaths.size() + "] paths for " +
-            "mirrored Stream");
-    FileSystem fs = FileSystem.get(getDestCluster().getHadoopConf());
-    for (Map.Entry<Path, Path> entry : consumerCommitPaths.entrySet()) {
-      LOG.info("Renaming [" + entry.getKey() + "] to [" + entry.getValue() +
-              "]");
-      fs.mkdirs(entry.getValue().getParent());
-      if (fs.rename(entry.getKey(), entry.getValue()) == false) {
-        LOG.warn("Failed to Commit for Mirrored Path. Aborting Transaction " +
-                "to avoid DATA LOSS, " +
-                "Partial data replay can happen for merged and mirror stream");
-        throw new Exception("Rename failed from ["+ entry.getKey() +"] to ["
-                + entry.getValue() +"]");
-      }
-    }
-    missingDirsCommittedPaths.clear();
+  
+    return consumerCommitPaths;
   }
 
   private Map<String, List<Path>> prepareForCommit(Path tmpOut)
@@ -261,6 +243,7 @@ public class MergedStreamService extends DistcpBaseService {
     FileStatus[] allFiles = getDestFs().listStatus(tmpOut);
     for (int i = 0; i < allFiles.length; i++) {
       String fileName = allFiles[i].getPath().getName();
+      LOG.info("added filename in merged " + fileName);
       if (fileName != null) {
         String category = getCategoryFromFileName(fileName);
         if (category != null) {
@@ -268,7 +251,7 @@ public class MergedStreamService extends DistcpBaseService {
           if (!getDestFs().exists(intermediatePath))
             getDestFs().mkdirs(intermediatePath);
           Path source = allFiles[i].getPath().makeQualified(getDestFs());
-
+          
           Path intermediateFilePath = new Path(intermediatePath.makeQualified(
                   getDestFs()).toString()
                   + File.separator + fileName);
@@ -293,48 +276,64 @@ public class MergedStreamService extends DistcpBaseService {
         }
       }
     }
+   
     return categoriesToCommit;
+  }
+  
+  public Map<Path, Path> findCommitedPaths(Path tmpOut, long commitTime, 
+  		Map<String, List<Path>> categoriesToCommit, Map<String, Set<Path>> 
+  				comittedPaths) throws Exception {
+  	 FileSystem fs = FileSystem.get(getDestCluster().getHadoopConf());
+
+  	 // find final destination paths
+  	 Map<Path, Path> mvPaths = new LinkedHashMap<Path, Path>();
+
+  	 //   Map<String, Set<Path>> comittedPaths = new HashMap<String, Set<Path>>();
+  	 Set<Map.Entry<String, List<Path>>> commitEntries = categoriesToCommit
+  			 .entrySet();
+  	 Iterator it = commitEntries.iterator();
+  	 while (it.hasNext()) {
+  		 Map.Entry<String, List<Path>> entry = (Map.Entry<String, List<Path>>) it
+  				 .next();
+  		 String category = entry.getKey();
+  		 List<Path> filesInCategory = entry.getValue();
+  		 for (Path filePath : filesInCategory) {
+  			 Path destParentPath = new Path(getDestCluster().getFinalDestDir(
+  					 category, commitTime));
+
+  			 LOG.debug("Moving from intermediatePath [" + filePath + "] to ["
+  					 + destParentPath + "]");
+
+  			 Path commitPath = new Path(destParentPath, filePath.getName());
+  			 mvPaths.put(filePath, commitPath);
+  			 Set<Path> commitPaths = comittedPaths.get(category);
+  			 if (commitPaths == null) {
+  				 commitPaths = new HashSet<Path>();
+  			 }
+  			 commitPaths.add(commitPath);
+  			 comittedPaths.put(category, commitPaths);
+  		 }
+  	 }
+  	 return mvPaths;
   }
 
   /*
    * @returns Map<String, Set<Path>> - Map of StreamName, Set of paths committed
    * for stream
    */
-  private Map<String, Set<Path>> doLocalCommit(long commitTime,
-                                               Map<String, List<Path>> categoriesToCommit) throws Exception {
-    Map<String, Set<Path>> comittedPaths = new HashMap<String, Set<Path>>();
-    Set<Map.Entry<String, List<Path>>> commitEntries = categoriesToCommit
-            .entrySet();
-    Iterator it = commitEntries.iterator();
-    while (it.hasNext()) {
-      Map.Entry<String, List<Path>> entry = (Map.Entry<String, List<Path>>) it
-              .next();
-      String category = entry.getKey();
-      List<Path> filesInCategory = entry.getValue();
-      for (Path filePath : filesInCategory) {
-        Path destParentPath = new Path(getDestCluster().getFinalDestDir(
-                category, commitTime));
-        if (!getDestFs().exists(destParentPath)) {
-          getDestFs().mkdirs(destParentPath);
-        }
-        LOG.debug("Moving from intermediatePath [" + filePath + "] to ["
-                + destParentPath + "]");
-        if (getDestFs().rename(filePath, destParentPath) == false) {
-          LOG.warn("Rename failed, aborting transaction COMMIT to avoid " +
-                  "dataloss. Partial data replay could happen in next run");
-          throw new Exception("Abort transaction Commit. Rename failed from ["
-                  + filePath + "] to [" + destParentPath + "]");
-        }
-        Path commitPath = new Path(destParentPath, filePath.getName());
-        Set<Path> commitPaths = comittedPaths.get(category);
-        if (commitPaths == null) {
-          commitPaths = new HashSet<Path>();
-        }
-        commitPaths.add(commitPath);
-        comittedPaths.put(category, commitPaths);
-      }
-    }
-    return comittedPaths;
+  private void doLocalCommit(Map<Path, Path> commitPaths) throws Exception {
+  	LOG.info("Committing " + commitPaths.size() + " paths.");
+  	FileSystem fs = FileSystem.get(getDestCluster().getHadoopConf());
+  	for (Map.Entry<Path, Path> entry : commitPaths.entrySet()) {
+  		LOG.info("Renaming " + entry.getKey() + " to " + entry.getValue());
+  		fs.mkdirs(entry.getValue().getParent());
+  		if (fs.rename(entry.getKey(), entry.getValue()) == false) {
+  			LOG.warn("Rename failed, aborting transaction COMMIT to avoid "
+  					+ "dataloss. Partial data replay could happen in next run");
+  			throw new Exception("Abort transaction Commit. Rename failed from ["
+  					+ entry.getKey() + "] to [" + entry.getValue() + "]");
+  		}
+  	}
   }
 
   protected Path getInputPath() throws IOException {
