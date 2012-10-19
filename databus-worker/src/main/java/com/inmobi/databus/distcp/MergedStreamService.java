@@ -100,28 +100,28 @@ public class MergedStreamService extends DistcpBaseService {
         LOG.warn("Problem in MergedStream distcp PULL..skipping commit for this run");
         skipCommit = true;
       }
-      Map<String, Set<Path>> committedPaths = null;
+      Map<String, Set<Path>> toBeCommittedPaths = null;
 
       // if success
       if (!skipCommit) {
         Map<String, List<Path>> categoriesToCommit = prepareForCommit(tmpOut);
-        committedPaths =  new HashMap<String, Set<Path>>();
+        toBeCommittedPaths =  new HashMap<String, Set<Path>>();
         synchronized (getDestCluster()) {
           long commitTime = getDestCluster().getCommitTime();
           addPublishMissingPaths(missingDirsCommittedPaths, commitTime,
               categoriesToCommit.keySet());
           Map<Path, Path> commitPaths = findCommitedPaths(tmpOut, commitTime, 
-          		categoriesToCommit, committedPaths);
+          		categoriesToCommit, toBeCommittedPaths);
           for (Map.Entry<String, Set<Path>> entry : missingDirsCommittedPaths
               .entrySet()) {
-            Set<Path> filesList = committedPaths.get(entry.getKey());
+            Set<Path> filesList = toBeCommittedPaths.get(entry.getKey());
             if (filesList != null)
               filesList.addAll(entry.getValue());
             else
-              committedPaths.put(entry.getKey(), entry.getValue());
+              toBeCommittedPaths.put(entry.getKey(), entry.getValue());
           }
           // Prepare paths for MirrorStreamConsumerService
-          Map<Path, Path> consumepaths = commitMirroredConsumerPaths(committedPaths, tmp);
+          Map<Path, Path> consumepaths = commitMirroredConsumerPaths(toBeCommittedPaths, tmp);
           commitPaths.putAll(consumepaths);
           // category, Set of Paths to commit
           doLocalCommit(commitPaths);
@@ -233,7 +233,12 @@ public class MergedStreamService extends DistcpBaseService {
         consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
       } // for each consumer
     } // for each stream
-  
+    if (consumerCommitPaths == null || consumerCommitPaths.size() == 0) {
+    	LOG.info("consumerCommitPaths is empty for all stream, skipping mirrorCommit");
+    	missingDirsCommittedPaths.clear();
+    	return null;
+    }
+    
     return consumerCommitPaths;
   }
 
@@ -243,7 +248,6 @@ public class MergedStreamService extends DistcpBaseService {
     FileStatus[] allFiles = getDestFs().listStatus(tmpOut);
     for (int i = 0; i < allFiles.length; i++) {
       String fileName = allFiles[i].getPath().getName();
-      LOG.info("added filename in merged " + fileName);
       if (fileName != null) {
         String category = getCategoryFromFileName(fileName);
         if (category != null) {
@@ -288,7 +292,6 @@ public class MergedStreamService extends DistcpBaseService {
   	 // find final destination paths
   	 Map<Path, Path> mvPaths = new LinkedHashMap<Path, Path>();
 
-  	 //   Map<String, Set<Path>> comittedPaths = new HashMap<String, Set<Path>>();
   	 Set<Map.Entry<String, List<Path>>> commitEntries = categoriesToCommit
   			 .entrySet();
   	 Iterator it = commitEntries.iterator();
@@ -300,10 +303,6 @@ public class MergedStreamService extends DistcpBaseService {
   		 for (Path filePath : filesInCategory) {
   			 Path destParentPath = new Path(getDestCluster().getFinalDestDir(
   					 category, commitTime));
-
-  			 LOG.debug("Moving from intermediatePath [" + filePath + "] to ["
-  					 + destParentPath + "]");
-
   			 Path commitPath = new Path(destParentPath, filePath.getName());
   			 mvPaths.put(filePath, commitPath);
   			 Set<Path> commitPaths = comittedPaths.get(category);
