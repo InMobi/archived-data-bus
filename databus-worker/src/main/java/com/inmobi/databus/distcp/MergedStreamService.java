@@ -233,12 +233,7 @@ public class MergedStreamService extends DistcpBaseService {
         consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
       } // for each consumer
     } // for each stream
-    if (consumerCommitPaths == null || consumerCommitPaths.size() == 0) {
-    	LOG.info("consumerCommitPaths is empty for all stream, skipping mirrorCommit");
-    	missingDirsCommittedPaths.clear();
-    	return null;
-    }
-    
+    missingDirsCommittedPaths.clear();
     return consumerCommitPaths;
   }
 
@@ -287,33 +282,32 @@ public class MergedStreamService extends DistcpBaseService {
   public Map<Path, Path> findCommitedPaths(Path tmpOut, long commitTime, 
   		Map<String, List<Path>> categoriesToCommit, Map<String, Set<Path>> 
   				comittedPaths) throws Exception {
-  	 FileSystem fs = FileSystem.get(getDestCluster().getHadoopConf());
+  	FileSystem fs = FileSystem.get(getDestCluster().getHadoopConf());
 
-  	 // find final destination paths
-  	 Map<Path, Path> mvPaths = new LinkedHashMap<Path, Path>();
-
-  	 Set<Map.Entry<String, List<Path>>> commitEntries = categoriesToCommit
-  			 .entrySet();
-  	 Iterator it = commitEntries.iterator();
-  	 while (it.hasNext()) {
-  		 Map.Entry<String, List<Path>> entry = (Map.Entry<String, List<Path>>) it
-  				 .next();
-  		 String category = entry.getKey();
-  		 List<Path> filesInCategory = entry.getValue();
-  		 for (Path filePath : filesInCategory) {
-  			 Path destParentPath = new Path(getDestCluster().getFinalDestDir(
-  					 category, commitTime));
-  			 Path commitPath = new Path(destParentPath, filePath.getName());
-  			 mvPaths.put(filePath, commitPath);
-  			 Set<Path> commitPaths = comittedPaths.get(category);
-  			 if (commitPaths == null) {
-  				 commitPaths = new HashSet<Path>();
-  			 }
-  			 commitPaths.add(commitPath);
-  			 comittedPaths.put(category, commitPaths);
-  		 }
-  	 }
-  	 return mvPaths;
+  	// find final destination paths
+  	Map<Path, Path> mvPaths = new LinkedHashMap<Path, Path>();
+  	Set<Map.Entry<String, List<Path>>> commitEntries = categoriesToCommit
+  			.entrySet();
+  	Iterator it = commitEntries.iterator();
+  	while (it.hasNext()) {
+  		Map.Entry<String, List<Path>> entry = (Map.Entry<String, List<Path>>) it
+  				.next();
+  		String category = entry.getKey();
+  		List<Path> filesInCategory = entry.getValue();
+  		for (Path filePath : filesInCategory) {
+  			Path destParentPath = new Path(getDestCluster().getFinalDestDir(
+  					category, commitTime));
+  			Path commitPath = new Path(destParentPath, filePath.getName());
+  			mvPaths.put(filePath, commitPath);
+  			Set<Path> commitPaths = comittedPaths.get(category);
+  			if (commitPaths == null) {
+  				commitPaths = new HashSet<Path>();
+  			}
+  			commitPaths.add(commitPath);
+  			comittedPaths.put(category, commitPaths);
+  		}
+  	}
+  	return mvPaths;
   }
 
   /*
