@@ -335,7 +335,7 @@ public class LocalStreamService extends AbstractService {
           results.put(file, destDir);
         collectorPaths.put(fileName, file);
       } else {
-        LOG.info("Empty File [" + fileName + "] found. " +
+        LOG.info("Empty File [" + file.getPath() + "] found. " +
         "Deleting it");
         fs.delete(file.getPath(), false);
       }
