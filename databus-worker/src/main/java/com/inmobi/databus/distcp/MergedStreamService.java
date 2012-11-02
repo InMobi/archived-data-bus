@@ -83,7 +83,9 @@ public class MergedStreamService extends DistcpBaseService {
         if (missingDirsCommittedPaths.size() > 0) {
           LOG.warn("Adding Missing Directories for Pull "
               + missingDirsCommittedPaths.size());
-          commitMirroredConsumerPaths(missingDirsCommittedPaths, tmp);
+          Map<Path, Path> missingConsumePaths =  commitMirroredConsumerPaths(
+          		missingDirsCommittedPaths, tmp);
+          doLocalCommit(missingConsumePaths);
         }
         return;
       }
@@ -100,31 +102,32 @@ public class MergedStreamService extends DistcpBaseService {
         LOG.warn("Problem in MergedStream distcp PULL..skipping commit for this run");
         skipCommit = true;
       }
-      Map<String, Set<Path>> toBeCommittedPaths = null;
+      Map<String, Set<Path>> tobeCommittedPaths = null;
 
       // if success
       if (!skipCommit) {
         Map<String, List<Path>> categoriesToCommit = prepareForCommit(tmpOut);
-        toBeCommittedPaths =  new HashMap<String, Set<Path>>();
+        tobeCommittedPaths =  new HashMap<String, Set<Path>>();
         synchronized (getDestCluster()) {
           long commitTime = getDestCluster().getCommitTime();
           addPublishMissingPaths(missingDirsCommittedPaths, commitTime,
               categoriesToCommit.keySet());
-          Map<Path, Path> commitPaths = findCommitedPaths(tmpOut, commitTime, 
-          		categoriesToCommit, toBeCommittedPaths);
+          Map<Path, Path> commitPaths = createLocalCommitPaths(tmpOut, commitTime, 
+          		categoriesToCommit, tobeCommittedPaths);
           for (Map.Entry<String, Set<Path>> entry : missingDirsCommittedPaths
               .entrySet()) {
-            Set<Path> filesList = toBeCommittedPaths.get(entry.getKey());
+            Set<Path> filesList = tobeCommittedPaths.get(entry.getKey());
             if (filesList != null)
               filesList.addAll(entry.getValue());
-            else
-              toBeCommittedPaths.put(entry.getKey(), entry.getValue());
+            else 
+            	tobeCommittedPaths.put(entry.getKey(), entry.getValue());
           }
           // Prepare paths for MirrorStreamConsumerService
-          Map<Path, Path> consumepaths = commitMirroredConsumerPaths(toBeCommittedPaths, tmp);
-          commitPaths.putAll(consumepaths);
+          Map<Path, Path> consumepaths = commitMirroredConsumerPaths(tobeCommittedPaths, tmp);
+          doLocalCommit(consumepaths);
           // category, Set of Paths to commit
           doLocalCommit(commitPaths);
+          missingDirsCommittedPaths.clear();
         }
 
         // Cleanup happens in parallel without sync
@@ -233,7 +236,6 @@ public class MergedStreamService extends DistcpBaseService {
         consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
       } // for each consumer
     } // for each stream
-    missingDirsCommittedPaths.clear();
     return consumerCommitPaths;
   }
 
@@ -279,9 +281,9 @@ public class MergedStreamService extends DistcpBaseService {
     return categoriesToCommit;
   }
   
-  public Map<Path, Path> findCommitedPaths(Path tmpOut, long commitTime, 
+  public Map<Path, Path> createLocalCommitPaths(Path tmpOut, long commitTime, 
   		Map<String, List<Path>> categoriesToCommit, Map<String, Set<Path>> 
-  				comittedPaths) throws Exception {
+  				tobeCommittedPaths) throws Exception {
   	FileSystem fs = FileSystem.get(getDestCluster().getHadoopConf());
 
   	// find final destination paths
@@ -299,12 +301,12 @@ public class MergedStreamService extends DistcpBaseService {
   					category, commitTime));
   			Path commitPath = new Path(destParentPath, filePath.getName());
   			mvPaths.put(filePath, commitPath);
-  			Set<Path> commitPaths = comittedPaths.get(category);
+  			Set<Path> commitPaths = tobeCommittedPaths.get(category);
   			if (commitPaths == null) {
   				commitPaths = new HashSet<Path>();
   			}
   			commitPaths.add(commitPath);
-  			comittedPaths.put(category, commitPaths);
+  			tobeCommittedPaths.put(category, commitPaths);
   		}
   	}
   	return mvPaths;
