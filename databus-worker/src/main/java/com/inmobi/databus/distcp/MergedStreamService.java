@@ -83,9 +83,7 @@ public class MergedStreamService extends DistcpBaseService {
         if (missingDirsCommittedPaths.size() > 0) {
           LOG.warn("Adding Missing Directories for Pull "
               + missingDirsCommittedPaths.size());
-          Map<Path, Path> missingConsumePaths =  commitMirroredConsumerPaths(
-          		missingDirsCommittedPaths, tmp);
-          doLocalCommit(missingConsumePaths);
+          commitMirroredConsumerPaths(missingDirsCommittedPaths, tmp);
         }
         return;
       }
@@ -123,13 +121,10 @@ public class MergedStreamService extends DistcpBaseService {
             	tobeCommittedPaths.put(entry.getKey(), entry.getValue());
           }
           // Prepare paths for MirrorStreamConsumerService
-          Map<Path, Path> consumepaths = commitMirroredConsumerPaths(tobeCommittedPaths, tmp);
-          doLocalCommit(consumepaths);
+          commitMirroredConsumerPaths(tobeCommittedPaths, tmp);
           // category, Set of Paths to commit
           doLocalCommit(commitPaths);
-          missingDirsCommittedPaths.clear();
         }
-
         // Cleanup happens in parallel without sync
         // no race is there in consumePaths, tmpOut
         doFinalCommit(consumePaths);
@@ -236,6 +231,8 @@ public class MergedStreamService extends DistcpBaseService {
         consumerCommitPaths.put(tmpConsumerPath, finalMirrorPath);
       } // for each consumer
     } // for each stream
+    doLocalCommit(consumerCommitPaths);
+    missingDirsCommittedPaths.clear();
     return consumerCommitPaths;
   }
 
@@ -277,7 +274,6 @@ public class MergedStreamService extends DistcpBaseService {
         }
       }
     }
-   
     return categoriesToCommit;
   }
   
