@@ -275,7 +275,11 @@ public class MergedStreamService extends DistcpBaseService {
     }
     return categoriesToCommit;
   }
-  
+
+  /*
+   * @returns Map<Path, Path> - Map of filePath, destinationPath committed
+   * for stream
+   */
   public Map<Path, Path> createLocalCommitPaths(Path tmpOut, long commitTime, 
   		Map<String, List<Path>> categoriesToCommit, Map<String, Set<Path>> 
   				tobeCommittedPaths) throws Exception {
@@ -307,10 +311,6 @@ public class MergedStreamService extends DistcpBaseService {
   	return mvPaths;
   }
 
-  /*
-   * @returns Map<String, Set<Path>> - Map of StreamName, Set of paths committed
-   * for stream
-   */
   private void doLocalCommit(Map<Path, Path> commitPaths) throws Exception {
   	LOG.info("Committing " + commitPaths.size() + " paths.");
   	FileSystem fs = FileSystem.get(getDestCluster().getHadoopConf());
