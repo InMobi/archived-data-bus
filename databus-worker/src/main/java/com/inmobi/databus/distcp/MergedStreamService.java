@@ -176,7 +176,7 @@ public class MergedStreamService extends DistcpBaseService {
    * @param Map<String, Set<Path>> commitedPaths - Stream Name, It's committed
    * Path.
    */
-  private Map<Path, Path> commitMirroredConsumerPaths(
+  private void commitMirroredConsumerPaths(
           Map<String, Set<Path>> committedPaths, Path tmp) throws Exception {
     // Map of Stream and clusters where it's mirrored
     Map<String, Set<Cluster>> mirrorStreamConsumers = new HashMap<String, Set<Cluster>>();
@@ -233,7 +233,6 @@ public class MergedStreamService extends DistcpBaseService {
     } // for each stream
     doLocalCommit(consumerCommitPaths);
     missingDirsCommittedPaths.clear();
-    return consumerCommitPaths;
   }
 
   private Map<String, List<Path>> prepareForCommit(Path tmpOut)
