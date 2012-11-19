@@ -101,7 +101,7 @@ public class MergedStreamService extends DistcpBaseService {
         skipCommit = true;
       }
       Map<String, Set<Path>> tobeCommittedPaths = null;
-
+      Map<Path, Path> commitPaths = new HashMap<Path, Path>();
       // if success
       if (!skipCommit) {
         Map<String, List<Path>> categoriesToCommit = prepareForCommit(tmpOut);
@@ -110,7 +110,7 @@ public class MergedStreamService extends DistcpBaseService {
           long commitTime = getDestCluster().getCommitTime();
           addPublishMissingPaths(missingDirsCommittedPaths, commitTime,
               categoriesToCommit.keySet());
-          Map<Path, Path> commitPaths = createLocalCommitPaths(tmpOut, commitTime, 
+          commitPaths = createLocalCommitPaths(tmpOut, commitTime, 
           		categoriesToCommit, tobeCommittedPaths);
           for (Map.Entry<String, Set<Path>> entry : missingDirsCommittedPaths
               .entrySet()) {
@@ -120,11 +120,12 @@ public class MergedStreamService extends DistcpBaseService {
             else 
             	tobeCommittedPaths.put(entry.getKey(), entry.getValue());
           }
-          // Prepare paths for MirrorStreamConsumerService
-          commitMirroredConsumerPaths(tobeCommittedPaths, tmp);
-          // category, Set of Paths to commit
-          doLocalCommit(commitPaths);
         }
+        // Prepare paths for MirrorStreamConsumerService
+        commitMirroredConsumerPaths(tobeCommittedPaths, tmp);
+        // category, Set of Paths to commit
+        doLocalCommit(commitPaths);
+        
         // Cleanup happens in parallel without sync
         // no race is there in consumePaths, tmpOut
         doFinalCommit(consumePaths);
@@ -175,6 +176,20 @@ public class MergedStreamService extends DistcpBaseService {
   /*
    * @param Map<String, Set<Path>> commitedPaths - Stream Name, It's committed
    * Path.
+   * tmpConsumePath: hdfsUrl/rootDir/system/tmp/
+   * distcp_mergedStream_databusdev1_databusdev2/tmp/src_sourceCluster_via_
+   * destinationCluster_mirrorto_consumername_streamname
+   * final Mirror Path: hdfsUrl/rootDir/system/mirrors/
+   * databusdev1/src_sourceCluster_via_destinationCluster_mirrorto_consumerName_
+   * benchmark_merge_filestatus
+   * Example paths:
+   * tmpConsumePath:hdfs://databusdev2.mkhoj.com:9000/databus/system/tmp/
+   * distcp_mergedStream_databusdev1_databusdev2/tmp/
+   * src_databusdev1_via_databusdev2_mirrorto_databusdev1_benchmark_merge
+   * 
+   * finalMirrorPath: hdfs://databusdev2.mkhoj.com:9000/databus/system/mirrors/
+   * databusdev1/src_databusdev1_via_databusdev2_mirrorto_databusdev1_
+   * benchmark_merge_1352687040907
    */
   private void commitMirroredConsumerPaths(
           Map<String, Set<Path>> committedPaths, Path tmp) throws Exception {
@@ -279,6 +294,10 @@ public class MergedStreamService extends DistcpBaseService {
   /*
    * @returns Map<Path, Path> - Map of filePath, destinationPath committed
    * for stream
+   * destinationPath : hdfsUrl/rootdir/streams/category/YYYY/MM/HH/MN/filename
+   * Example path:
+   * hdfs://databusdev2.mkhoj.com:9000/databus/streams/test-topic/
+   * 2012/10/00/00/filename
    */
   public Map<Path, Path> createLocalCommitPaths(Path tmpOut, long commitTime, 
   		Map<String, List<Path>> categoriesToCommit, Map<String, Set<Path>> 
