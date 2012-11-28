@@ -262,8 +262,8 @@ public class MergedStreamService extends DistcpBaseService {
     for (int i = 0; i < allFiles.length; i++) {
       String fileName = allFiles[i].getPath().getName();
       if (fileName != null) {
-        LOG.info("ClusterName: "+getDestCluster().getName()+" Merge stream: "+getDestCluster().getPrimaryDestinationStreams());
-        String category = getCategoryFromFileName(fileName, getDestCluster().getPrimaryDestinationStreams());
+        String category = getCategoryFromFileName(fileName, getDestCluster()
+            .getPrimaryDestinationStreams());
         if (category != null) {
           Path intermediatePath = new Path(tmpOut, category);
           if (!getDestFs().exists(intermediatePath))

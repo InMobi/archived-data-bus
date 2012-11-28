@@ -27,7 +27,6 @@ public class TestDistCPBaseService  {
   FileSystem localFs;
   Cluster cluster;
   MirrorStreamService service = null;
-  MergedStreamService mergeService = null;
   String expectedFileName1 = "/tmp/com.inmobi.databus.distcp" +
       ".TestDistCPBaseService/data-file1";
   String expectedFileName2 = "/tmp/com.inmobi.databus.distcp" +
@@ -164,7 +163,36 @@ public class TestDistCPBaseService  {
 
   @Test
   public void testSplitFileName() throws Exception {
-    cleanUP();
-    
+    Set<String> streamsSet = new HashSet<String>();
+    streamsSet.add("test-stream");
+    streamsSet.add("test_stream");
+    streamsSet.add("test_streams");
+    streamsSet.add("test_stream_2");
+    // file name in which collector name has hyphen
+    String fileName1 = "databus-test-test_stream-2012-11-27-21-20_00000.gz";
+    // file name in which stream name has hyphen
+    String fileName2 = "databus_test-test-stream-2012-11-27-21-20_00000.gz";
+    // file name in which stream name is subset of another stream name in the
+    // streamsSet
+    String fileName3 = "databus_test-test_streams-2012-11-27-21-20_00000.gz";
+    String fileName4 = "databus_test-test_stream_2-2012-11-27-21-20_00000.gz";
+    //file name in which stream name is not in streamsSet passed
+    String fileName5 = "databus_test-test_stream-2-2012-11-27-21-20_00000.gz";
+    // get stream names from file name
+    String expectedStreamName1 = MergedStreamService.getCategoryFromFileName(
+        fileName1, streamsSet);
+    String expectedStreamName2 = MergedStreamService.getCategoryFromFileName(
+        fileName2, streamsSet);
+    String expectedStreamName3 = MergedStreamService.getCategoryFromFileName(
+        fileName3, streamsSet);
+    String expectedStreamName4 = MergedStreamService.getCategoryFromFileName(
+        fileName4, streamsSet);
+    String expectedStreamName5 = MergedStreamService.getCategoryFromFileName(
+        fileName5, streamsSet);
+    assert expectedStreamName1.compareTo("test_stream") == 0;
+    assert expectedStreamName2.compareTo("test-stream") == 0;
+    assert expectedStreamName3.compareTo("test_streams") == 0;
+    assert expectedStreamName4.compareTo("test_stream_2") == 0;
+    assert expectedStreamName5 == null;
   }
 }
