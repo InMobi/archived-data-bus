@@ -176,7 +176,7 @@ public class TestDistCPBaseService  {
     // streamsSet
     String fileName3 = "databus_test-test_streams-2012-11-27-21-20_00000.gz";
     String fileName4 = "databus_test-test_stream_2-2012-11-27-21-20_00000.gz";
-    //file name in which stream name is not in streamsSet passed
+    // file name in which stream name is not in streamsSet passed
     String fileName5 = "databus_test-test_stream-2-2012-11-27-21-20_00000.gz";
     // get stream names from file name
     String expectedStreamName1 = MergedStreamService.getCategoryFromFileName(
