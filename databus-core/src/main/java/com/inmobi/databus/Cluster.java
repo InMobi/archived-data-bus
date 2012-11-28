@@ -36,7 +36,7 @@ public class Cluster {
   private final Map<String, DestinationStream> consumeStreams;
   private final Set<String> sourceStreams;
   private final Configuration hadoopConf;
-
+  
   public Cluster(Map<String, String> clusterElementsMap, String rootDir,
       Map<String, DestinationStream> consumeStreams, Set<String> sourceStreams)
       throws Exception {

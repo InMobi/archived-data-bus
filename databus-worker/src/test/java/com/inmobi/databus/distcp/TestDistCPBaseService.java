@@ -27,6 +27,7 @@ public class TestDistCPBaseService  {
   FileSystem localFs;
   Cluster cluster;
   MirrorStreamService service = null;
+  MergedStreamService mergeService = null;
   String expectedFileName1 = "/tmp/com.inmobi.databus.distcp" +
       ".TestDistCPBaseService/data-file1";
   String expectedFileName2 = "/tmp/com.inmobi.databus.distcp" +
@@ -161,4 +162,9 @@ public class TestDistCPBaseService  {
 
   }
 
+  @Test
+  public void testSplitFileName() throws Exception {
+    cleanUP();
+    
+  }
 }
