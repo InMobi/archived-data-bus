@@ -73,7 +73,7 @@ fi
 
 #set classpath
 export CLASSPATH=`ls $DATABUS_DIR/lib/*jar | tr "\n" :`;
-export CLASSPATH=$DATABUS_DIR/conf:$CLASSPATH:$HADOOP_CONF_DIR
+export CLASSPATH=$DATABUS_DIR/conf:$CLASSPATH:$HADOOP_CONF_DIR:$DATABUS_DIR/bin
 #echo setting classPath to $CLASSPATH
 
 case $startStop in
