@@ -126,17 +126,23 @@ public abstract class DistcpBaseService extends AbstractService {
   */
   protected abstract Path getInputPath() throws IOException;
 
-  protected String getCategoryFromFileName(String fileName) {
-    LOG.debug("Splitting [" + fileName + "] on -");
-    if (fileName != null && fileName.length() > 1 && fileName.contains("-")) {
-      StringTokenizer tokenizer = new StringTokenizer(fileName, "-");
-      tokenizer.nextToken(); //skip collector name
-      String catgeory = tokenizer.nextToken();
-      return catgeory;
+  protected static String getCategoryFromFileName(String fileName,
+      Set<String> streamsSet) {
+    for (String streamName : streamsSet) {
+      String strs[] = fileName.split(streamName);
+      if (strs.length == 2) {
+        if (checkCorrectDateFormat(strs[1]))
+          return streamName;
+      }
     }
     return null;
   }
 
+  protected static boolean checkCorrectDateFormat(String timestamp) {
+    return timestamp
+        .matches("^.[0-9]{4}.[0-9]{2}.[0-9]{2}.[0-9]{2}.[0-9]{2}.[0-9]{5}.gz$");
+  }
+  
   @Override
   public long getMSecondsTillNextRun(long currentTime) {
     long runIntervalInSec = (DEFAULT_RUN_INTERVAL/1000);
